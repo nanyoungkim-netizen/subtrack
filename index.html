@@ -618,19 +618,57 @@ function delItem(){const d=DATA.find(x=>x.id===editId);if(!d||!confirm('"'+d.s+'
 function showTab(id,btn){['dash','list','annual','zapier'].forEach(t=>document.getElementById('tab-'+t).style.display=t===id?'block':'none');document.querySelectorAll('.nb').forEach(b=>b.classList.remove('active'));btn.classList.add('active');if(id==='list'){document.getElementById('cat-chips').innerHTML='';renderList();}if(id==='annual')renderAnnual();if(id==='zapier')checkZapier();}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',2500);}
 
-// 초기화
-renderDash();
-// 배포 환경이면 자피어 데이터 자동 fetch
-if(window.location.hostname !== 'localhost' && !window.location.protocol.startsWith('file')) {
-  fetch('/api/webhook').then(r=>r.json()).then(json=>{
-    const zapItems=(json.data||[]).filter(d=>d.source==='zapier');
-    if(zapItems.length>0){
-      zapItems.forEach(zi=>{if(!DATA.find(d=>d.id===zi.id))DATA.push(zi);});
-      document.getElementById('zapier-dot').className='zapier-dot connected';
-      renderDash();
-    }
-  }).catch(()=>{});
+// ── 서버 저장/불러오기 ─────────────────────────────────────
+const IS_DEPLOYED = window.location.hostname !== 'localhost' && !window.location.protocol.startsWith('file');
+
+async function serverSave() {
+  if (!IS_DEPLOYED) return;
+  try {
+    await fetch('/api/data', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({data: DATA})
+    });
+  } catch(e) { console.warn('저장 실패:', e); }
 }
-</script>
-</body>
-</html>
+
+const _origSaveModal = saveModal;
+saveModal = function() { _origSaveModal(); serverSave(); };
+
+const _origDelItem = delItem;
+delItem = function() {
+  const d = DATA.find(x=>x.id===editId);
+  if(!d||!confirm('"'+d.s+'" 삭제할까요?')) return;
+  DATA = DATA.filter(x=>x.id!==editId);
+  closeModal(); initMsUser(); initMsCard();
+  document.getElementById('cat-chips').innerHTML='';
+  showToast('🗑 '+d.s+' 삭제됨'); renderDash(); renderList();
+  serverSave();
+};
+
+const _origToggleStatus = toggleStatus;
+toggleStatus = function(id) { _origToggleStatus(id); serverSave(); };
+
+async function initApp() {
+  if (IS_DEPLOYED) {
+    try {
+      const res = await fetch('/api/data');
+      const json = await res.json();
+      if (json.ok && json.initialized && Array.isArray(json.data) && json.data.length > 0) {
+        DATA = json.data;
+        nextId = Math.max(...DATA.map(d=>d.id)) + 1;
+      } else if (!json.initialized) {
+        await serverSave();
+      }
+      const zapRes = await fetch('/api/webhook');
+      const zapJson = await zapRes.json();
+      const zapItems = (zapJson.data||[]).filter(d=>d.source==='zapier');
+      if (zapItems.length > 0) {
+        zapItems.forEach(zi=>{if(!DATA.find(d=>d.id===zi.id)) DATA.push(zi);});
+        document.getElementById('zapier-dot').className='zapier-dot connected';
+      }
+    } catch(e) { console.warn('서버 연결 실패:', e); }
+  }
+  renderDash();
+}
+initApp();
