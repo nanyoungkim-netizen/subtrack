@@ -622,13 +622,21 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 // ── 서버 저장/불러오기 ─────────────────────────────────────
 const IS_DEPLOYED = window.location.hostname !== 'localhost' && !window.location.protocol.startsWith('file');
 
+const _SB_URL = 'https://hwppttcigebpvpvzidex.supabase.co';
+const _SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cHB0dGNpZ2VicHZwdnppZGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MzE4NTUsImV4cCI6MjA4OTIwNzg1NX0.oNe50eIvP2guEugRk9x8GVlqvHUmYG6jPDWabukk3M8';
+const _SB_HDR = {'apikey':_SB_KEY,'Authorization':'Bearer '+_SB_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'};
+
 async function serverSave() {
   if (!IS_DEPLOYED) return;
   try {
-    await fetch('/api/data', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({data: DATA})
+    // 1. UPSERT (추가/수정)
+    await fetch(_SB_URL+'/rest/v1/subscriptions', {
+      method:'POST', headers:_SB_HDR, body:JSON.stringify(DATA)
+    });
+    // 2. 삭제된 항목 제거 (현재 DATA에 없는 id 삭제)
+    const ids = DATA.map(d=>d.id).join(',');
+    await fetch(_SB_URL+'/rest/v1/subscriptions?id=not.in.('+ids+')', {
+      method:'DELETE', headers:_SB_HDR
     });
   } catch(e) { console.warn('저장 실패:', e); }
 }
