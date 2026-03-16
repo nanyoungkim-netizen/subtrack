@@ -7,22 +7,21 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // GET: 데이터 불러오기
   if (req.method === 'GET') {
     try {
-      // 파일 목록 조회
       const listRes = await fetch(`https://blob.vercel-storage.com?prefix=${FILENAME}&limit=1`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const listData = await listRes.json();
       const blobs = listData.blobs || [];
-
       if (blobs.length === 0) {
         return res.status(200).json({ ok: true, data: null, initialized: false });
       }
-
-      // 파일 내용 읽기
-      const dataRes = await fetch(blobs[0].url);
+      // private blob은 downloadUrl 사용
+      const fileUrl = blobs[0].downloadUrl || blobs[0].url;
+      const dataRes = await fetch(fileUrl, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       const data = await dataRes.json();
       return res.status(200).json({ ok: true, data, initialized: true });
     } catch (e) {
@@ -30,7 +29,6 @@ export default async function handler(req, res) {
     }
   }
 
-  // POST: 데이터 저장
   if (req.method === 'POST') {
     try {
       const { data } = req.body;
