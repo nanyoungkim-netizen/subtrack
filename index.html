@@ -497,7 +497,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
 <div id="login-screen">
   <div class="login-wrap">
     <div class="login-logo">
-      <div class="login-logo-mark">ST</div>
+      <div class="login-logo-mark">🛠️</div>
       <div>
         <div class="login-logo-name">SubTrack</div>
         <div class="login-logo-sub">구독 결제 관리 시스템</div>
@@ -540,7 +540,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
 <div id="researcher-view">
   <div class="rv-header">
     <div class="rv-header-left">
-      <div class="rv-logo-mark">ST</div>
+      <div class="rv-logo-mark">🛠️</div>
       <div>
         <div class="rv-title">구독 현황</div>
       </div>
@@ -548,8 +548,89 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
     </div>
     <button class="rv-logout" id="rv-logout-btn">← 나가기</button>
   </div>
-  <div class="rv-body">
-    <div class="rv-stats">
+  <div class="rv-body" id="rv-body">PLACEHOLDER
+
+  <!-- ① 처음 화면 -->
+  <div id="rv-screen-lookup">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 24px 40px;min-height:260px;">
+      <div style="font-size:22px;margin-bottom:16px;">🛠️</div>
+      <div style="font-size:18px;font-weight:700;color:var(--text);letter-spacing:-.4px;margin-bottom:8px;">구독하고 있는 툴을 확인하세요</div>
+      <div style="font-size:13px;color:var(--text3);margin-bottom:28px;">닉네임 또는 한글 이름으로 검색해요</div>
+      <div style="display:flex;gap:8px;width:100%;max-width:380px;margin-bottom:20px;">
+        <input id="rv-name-input" style="flex:1;padding:11px 14px;border-radius:var(--radius);border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;font-family:var(--sans);outline:none;" placeholder="닉네임 입력 (예: mush, 머시...)"/>
+        <button onclick="rvLookup()" style="padding:11px 20px;background:var(--blue);border:none;border-radius:var(--radius);color:#fff;font-size:14px;font-weight:600;font-family:var(--sans);cursor:pointer;white-space:nowrap;">조회</button>
+      </div>
+    </div>
+    <div style="border-top:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:flex-end;background:var(--surface2);">
+      <button onclick="rvShowAll()" style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius);border:1.5px solid var(--border);background:var(--surface);color:var(--text2);font-size:13px;font-family:var(--sans);cursor:pointer;">전체 보기 →</button>
+    </div>
+  </div>
+
+  <!-- ② 개인 조회 결과 -->
+  <div id="rv-screen-result" style="display:none;">
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--surface2);border-bottom:1px solid var(--border);">
+      <button onclick="rvBackToLookup()" style="padding:5px 10px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text3);font-size:12px;font-family:var(--mono);cursor:pointer;">← 처음으로</button>
+      <span id="rv-result-title" style="font-size:14px;font-weight:700;color:var(--text);"></span>
+      <span id="rv-result-cnt" style="background:var(--blue-l);color:var(--blue);border:1px solid var(--blue-b);padding:2px 8px;border-radius:20px;font-size:11px;font-family:var(--mono);font-weight:700;"></span>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>서비스명</th><th>금액</th><th>결제수단</th><th>결제주기</th><th>구독시작</th><th>다음결제</th><th>비고</th>
+        </tr></thead>
+        <tbody id="rv-result-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ③ 전체 보기 -->
+  <div id="rv-screen-all" style="display:none;">
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--surface2);border-bottom:1px solid var(--border);">
+      <button onclick="rvBackToLookup()" style="padding:5px 10px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text3);font-size:12px;font-family:var(--mono);cursor:pointer;">← 처음으로</button>
+      <span style="font-size:12px;color:var(--text3);">전체 구독 목록</span>
+    </div>
+    <div style="padding:12px 14px 8px;">
+      <!-- 결제주기 탭: 항상 표시 -->
+      <div style="display:flex;align-items:center;gap:5px;margin-bottom:10px;">
+        <span style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-right:4px;">결제주기</span>
+        <button id="rv-tab-all" onclick="setRVTab('all')" style="padding:5px 13px;border-radius:8px;border:1.5px solid var(--blue);background:var(--blue);color:#fff;font-size:12px;font-weight:600;font-family:var(--sans);cursor:pointer;">전체</button>
+        <button id="rv-tab-monthly" onclick="setRVTab('월결제')" style="padding:5px 13px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-family:var(--sans);cursor:pointer;">월결제</button>
+        <button id="rv-tab-yearly" onclick="setRVTab('연결제')" style="padding:5px 13px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-family:var(--sans);cursor:pointer;">연결제</button>
+      </div>
+      <!-- 툴 필터: 기본 접기 -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <span style="font-size:12px;font-weight:600;color:var(--text);">툴 필터</span>
+        <button id="rv-chip-toggle" onclick="toggleRVChipArea()" style="display:flex;align-items:center;gap:4px;padding:4px 9px;border-radius:7px;border:1.5px solid var(--border);background:transparent;color:var(--text3);font-size:11px;font-family:var(--mono);cursor:pointer;">▶ 툴 필터 펼치기</button>
+      </div>
+      <div id="rv-chip-area" style="display:none;margin-bottom:8px;">
+        <div id="rv-chips" style="display:flex;gap:4px;flex-wrap:wrap;"></div>
+      </div>
+      <!-- 검색 -->
+      <div style="display:flex;gap:6px;margin-bottom:6px;">
+        <input class="srch" id="rv-search" style="flex:1;" placeholder="🔍 서비스명 · 사용자 · 결제수단 검색"/>
+        <div class="ms-wrap" id="rv-ms-user">
+          <div class="ms-trigger" id="rv-ms-user-trigger"><span id="rv-ms-user-lbl">사용자</span><span class="arrow">▾</span></div>
+          <div class="ms-dropdown" id="rv-ms-user-dd">
+            <input class="ms-search" id="rv-ms-user-search" placeholder="검색..." onclick="event.stopPropagation()"/>
+            <div class="ms-list" id="rv-ms-user-list"></div>
+            <div class="ms-footer"><span class="ms-clear" id="rv-ms-user-clear">초기화</span><span class="ms-count" id="rv-ms-user-cnt"></span></div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:8px;" id="rv-count"></div>
+    </div>
+    <div class="tbl-wrap" style="max-height:52vh;">
+      <table>
+        <thead><tr>
+          <th>서비스명</th><th>사용자</th><th>금액</th><th>결제수단</th><th>결제주기</th><th>구독시작</th><th>다음결제</th><th>비고</th>
+        </tr></thead>
+        <tbody id="rv-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
       <div class="rv-stat">
         <div class="rv-stat-label">구독 중</div>
         <div class="rv-stat-value" id="rv-active-cnt" style="color:var(--green)">-</div>
@@ -616,7 +697,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
 <div id="app">
 <div class="sidebar">
   <div class="sidebar-logo">
-    <div class="sidebar-logo-mark">ST</div>
+    <div class="sidebar-logo-mark">🛠️</div>
     <div class="sidebar-logo-info">
       <div class="sidebar-logo-name">SubTrack</div>
       <div class="sidebar-logo-date" id="today-lbl"></div>
@@ -952,6 +1033,21 @@ function showTab(id, btn){
 }
 
 // ── 날짜 계산 ─────────────────────────────────
+
+function getPrevNext(d){
+  if(!d.sd) return null;
+  var start = new Date(d.sd);
+  if(isNaN(start)) return null;
+  var prev = new Date(start);
+  if(d.c==='연결제'){
+    while(prev <= TODAY) prev.setFullYear(prev.getFullYear()+1);
+    prev.setFullYear(prev.getFullYear()-1);
+  } else {
+    while(prev <= TODAY) prev.setMonth(prev.getMonth()+1);
+    prev.setMonth(prev.getMonth()-1);
+  }
+  return prev.getFullYear()+'-'+_p(prev.getMonth()+1)+'-'+_p(prev.getDate());
+}
 function calcNext(d){
   if(d.status==='구독종료') return d.ed||'';
   if(!d.sd) return '';
@@ -1019,6 +1115,20 @@ function renderDash(){
       '</div>';
   }
   // 결제 예정 그룹화
+  // 지난 5일 결제 내역 (맨 위)
+  var pastAll = DATA.filter(function(d){
+    if(d.status!=='구독중') return false;
+    var n = calcNext(d); if(!n) return false;
+    var days = daysUntil(n);
+    // 지난 결제: 오늘 기준 -5 ~ -1일
+    // calcNext는 미래만 계산하므로, 구독시작일 기반으로 이전 결제일 계산
+    if(!d.sd) return false;
+    var prev = getPrevNext(d);
+    if(!prev) return false;
+    var daysAgo = -daysUntil(prev);
+    return daysAgo >= 0 && daysAgo <= 5;
+  }).sort(function(a,b){ return getPrevNext(b).localeCompare(getPrevNext(a)); });
+
   var upcomingAll = DATA.filter(function(d){
     if(d.status!=='구독중') return false;
     var n = calcNext(d); if(!n) return false;
@@ -1034,7 +1144,41 @@ function renderDash(){
   });
   var dc = document.getElementById('dash-content');
   if(!dc) return;
-  var html = '<div class="sec-label">결제 예정 — 일자별</div>';
+  // 지난 결제 HTML
+  var pastHtml = '';
+  if(pastAll.length > 0){
+    var pastGroups = {};
+    pastAll.forEach(function(d){
+      var p = getPrevNext(d); if(!p) return;
+      if(!pastGroups[p]) pastGroups[p] = [];
+      pastGroups[p].push(d);
+    });
+    pastHtml += '<div class="sec-label" style="color:var(--text3);">지난 결제 내역 (5일)</div>';
+    Object.keys(pastGroups).sort().reverse().forEach(function(dt){
+      var daysAgo = -daysUntil(dt);
+      var dtObj = new Date(dt);
+      var dtFmt = (dtObj.getMonth()+1)+'월 '+dtObj.getDate()+'일';
+      pastHtml += '<div class="dg" style="opacity:.75;">' +
+        '<div class="dg-head" style="background:var(--surface2);">' +
+          '<span class="dp norm" style="background:var(--surface2);color:var(--text3);border-color:var(--border);">D+'+daysAgo+'</span>' +
+          '<span class="dg-head-title" style="color:var(--text2);">'+dtFmt+'</span>' +
+          '<span class="dg-head-cnt">'+pastGroups[dt].length+'건</span>' +
+        '</div>';
+      pastGroups[dt].forEach(function(d){
+        pastHtml += '<div class="pay-row" onclick="openModal('+d.id+')" style="opacity:.8;">' +
+          '<div class="pay-info"><div class="pay-name" style="color:var(--text2);">'+d.s+'</div>' +
+          '<div class="pay-user">'+(d.u||'')+' '+(d.m?'· '+d.m:'')+'</div></div>' +
+          '<div class="pay-amt" style="color:var(--text3);">'+(d.a||'')+'</div>' +
+        '</div>';
+      });
+      pastHtml += '</div>';
+    });
+    pastHtml += '<div style="height:8px;"></div><div class="sec-label">결제 예정 — 일자별</div>';
+  }
+  var html = pastHtml || '<div class="sec-label">결제 예정 — 일자별</div>';
+  html = html.replace(/<div class="sec-label">결제 예정 — 일자별<\/div>$/, '');
+  html += '<div class="sec-label">결제 예정 — 일자별</div>';
+
   var dates = Object.keys(groups).sort();
   if(dates.length === 0){
     html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center;color:var(--text3);font-size:13px;">30일 내 결제 예정 없음</div>';
@@ -1440,6 +1584,112 @@ function toggleRVFilter(){
   if(body){ body.style.display = _rvFilterOpen ? 'block' : 'none'; }
   if(arrow){ arrow.textContent = _rvFilterOpen ? '▼' : '▶'; }
   if(label){ label.textContent = _rvFilterOpen ? '필터 접기' : '필터 펼치기'; }
+}
+var KO_MAP = {
+  'IRON':'아이언','Q':'큐','Yello':'옐로','Cus':'쿠스','MacGook':'맥국',
+  'Minu':'미누','Sante':'상떼','Rilla':'릴라','HODOO':'호두','Lark':'라크',
+  'Sian':'시안','Rokoon':'로쿤','Stone':'스톤','Chovy':'쵸비','Pucca':'뿌까',
+  'Zerry':'제리','Mush':'머시','dDubi':'뚜비','DDao':'따오','Burns':'번즈',
+  'SALT':'솔트','Rooney':'루니','Hero':'히로','Moomin':'무민','Rami':'라미',
+  'Junta':'준타','Woz':'워즈','Peach':'피치','Aqoo':'아쿠','Hook':'후크',
+  'Teddy':'테디','Pire':'피르','Turkey':'터키','Pepe':'페페','Beaver':'비버',
+  'endo':'엔도','MewTwo':'뮤츠','YA-MU-CHI':'야무치','Jeongnam':'정남',
+  'Aki':'아키','Kikr':'키커','Funky':'펑키','new_jean':'뉴진','LIME':'라임',
+  'IRON':'아이언','Chovy':'쵸비','Aki':'아키','Kikr':'키커'
+};
+var KO_REVERSE = {};
+Object.keys(KO_MAP).forEach(function(k){ KO_REVERSE[KO_MAP[k]] = k; });
+function getKoName(nick){ return KO_MAP[nick]||nick; }
+function getNickFromKo(q){
+  var lo = q.toLowerCase();
+  // 한글로 닉네임 찾기
+  var found = Object.keys(KO_REVERSE).find(function(ko){ return ko.includes(q)||q.includes(ko); });
+  if(found) return KO_REVERSE[found];
+  // 영문 닉네임 직접 매치
+  var nick = Object.keys(KO_MAP).find(function(k){ return k.toLowerCase()===lo; });
+  return nick||null;
+}
+function getUsersKo(uStr){
+  if(!uStr) return '-';
+  var users = uStr.split(',').map(function(u){return u.trim();}).filter(Boolean);
+  return users.map(function(u){ return KO_MAP[u]||u; }).join(', ');
+}
+
+// ── 리서처 뷰 화면 전환 ────────────────────────────
+function rvBackToLookup(){
+  document.getElementById('rv-screen-lookup').style.display='block';
+  document.getElementById('rv-screen-result').style.display='none';
+  document.getElementById('rv-screen-all').style.display='none';
+}
+function rvShowAll(){
+  document.getElementById('rv-screen-lookup').style.display='none';
+  document.getElementById('rv-screen-result').style.display='none';
+  document.getElementById('rv-screen-all').style.display='block';
+  if(!window._rvInited){ initRV(); window._rvInited=true; }
+  renderRV();
+}
+function rvLookup(){
+  var q = (document.getElementById('rv-name-input').value||'').trim();
+  if(!q){ return; }
+  // 닉네임 또는 한글로 검색
+  var qLo = q.toLowerCase();
+  var rows = DATA.filter(function(d){
+    if(d.status!=='구독중') return false;
+    if(!d.u) return false;
+    var users = d.u.split(',').map(function(u){return u.trim();});
+    return users.some(function(u){
+      var ko = KO_MAP[u]||'';
+      return u.toLowerCase()===qLo || ko===q || ko.includes(q) || q.includes(ko) || u.toLowerCase().includes(qLo);
+    });
+  });
+  // 표시할 닉네임 찾기
+  var matchNick = '';
+  DATA.some(function(d){
+    if(!d.u) return false;
+    var users = d.u.split(',').map(function(u){return u.trim();});
+    return users.some(function(u){
+      var ko = KO_MAP[u]||'';
+      if(u.toLowerCase()===qLo||ko===q||ko.includes(q)||q.includes(ko)||u.toLowerCase().includes(qLo)){
+        matchNick=u; return true;
+      }
+    });
+  });
+  var koName = matchNick?(KO_MAP[matchNick]||matchNick):'';
+  var displayName = matchNick + (koName&&koName!==matchNick?' ('+koName+')':'');
+  
+  document.getElementById('rv-screen-lookup').style.display='none';
+  document.getElementById('rv-screen-result').style.display='block';
+  document.getElementById('rv-screen-all').style.display='none';
+  document.getElementById('rv-result-title').textContent = displayName + '의 구독 내역';
+  document.getElementById('rv-result-cnt').textContent = rows.length+'건';
+  
+  var tbody = document.getElementById('rv-result-tbody');
+  tbody.innerHTML = rows.map(function(d){
+    var next = calcNext(d);
+    var isSoon = next&&daysUntil(next)>=0&&daysUntil(next)<=7;
+    return '<tr>'+
+      '<td title="'+(d.d||'')+'" style="cursor:'+(d.d?'help':'default')+'"><strong style="font-size:13px;">'+d.s+'</strong>'+(d.d?'<span style="font-size:10px;color:var(--text3);margin-left:3px;">ℹ</span>':'')+'</td>'+
+      '<td style="font-family:var(--mono);">'+(d.a||'')+'</td>'+
+      '<td style="font-family:var(--mono);font-size:12px;">'+(d.m||'')+'</td>'+
+      '<td><span class="tag" style="background:var(--blue-l);color:var(--blue);">'+(d.c||'')+'</span></td>'+
+      '<td style="font-family:var(--mono);font-size:12px;">'+(d.sd||'')+'</td>'+
+      '<td style="font-family:var(--mono);font-size:12px;color:'+(isSoon?'var(--red)':'var(--blue)')+';">'+next+'</td>'+
+      '<td style="font-size:12px;color:var(--text3);">'+(d.note||'')+'</td>'+
+    '</tr>';
+  }).join('');
+  if(rows.length===0) tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text3);">구독 내역이 없어요</td></tr>';
+}
+
+// 엔터 키
+document.getElementById('rv-name-input')&&(document.getElementById('rv-name-input').onkeydown=function(e){if(e.key==='Enter')rvLookup();});
+
+var _rvChipOpen=false;
+function toggleRVChipArea(){
+  _rvChipOpen=!_rvChipOpen;
+  var area=document.getElementById('rv-chip-area');
+  var btn=document.getElementById('rv-chip-toggle');
+  if(area) area.style.display=_rvChipOpen?'block':'none';
+  if(btn) btn.textContent=_rvChipOpen?'▼ 툴 필터 접기':'▶ 툴 필터 펼치기';
 }
 var _rvTab='all';var _rvChips=[];
 function setRVTab(tab){_rvTab=tab;['all','월결제','연결제'].forEach(function(k){var idm={'all':'rv-tab-all','월결제':'rv-tab-monthly','연결제':'rv-tab-yearly'};var b=document.getElementById(idm[k]);if(!b)return;if(k===tab){b.style.background='var(--blue)';b.style.borderColor='var(--blue)';b.style.color='#fff';}else{b.style.background='transparent';b.style.borderColor='var(--border)';b.style.color='var(--text2)';}});renderRV();}
