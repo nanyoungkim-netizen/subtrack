@@ -1,0 +1,8 @@
+{
+  "name": "subtrack",
+  "version": "1.0.0",
+  "description": "구독 결제 관리 시스템",
+  "dependencies": {
+    "@vercel/blob": "^0.24.0"
+  }
+}
