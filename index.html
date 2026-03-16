@@ -671,9 +671,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
 <div id="tab-dash">
   <div class="pg-title">대시보드</div>
   <div class="pg-sub">결제 현황과 다가오는 결제일을 확인하세요</div>
-  <div id="zapier-banner" style="display:none;background:var(--purple-l);border:1px solid var(--purple-b);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--purple);display:flex;align-items:center;gap:8px;">
-    <span style="font-size:16px;">⚡</span><span id="zapier-banner-txt"></span>
-  </div>
+  
   <div class="stat-grid" id="stat-grid"></div>
   <div id="dash-content"></div>
 </div>
@@ -1096,7 +1094,7 @@ function renderDash(){
       pastGroups[p].push(d);
     });
     pastHtml += '<div class="sec-label" style="color:var(--text3);">지난 결제 내역 (5일)</div>';
-    Object.keys(pastGroups).sort().reverse().forEach(function(dt){
+    Object.keys(pastGroups).sort().forEach(function(dt){
       var daysAgo = -daysUntil(dt);
       var dtObj = new Date(dt);
       var dtFmt = (dtObj.getMonth()+1)+'월 '+dtObj.getDate()+'일';
