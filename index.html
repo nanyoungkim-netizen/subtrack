@@ -563,6 +563,10 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
         <div class="rv-stat-value" id="rv-soon-cnt" style="color:var(--red)">-</div>
       </div>
     </div>
+    <!-- 탭 -->
+    <div style="display:flex;gap:6px;margin-bottom:14px;align-items:center;"><span style="font-size:11px;color:var(--text3);font-family:var(--mono);">결제주기</span><button id="rv-tab-all" onclick="setRVTab('all')" style="padding:6px 14px;border-radius:8px;border:1.5px solid var(--blue);background:var(--blue);color:#fff;font-size:12px;font-weight:600;font-family:var(--sans);cursor:pointer;">전체</button><button id="rv-tab-monthly" onclick="setRVTab('월결제')" style="padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:500;font-family:var(--sans);cursor:pointer;">월결제</button><button id="rv-tab-yearly" onclick="setRVTab('연결제')" style="padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:500;font-family:var(--sans);cursor:pointer;">연결제</button></div>
+    <!-- 서비스명 칩 -->
+    <div id="rv-chips" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;"></div>
     <div class="rv-filters">
       <input class="srch" id="rv-search" placeholder="🔍 서비스명 · 사용자 검색"/>
       <div class="ms-wrap" id="rv-ms-user">
@@ -826,7 +830,7 @@ const IS_DEPLOYED = window.location.hostname !== 'localhost' && !window.location
 
 // ── 상태 ─────────────────────────────────────
 var APP_MODE = null;
-var ADMIN_PW = 'dnvwer0915!';
+var ADMIN_PW = 'dnvwer0915';
 var PW_MODE = 'login';
 var SORT_COL = null, SORT_ASC = true;
 var CY_M = '월결제', ST_M = '구독중';
@@ -1418,6 +1422,9 @@ function showToast(msg){
 }
 
 // ── 리서처 뷰 ────────────────────────────────
+var _rvTab='all';var _rvChips=[];
+function setRVTab(tab){_rvTab=tab;['all','월결제','연결제'].forEach(function(k){var idm={'all':'rv-tab-all','월결제':'rv-tab-monthly','연결제':'rv-tab-yearly'};var b=document.getElementById(idm[k]);if(!b)return;if(k===tab){b.style.background='var(--blue)';b.style.borderColor='var(--blue)';b.style.color='#fff';}else{b.style.background='transparent';b.style.borderColor='var(--border)';b.style.color='var(--text2)';}});renderRV();}
+function toggleRVChip(svc){var idx=_rvChips.indexOf(svc);if(idx>=0)_rvChips.splice(idx,1);else _rvChips.push(svc);document.querySelectorAll('.rv-chip-btn').forEach(function(b){if(b.dataset.svc===svc){if(_rvChips.indexOf(svc)>=0){b.style.background='var(--blue-l)';b.style.color='var(--blue)';b.style.borderColor='var(--blue)';}else{b.style.background='transparent';b.style.color='var(--text3)';b.style.borderColor='var(--border)';}}});renderRV();}
 function initRV(){
   var active = DATA.filter(function(d){return d.status==='구독중';});
   document.getElementById('rv-active-cnt').textContent = active.length+'개';
@@ -1461,6 +1468,10 @@ function initRV(){
   var rvCardClear = document.getElementById('rv-ms-card-clear');
   if(rvCardClear) rvCardClear.onclick = function(){clearMs('rv-ms-card');renderRV();};
 
+  // 서비스명 칩 생성
+  var svcs=[];active.forEach(function(d){if(d.s&&svcs.indexOf(d.s)<0)svcs.push(d.s);});svcs.sort();
+  var chipsEl=document.getElementById('rv-chips');
+  if(chipsEl){chipsEl.innerHTML=svcs.map(function(s){var safe=s.replace(/"/g,'&quot;');return '<button class="rv-chip-btn" data-svc="'+safe+'" onclick="toggleRVChip(this.dataset.svc)" style="padding:4px 10px;border-radius:20px;font-size:11px;border:1.5px solid var(--border);background:transparent;color:var(--text3);cursor:pointer;font-family:var(--mono);">'+safe+'</button>';}).join('');}
   renderRV();
 }
 function rvToggleMsItem(wrpId, val){
@@ -1476,6 +1487,8 @@ function renderRV(){
   updateMsTrigger('rv-ms-card');
 
   var rows = DATA.filter(function(d){return d.status==='구독중';});
+  if(typeof _rvTab!=='undefined'&&_rvTab!=='all') rows=rows.filter(function(d){return d.c===_rvTab;});
+  if(typeof _rvChips!=='undefined'&&_rvChips.length) rows=rows.filter(function(d){return _rvChips.indexOf(d.s)>=0;});
   if(q) rows = rows.filter(function(d){
     return (d.s||'').toLowerCase().includes(q)||(d.u||'').toLowerCase().includes(q)||(d.d||'').toLowerCase().includes(q);
   });
