@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>SubTrack</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Pretendard:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#f1f4f9;--surface:#fff;--surface2:#f6f8fc;--border:#e2e8f0;--border2:#c8d3e6;
+  --text:#0f172a;--text2:#334155;--text3:#94a3b8;
+  --blue:#1d4ed8;--blue-l:#eff6ff;--blue-b:#bfdbfe;
+  --amber:#b45309;--amber-l:#fffbeb;--amber-b:#fde68a;
+  --red:#b91c1c;--red-l:#fef2f2;--red-b:#fecaca;
+  --green:#15803d;--green-l:#f0fdf4;--green-b:#bbf7d0;
+  --purple:#7c3aed;--purple-l:#f5f3ff;--purple-b:#ddd6fe;
+  --mono:'IBM Plex Mono',monospace;
+  --sans:'Pretendard','Apple SD Gothic Neo',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);display:flex;min-height:100vh;font-size:14px}
+.sidebar{width:200px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;flex-shrink:0}
+.logo{padding:16px 14px 13px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.logo-icon{width:30px;height:30px;background:var(--blue);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--mono);font-weight:700;font-size:12px}
+.logo-name{font-family:var(--mono);font-size:14px;font-weight:700}
+.logo-date{font-size:10px;color:var(--text3);font-family:var(--mono)}
+nav{padding:10px 8px;flex:1}
+.nb{width:100%;display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:500;font-family:var(--sans);margin-bottom:2px;background:transparent;color:var(--text2);text-align:left;transition:all .12s}
+.nb:hover{background:var(--surface2)}
+.nb.active{background:var(--blue-l);color:var(--blue);font-weight:600}
+.sb-foot{padding:10px 8px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:6px}
+.add-btn{width:100%;padding:9px;background:var(--blue);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:600;font-family:var(--sans);cursor:pointer}
+.add-btn:hover{background:#1e40af}
+.zapier-dot{width:8px;height:8px;border-radius:50%;background:#ccc;display:inline-block;margin-right:4px;flex-shrink:0}
+.zapier-dot.connected{background:#22c55e;box-shadow:0 0 6px #22c55e88}
+.main{flex:1;padding:24px 24px 48px;overflow-y:auto;max-height:100vh}
+.pg-title{font-size:20px;font-weight:700;letter-spacing:-.4px;margin-bottom:3px}
+.pg-sub{font-size:12px;color:var(--text3);margin-bottom:20px}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:22px}
+.sc{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:15px;border-top:3px solid var(--ac,var(--blue))}
+.sc-l{font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px}
+.sc-v{font-family:var(--mono);font-size:18px;font-weight:700;letter-spacing:-.4px}
+.sc-s{font-size:11px;color:var(--text3);margin-top:4px}
+.sec-label{font-size:11px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin:6px 0 12px;display:flex;align-items:center;gap:8px}
+.sec-label::after{content:'';flex:1;height:1px;background:var(--border)}
+.dg{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden}
+.dg.urg{border-color:var(--red-b)}.dg.warn{border-color:var(--amber-b)}
+.dg-head{display:flex;align-items:center;padding:11px 15px;border-bottom:1px solid var(--border);background:var(--surface2);gap:10px}
+.dg.urg .dg-head{background:var(--red-l);border-bottom-color:var(--red-b)}
+.dg.warn .dg-head{background:var(--amber-l);border-bottom-color:var(--amber-b)}
+.dp{font-family:var(--mono);font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px}
+.dp.urg{background:var(--red-l);color:var(--red);border:1px solid var(--red-b)}
+.dp.warn{background:var(--amber-l);color:var(--amber);border:1px solid var(--amber-b)}
+.dp.norm{background:var(--blue-l);color:var(--blue);border:1px solid var(--blue-b)}
+.pay-row{display:flex;align-items:center;padding:11px 15px;border-bottom:1px solid var(--border)}
+.pay-row:last-child{border-bottom:none}.pay-row:hover{background:var(--surface2)}
+.pay-card{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--blue);margin-top:3px}
+.new-badge{background:var(--purple-l);color:var(--purple);border:1px solid var(--purple-b);font-size:9px;font-family:var(--mono);font-weight:700;padding:1px 5px;border-radius:4px;margin-left:4px;vertical-align:middle}
+/* Filter */
+.filter-bar{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;margin-bottom:12px}
+.srch{padding:7px 11px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-family:var(--sans);width:220px;height:34px}
+.srch:focus{outline:none;border-color:var(--blue)}.srch::placeholder{color:var(--text3)}
+.ms-wrap{position:relative}
+.ms-trigger{display:flex;align-items:center;gap:6px;padding:5px 11px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-size:12px;font-family:var(--mono);color:var(--text2);height:34px;min-width:110px;white-space:nowrap;user-select:none}
+.ms-trigger:hover{border-color:var(--border2)}
+.ms-trigger.has-val{border-color:var(--blue);background:var(--blue-l);color:var(--blue)}
+.ms-trigger .arrow{margin-left:auto;opacity:.5;font-size:10px}
+.ms-dropdown{display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:200;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.1);min-width:200px;overflow:hidden}
+.ms-dropdown.open{display:block}
+.ms-search{width:100%;padding:8px 10px;border:none;border-bottom:1px solid var(--border);font-size:12px;font-family:var(--sans);color:var(--text);background:var(--surface2);outline:none}
+.ms-search::placeholder{color:var(--text3)}
+.ms-list{max-height:220px;overflow-y:auto}
+.ms-item{display:flex;align-items:center;gap:8px;padding:7px 12px;cursor:pointer;font-size:12px;color:var(--text2)}
+.ms-item:hover{background:var(--surface2)}.ms-item.checked{color:var(--blue);font-weight:600}
+.ms-item .cb{width:14px;height:14px;border-radius:3px;border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:9px}
+.ms-item.checked .cb{background:var(--blue);border-color:var(--blue);color:#fff}
+.ms-footer{padding:8px 10px;border-top:1px solid var(--border);display:flex;justify-content:space-between}
+.ms-clear{font-size:11px;color:var(--text3);cursor:pointer;font-family:var(--mono)}.ms-clear:hover{color:var(--red)}
+.ms-count{font-size:11px;color:var(--text3);font-family:var(--mono)}
+/* Sort */
+.sort-bar{display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.sort-lbl{font-size:11px;color:var(--text3);font-family:var(--mono)}
+.sort-btn{padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text3);font-size:11px;font-family:var(--mono);cursor:pointer}
+.sort-btn:hover{border-color:var(--border2);color:var(--text2)}
+.sort-btn.active{border-color:var(--blue);background:var(--blue-l);color:var(--blue);font-weight:600}
+.reset-all{margin-left:auto;padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text3);font-size:11px;font-family:var(--mono);cursor:pointer;display:none}
+.reset-all:hover{border-color:var(--red-b);color:var(--red);background:var(--red-l)}
+.reset-all.show{display:block}
+/* Chips */
+.chips{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
+.chip{padding:3px 9px;border-radius:20px;font-size:11px;font-family:var(--mono);cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text3);font-weight:500}
+.chip:hover{border-color:var(--border2);color:var(--text2)}.chip.sel{border-color:var(--blue);background:var(--blue-l);color:var(--blue)}
+/* Table */
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:auto;max-height:58vh}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{padding:9px 11px;text-align:left;font-size:9px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);background:var(--surface2);white-space:nowrap;position:sticky;top:0;z-index:1;cursor:pointer;user-select:none}
+th:hover{color:var(--text2)}
+th.sorted{color:var(--blue)}
+td{padding:7px 11px;border-bottom:1px solid var(--border);color:var(--text);white-space:nowrap;vertical-align:middle}
+tr:last-child td{border-bottom:none}tr:hover td{background:var(--surface2)}
+tr.ended td{opacity:.55}tr.ended td:first-child{text-decoration:line-through;color:var(--text3)}
+tr.zapier-new td:first-child::after{content:'NEW';font-family:var(--mono);font-size:9px;font-weight:700;background:var(--purple-l);color:var(--purple);border:1px solid var(--purple-b);border-radius:4px;padding:1px 5px;margin-left:6px}
+.tag{display:inline-block;border-radius:5px;padding:2px 6px;font-size:10px;font-weight:600;font-family:var(--mono)}
+.status-btn{font-family:var(--mono);font-size:10px;font-weight:700;padding:3px 8px;border-radius:5px;cursor:pointer;border:1px solid}
+.status-btn.on{background:var(--green-l);color:var(--green);border-color:var(--green-b)}
+.status-btn.on:hover{background:#dcfce7}
+.status-btn.off{background:#f1f5f9;color:var(--text3);border-color:var(--border)}
+.status-btn.off:hover{background:var(--blue-l);color:var(--blue);border-color:var(--blue-b)}
+.edit-btn{padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text3);font-size:11px;font-family:var(--mono);cursor:pointer}
+.edit-btn:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-l)}
+/* Annual */
+.ann-card{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:13px 15px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
+.ann-card:hover{border-color:var(--border2)}.ann-card.soon{background:var(--blue-l);border-color:var(--blue-b)}
+.ann-pill{font-family:var(--mono);font-size:12px;font-weight:700;border-radius:8px;padding:7px 11px;min-width:64px;text-align:center}
+/* Zapier 탭 */
+.zapier-page{max-width:680px}
+.z-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:14px}
+.z-card h3{font-size:13px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.z-step{display:flex;gap:12px;margin-bottom:12px;align-items:flex-start}
+.z-num{width:24px;height:24px;border-radius:50%;background:var(--blue);color:#fff;font-family:var(--mono);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+.z-step-content{flex:1;font-size:13px;color:var(--text2);line-height:1.6}
+.z-step-content strong{color:var(--text)}
+.url-box{background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;font-family:var(--mono);font-size:12px;color:var(--blue);display:flex;align-items:center;justify-content:space-between;margin-top:8px;word-break:break-all}
+.copy-btn{padding:4px 10px;border-radius:6px;border:1px solid var(--blue-b);background:var(--blue-l);color:var(--blue);font-size:11px;font-family:var(--mono);cursor:pointer;white-space:nowrap;margin-left:10px;flex-shrink:0}
+.copy-btn:hover{background:var(--blue);color:#fff}
+.field-map{background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-top:8px}
+.field-map table{width:100%;font-size:12px}
+.field-map th{font-size:10px;padding:7px 12px;background:var(--surface2);color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.4px}
+.field-map td{padding:6px 12px;border-top:1px solid var(--border);font-family:var(--mono)}
+.field-map td:first-child{color:var(--blue);font-weight:600}
+.field-map td:last-child{color:var(--text2)}
+.status-indicator{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:8px;font-size:12px;font-family:var(--mono)}
+.status-indicator.ok{background:var(--green-l);border:1px solid var(--green-b);color:var(--green)}
+.status-indicator.off{background:var(--surface2);border:1px solid var(--border);color:var(--text3)}
+.status-indicator.err{background:var(--red-l);border:1px solid var(--red-b);color:var(--red)}
+/* Modals */
+.overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.4);backdrop-filter:blur(3px);z-index:999;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto}
+.overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;width:500px;box-shadow:0 10px 40px rgba(0,0,0,.15);margin:auto}
+.modal-title{font-size:15px;font-weight:700;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center}
+.close-x{background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;line-height:1;padding:2px 4px;border-radius:4px}
+.close-x:hover{background:var(--surface2)}
+.field{margin-bottom:11px}
+.field label{display:block;font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.field input,.field textarea{width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-family:var(--sans)}
+.field textarea{resize:vertical;min-height:56px}
+.field input:focus,.field textarea:focus{outline:none;border-color:var(--blue);background:var(--surface)}
+.field input::placeholder,.field textarea::placeholder{color:var(--text3)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cy-row{display:flex;gap:8px;margin-top:4px}
+.cy-btn{flex:1;padding:7px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:13px;font-family:var(--sans);cursor:pointer;font-weight:500}
+.cy-btn.sel{border-color:var(--blue);background:var(--blue-l);color:var(--blue);font-weight:600}
+.mfooter{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;padding-top:16px;border-top:1px solid var(--border)}
+.btn-cancel{padding:7px 14px;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text2);font-size:13px;font-family:var(--sans);cursor:pointer}
+.btn-cancel:hover{background:var(--surface2)}
+.btn-ok{padding:7px 18px;background:var(--blue);border:none;border-radius:8px;color:#fff;font-size:13px;font-family:var(--sans);font-weight:600;cursor:pointer}
+.btn-ok:disabled{background:var(--surface2);color:var(--text3);cursor:not-allowed}
+.btn-ok:not(:disabled):hover{background:#1e40af}
+.btn-danger{padding:7px 14px;background:var(--red-l);border:1px solid var(--red-b);border-radius:8px;color:var(--red);font-size:13px;font-family:var(--sans);cursor:pointer;margin-right:auto}
+.btn-danger:hover{background:#fee2e2}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:10px 20px;border-radius:9px;font-size:13px;font-weight:500;display:none;z-index:1200;font-family:var(--mono)}
+::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+</style>
+</head>
+<body>
+<div class="sidebar">
+  <div class="logo">
+    <div class="logo-icon">ST</div>
+    <div>
+      <div class="logo-name">SubTrack</div>
+      <div class="logo-date" id="today-lbl"></div>
+    </div>
+  </div>
+  <nav>
+    <button class="nb active" onclick="showTab('dash',this)">▣ &nbsp;대시보드</button>
+    <button class="nb" onclick="showTab('list',this)">≡ &nbsp;전체 목록</button>
+    <button class="nb" onclick="showTab('annual',this)">◷ &nbsp;연결제 알림</button>
+    <button class="nb" onclick="showTab('zapier',this)">
+      <span class="zapier-dot" id="zapier-dot"></span>자피어 연동
+    </button>
+  </nav>
+  <div class="sb-foot">
+    <button class="add-btn" onclick="openModal(null)">+ 구독 추가</button>
+  </div>
+</div>
+
+<div class="main">
+
+<!-- 대시보드 -->
+<div id="tab-dash">
+  <div class="pg-title">대시보드</div>
+  <div class="pg-sub">결제 현황과 다가오는 결제일을 확인하세요</div>
+  <div id="zapier-banner" style="display:none;background:var(--purple-l);border:1px solid var(--purple-b);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--purple);display:flex;align-items:center;gap:8px">
+    <span style="font-size:16px">⚡</span>
+    <span id="zapier-banner-txt"></span>
+  </div>
+  <div class="stat-grid" id="stat-grid"></div>
+  <div id="dash-content"></div>
+</div>
+
+<!-- 전체 목록 -->
+<div id="tab-list" style="display:none">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <div>
+      <div class="pg-title">전체 목록</div>
+      <div class="pg-sub" style="margin-bottom:0">상태 클릭 → 구독중↔종료 · 수정 버튼 → 편집</div>
+    </div>
+    <button class="add-btn" style="width:auto;padding:7px 14px;font-size:12px" onclick="openModal(null)">+ 구독 추가</button>
+  </div>
+  <div class="filter-bar">
+    <input class="srch" id="g-search" placeholder="🔍 서비스 · 사용자 · 내용 검색" oninput="applyAll()"/>
+    <div class="ms-wrap" id="ms-status">
+      <div class="ms-trigger" onclick="toggleMs('ms-status')"><span id="ms-status-lbl">전체 상태</span><span class="arrow">▾</span></div>
+      <div class="ms-dropdown" id="ms-status-dd">
+        <div class="ms-list">
+          <div class="ms-item" data-val="구독중" onclick="toggleMsItem('ms-status','구독중')"><div class="cb"></div>구독중</div>
+          <div class="ms-item" data-val="구독종료" onclick="toggleMsItem('ms-status','구독종료')"><div class="cb"></div>구독종료</div>
+        </div>
+        <div class="ms-footer"><span class="ms-clear" onclick="clearMs('ms-status')">초기화</span><span class="ms-count" id="ms-status-cnt"></span></div>
+      </div>
+    </div>
+    <div class="ms-wrap" id="ms-user">
+      <div class="ms-trigger" onclick="toggleMs('ms-user')"><span id="ms-user-lbl">사용자</span><span class="arrow">▾</span></div>
+      <div class="ms-dropdown" id="ms-user-dd">
+        <input class="ms-search" id="ms-user-search" placeholder="사용자 검색..." oninput="filterMsList('ms-user')" onclick="event.stopPropagation()"/>
+        <div class="ms-list" id="ms-user-list"></div>
+        <div class="ms-footer"><span class="ms-clear" onclick="clearMs('ms-user')">초기화</span><span class="ms-count" id="ms-user-cnt"></span></div>
+      </div>
+    </div>
+    <div class="ms-wrap" id="ms-card">
+      <div class="ms-trigger" onclick="toggleMs('ms-card')"><span id="ms-card-lbl">결제수단</span><span class="arrow">▾</span></div>
+      <div class="ms-dropdown" id="ms-card-dd">
+        <input class="ms-search" id="ms-card-search" placeholder="카드번호 검색..." oninput="filterMsList('ms-card')" onclick="event.stopPropagation()"/>
+        <div class="ms-list" id="ms-card-list"></div>
+        <div class="ms-footer"><span class="ms-clear" onclick="clearMs('ms-card')">초기화</span><span class="ms-count" id="ms-card-cnt"></span></div>
+      </div>
+    </div>
+    <button class="reset-all" id="reset-all" onclick="resetAll()">✕ 필터 초기화</button>
+  </div>
+  <div class="chips" id="cat-chips"></div>
+  <div class="sort-bar">
+    <span class="sort-lbl">정렬</span>
+    <button class="sort-btn" data-col="s" onclick="setSort('s')">서비스명 ↕</button>
+    <button class="sort-btn" data-col="sd" onclick="setSort('sd')">구독시작 ↕</button>
+    <button class="sort-btn" data-col="next" onclick="setSort('next')">다음결제 ↕</button>
+    <button class="sort-btn" data-col="status" onclick="setSort('status')">상태 ↕</button>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th onclick="setSort('s')">서비스</th><th>카테고리</th>
+        <th onclick="setSort('u')">사용자</th><th>내용</th>
+        <th>금액</th><th>주기</th><th onclick="setSort('m')">결제수단</th>
+        <th onclick="setSort('sd')">구독시작</th><th onclick="setSort('next')">다음결제/종료</th>
+        <th>비고</th><th onclick="setSort('status')">상태</th><th>수정</th>
+      </tr></thead>
+      <tbody id="list-body"></tbody>
+    </table>
+  </div>
+  <div id="list-count" style="margin-top:7px;font-size:11px;color:var(--text3);font-family:var(--mono)"></div>
+</div>
+
+<!-- 연결제 알림 -->
+<div id="tab-annual" style="display:none">
+  <div class="pg-title">연결제 알림</div>
+  <div class="pg-sub">갱신 예정일 순 · 구독중인 서비스만 표시</div>
+  <div id="annual-list"></div>
+</div>
+
+<!-- 자피어 연동 -->
+<div id="tab-zapier" style="display:none">
+  <div class="zapier-page">
+    <div class="pg-title">⚡ 자피어(Zapier) 연동</div>
+    <div class="pg-sub">슬랙 #구매-요청 채널의 자동-결제 워크플로를 SubTrack에 자동 등록해요</div>
+
+    <!-- 연동 상태 -->
+    <div class="z-card">
+      <h3>🔌 웹훅 연동 상태</h3>
+      <div id="zapier-status" class="status-indicator off">
+        <span>⚪</span><span>아직 자피어에서 데이터가 들어오지 않았어요</span>
+      </div>
+      <div style="margin-top:12px">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:6px;font-weight:600">웹훅 URL (자피어에 이 주소를 입력하세요)</div>
+        <div class="url-box">
+          <span id="webhook-url">https://YOUR-SITE.vercel.app/api/webhook</span>
+          <button class="copy-btn" onclick="copyUrl()">복사</button>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:6px">배포 후 실제 URL이 자동으로 표시돼요. Vercel Blob 스토리지 연결 필요 (아래 안내 참조)</div>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:8px">
+        <button onclick="checkZapier()" style="padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);font-size:12px;font-family:var(--mono);cursor:pointer">🔄 상태 새로고침</button>
+        <button onclick="testWebhook()" style="padding:7px 14px;border-radius:8px;border:1px solid var(--purple-b);background:var(--purple-l);color:var(--purple);font-size:12px;font-family:var(--mono);font-weight:600;cursor:pointer">🧪 테스트 데이터 보내기</button>
+      </div>
+    </div>
+
+    <!-- 자피어 설정 가이드 -->
+    <div class="z-card">
+      <h3>📋 자피어 설정 방법 (5단계)</h3>
+      <div class="z-step"><div class="z-num">1</div>
+        <div class="z-step-content"><strong>zapier.com 접속</strong> → <strong>Create Zap</strong> 클릭</div>
+      </div>
+      <div class="z-step"><div class="z-num">2</div>
+        <div class="z-step-content">
+          <strong>Trigger: Slack</strong> 선택<br>
+          Event: <strong>New Message Posted to Channel</strong><br>
+          Channel: <strong>#구매-요청</strong> 선택
+        </div>
+      </div>
+      <div class="z-step"><div class="z-num">3</div>
+        <div class="z-step-content">
+          <strong>Filter 추가</strong> (자동-결제 워크플로만 필터링)<br>
+          조건: 메시지 텍스트에 <code style="background:var(--surface2);padding:1px 5px;border-radius:4px;font-family:var(--mono)">자동-결제</code> 또는 워크플로 봇 이름 포함
+        </div>
+      </div>
+      <div class="z-step"><div class="z-num">4</div>
+        <div class="z-step-content">
+          <strong>Action: Webhooks by Zapier</strong> 선택<br>
+          Event: <strong>POST</strong><br>
+          URL: 위의 웹훅 URL 붙여넣기<br>
+          Payload Type: <strong>JSON</strong>
+        </div>
+      </div>
+      <div class="z-step"><div class="z-num">5</div>
+        <div class="z-step-content">
+          <strong>Data 필드 매핑</strong> (슬랙 워크플로 필드 → SubTrack 필드)
+        </div>
+      </div>
+      <div class="field-map">
+        <table>
+          <thead><tr><th>SubTrack 필드명</th><th>슬랙 워크플로 값</th><th>예시</th></tr></thead>
+          <tbody>
+            <tr><td>service</td><td>서비스명 워크플로 필드</td><td>Figma</td></tr>
+            <tr><td>user</td><td>사용자/담당자 필드</td><td>Rami</td></tr>
+            <tr><td>amount</td><td>금액 필드</td><td>20달러</td></tr>
+            <tr><td>payment</td><td>결제수단 필드</td><td>1234</td></tr>
+            <tr><td>cycle</td><td>결제주기 필드</td><td>월결제</td></tr>
+            <tr><td>start_date</td><td>시작일 필드</td><td>2026-03-10</td></tr>
+            <tr><td>description</td><td>설명/내용 필드</td><td>디자인 툴</td></tr>
+            <tr><td>note</td><td>비고 필드</td><td>3개월 사용 예정</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 최근 수신 내역 -->
+    <div class="z-card">
+      <h3>📥 자피어로 등록된 항목</h3>
+      <div id="zapier-items-list">
+        <div style="color:var(--text3);font-size:13px;padding:10px 0">아직 자피어로 등록된 항목이 없어요</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<!-- 수정/추가 모달 -->
+<div class="overlay" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="modal-title-txt">구독 추가</span>
+      <button class="close-x" onclick="closeModal()">×</button>
+    </div>
+    <div class="row2">
+      <div class="field"><label>서비스명 *</label><input id="f-svc" placeholder="예) Notion" oninput="chk()"/></div>
+      <div class="field"><label>사용자</label><input id="f-users" placeholder="쉼표로 구분"/></div>
+    </div>
+    <div class="field"><label>내용</label><textarea id="f-desc" placeholder="서비스 설명"></textarea></div>
+    <div class="row2">
+      <div class="field"><label>금액 *</label><input id="f-amt" placeholder="예) 29달러, 39,000원" oninput="chk()"/></div>
+      <div class="field"><label>결제수단</label><input id="f-method" placeholder="카드번호 4자리 또는 계좌이체"/></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>구독 시작일</label><input id="f-sd" type="date"/></div>
+      <div class="field"><label>종료일</label><input id="f-ed" type="date"/></div>
+    </div>
+    <div class="field"><label>결제주기</label>
+      <div class="cy-row">
+        <button class="cy-btn sel" id="cy-m" onclick="setCy('월결제')">월결제</button>
+        <button class="cy-btn" id="cy-y" onclick="setCy('연결제')">연결제</button>
+      </div>
+    </div>
+    <div class="field"><label>상태</label>
+      <div class="cy-row">
+        <button class="cy-btn sel" id="st-on" onclick="setSt('구독중')">구독중</button>
+        <button class="cy-btn" id="st-off" onclick="setSt('구독종료')">구독종료</button>
+      </div>
+    </div>
+    <div class="field"><label>비고</label><textarea id="f-note" placeholder="메모, 변경 이력 등"></textarea></div>
+    <div class="mfooter">
+      <button class="btn-danger" id="btn-del" style="display:none" onclick="delItem()">삭제</button>
+      <button class="btn-cancel" onclick="closeModal()">취소</button>
+      <button class="btn-ok" id="btn-ok" disabled onclick="saveModal()">저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const TODAY = new Date('2026-03-09');
+const TODAY_STR = '2026-03-09';
+let DATA = [{"id": 1, "s": "비즈엠", "d": "알림톡 @ 4.5친구톡(텍스트) @ 10친구톡(이미지) @16LMS @ 24.5", "u": "", "status": "구독중", "a": "사용량에 따라 상이", "m": "계좌이체", "c": "월결제", "sd": "", "ed": "", "note": ""}, {"id": 2, "s": "팝빌", "d": "예금주 조회 서비스", "u": "", "status": "구독중", "a": "1회 110,000원 / 포인트 충전 방식", "m": "계좌이체", "c": "월결제", "sd": "", "ed": "", "note": "포인트 소진 시 충전"}, {"id": 3, "s": "구글워크스페이스", "d": "라우드 컴퓨팅 생산성 및 협업 소프트웨어 도구, 소프트웨어 모음 / Starter 플랜Flexible 요금제", "u": "", "status": "구독중", "a": "1인당 7.14달러", "m": "5493", "c": "월결제", "sd": "2023-05-05", "ed": "", "note": ""}, {"id": 4, "s": "FIGMA(Collab)", "d": "인터페이스 디자인을 위한 협업 웹 애플리케이션/collab: figjam, figma slides", "u": "Sante", "status": "구독중", "a": "1인당 39.6달러", "m": "5108", "c": "연결제", "sd": "2023-08-05", "ed": "", "note": ""}, {"id": 5, "s": "FIGMA(full)", "d": "인터페이스 디자인을 위한 협업 웹 애플리케이션/full: figma, dev, figjam, figma slides/ 머시 - 플랩공용계정 인원", "u": "HODOO,Cus,Aqoo,Zerry,Hero,Rooney,Jeongnam,Kikr,Rilla,Mush", "status": "구독중", "a": "1인당 211.2달러", "m": "5108", "c": "연결제", "sd": "2023-08-05", "ed": "", "note": ""}, {"id": 6, "s": "본인확인 서비스(PASS)", "d": "매니저 본인확인 서비스(패스인증)", "u": "Yello", "status": "구독중", "a": "2,136,486원", "m": "계좌이체", "c": "연결제", "sd": "2023-09-18", "ed": "", "note": ""}, {"id": 7, "s": "마이크로소프트365(앱)", "d": "", "u": "dDubi,Sian,Funky,Junta,Q,Aki,Teddy,Hook,Mush,Rami,Moomin", "status": "구독중", "a": "1인당 11,990원", "m": "5025", "c": "월결제", "sd": "2023-10-18", "ed": "", "note": ""}, {"id": 8, "s": "Zapier", "d": "앱과 앱을 연결해 업무를 자동화할 수 있게 도와주는 노-코드 서비스입니다. 리서처 생산성 향상을 위해 공용으로 사용해요.", "u": "", "status": "구독중", "a": "3,468달러", "m": "3769", "c": "연결제", "sd": "2023-10-28", "ed": "", "note": ""}, {"id": 9, "s": "플렉스", "d": "HR 데이터를 한 곳에 모아 연결하고, AI로 자동화하고 맥락을 더해, 문제를 근본부터 해결합니다.", "u": "", "status": "구독중", "a": "1인당 7,700원", "m": "6294", "c": "월결제", "sd": "2023-11-01", "ed": "", "note": ""}, {"id": 10, "s": "마이크로소프트365(웹)", "d": "", "u": "Sante,Chovy,Zerry,Peach,MewTwo,Lark,Aqoo", "status": "구독중", "a": "1인당 8,910원", "m": "5025", "c": "월결제", "sd": "2023-11-03", "ed": "", "note": ""}, {"id": 11, "s": "에어테이블(전체)", "d": "외부 데이터 베이스를 만들고 관리할 수 있는 도구예요. DB안에서 반복 업무를 자동화할 수 있고, 다른 앱과 연결에 워크플로를 구축할 수 있습니다.", "u": "", "status": "구독중", "a": "240달러", "m": "3769", "c": "연결제", "sd": "2023-11-03", "ed": "", "note": ""}, {"id": 12, "s": "에어테이블(피컬 워크스페이스)", "d": "외부 데이터 베이스를 만들고 관리할 수 있는 도구예요. DB안에서 반복 업무를 자동화할 수 있고, 다른 앱과 연결에 워크플로를 구축할 수 있습니다.", "u": "Rilla,Burns,MewTwo", "status": "구독중", "a": "240달러", "m": "3769", "c": "연결제", "sd": "2023-11-07", "ed": "", "note": ""}, {"id": 13, "s": "우피(oopy)", "d": "노션 페이지 커스텀 툴- 플랩풋볼 약관 및 정책을 노션에서 관리- 커스텀 도메인을 지원", "u": "MacGook", "status": "구독중", "a": "6,490원", "m": "3819", "c": "월결제", "sd": "2023-11-20", "ed": "", "note": ""}, {"id": 14, "s": "에어테이블(편성 통합)", "d": "외부 데이터 베이스를 만들고 관리할 수 있는 도구예요. DB안에서 반복 업무를 자동화할 수 있고, 다른 앱과 연결에 워크플로를 구축할 수 있습니다.", "u": "", "status": "구독중", "a": "240달러", "m": "3769", "c": "연결제", "sd": "2023-11-27", "ed": "", "note": ""}, {"id": 15, "s": "Vercel Pro Plan", "d": "Vercel - 프론트엔드 인프라 툴", "u": "Rooney,Beaver,Turkey,Pepe", "status": "구독중", "a": "1인당 20달러 + 추가사용량에 따라 과금", "m": "7914", "c": "월결제", "sd": "2024-01-04", "ed": "", "note": ""}, {"id": 16, "s": "Artlist", "d": "콘텐츠 제작 음원 사이트 구독", "u": "Zerry", "status": "구독중", "a": "299달러", "m": "6302", "c": "연결제", "sd": "2024-03-31", "ed": "", "note": ""}, {"id": 17, "s": "채널톡(구장주)", "d": "1. 마케팅 기능 사용시 문자 또는 소셜미디어로 발송하는 경우 - 거의 없음2. 팔로업 알림 비용 - 4분 30초 이상 움직임이 없거나, 다른 화면을 보고있는 경우 발송 3. 카카오 상담톡 비용 - 24시간 단위, ", "u": "", "status": "구독중", "a": "사용량에 따라 상이", "m": "3751", "c": "월결제", "sd": "2024-07-26", "ed": "", "note": ""}, {"id": 18, "s": "채널톡(매니저)", "d": "1. 마케팅 기능 사용시 문자 또는 소셜미디어로 발송하는 경우 - 거의 없음2. 팔로업 알림 비용 - 4분 30초 이상 움직임이 없거나, 다른 화면을 보고있는 경우 발송 3. 매니저 채널에서 새 상담을 여는 경우 -", "u": "", "status": "구독중", "a": "사용량에 따라 상이", "m": "3751", "c": "월결제", "sd": "2024-07-26", "ed": "", "note": ""}, {"id": 19, "s": "채널톡(플랩풋볼)", "d": "1. 마케팅 기능 사용시 문자 또는 소셜미디어로 발송하는 경우 - 거의 없음2. 팔로업 알림 비용 - 4분 30초 이상 움직임이 없거나, 다른 화면을 보고있는 경우 발송 3. 알프 초과 비용 - 계약된 건 수 외 초", "u": "", "status": "구독중", "a": "사용량에 따라 상이", "m": "3751", "c": "월결제", "sd": "2024-07-26", "ed": "", "note": ""}, {"id": 20, "s": "채널톡(구장주)", "d": "비즈니스를 위한 커뮤니케이션 채널", "u": "", "status": "구독중", "a": "(25년) 2,145,000원", "m": "계좌이체", "c": "연결제", "sd": "2024-07-26", "ed": "", "note": ""}, {"id": 21, "s": "채널톡(매니저)", "d": "비즈니스를 위한 커뮤니케이션 채널", "u": "", "status": "구독중", "a": "(25년) 7,656,000원", "m": "계좌이체", "c": "연결제", "sd": "2024-07-26", "ed": "", "note": ""}, {"id": 22, "s": "채널톡(플랩풋볼)", "d": "비즈니스를 위한 커뮤니케이션 채널", "u": "", "status": "구독중", "a": "(25년) 34,320,000원", "m": "계좌이체", "c": "연결제", "sd": "2024-07-26", "ed": "", "note": ""}, {"id": 23, "s": "구글 클라우드", "d": "", "u": "Stone", "status": "구독중", "a": "약 20만원 / 사용량에 따라 상이", "m": "계좌이체", "c": "월결제", "sd": "2024-08-31", "ed": "", "note": ""}, {"id": 24, "s": "JetBrains", "d": "PyCharm", "u": "Jeongnam", "status": "구독중", "a": "10.89달러", "m": "2893", "c": "월결제", "sd": "2024-10-11", "ed": "", "note": ""}, {"id": 25, "s": "JetBrains", "d": "WebStorm", "u": "Jeongnam", "status": "구독중", "a": "7.59달러", "m": "2893", "c": "월결제", "sd": "2024-10-11", "ed": "", "note": ""}, {"id": 26, "s": "자버", "d": "전자계약, 증명서, 정보요청 등 문서 관리", "u": "Burns,Mush", "status": "구독중", "a": "계약문서 1100원, 일반문서 55원", "m": "3769", "c": "월결제", "sd": "2024-10-12", "ed": "", "note": "기존) 5,900원(고정요금제) -> 건당 과금으로 변경 251128"}, {"id": 27, "s": "GITHUB", "d": "개발자들이 코드를 공유하고 협업할 수 있는 플랫폼, 코드 저장소 Github 툴 비용입니다.", "u": "Rooney,Kikr,Woz,Rokoon,MacGook,DDao,endo,Hero,Jeongnam,Beaver,Turkey,Pepe,Cus", "status": "구독중", "a": "1인당 4달러", "m": "2893", "c": "월결제", "sd": "2024-10-14", "ed": "", "note": "251119 벨 제외(퇴사)"}, {"id": 28, "s": "JetBrains", "d": "PyCharm ide (개발도구)", "u": "DDao", "status": "구독중", "a": "8.69달러", "m": "2377", "c": "월결제", "sd": "2024-10-18", "ed": "", "note": ""}, {"id": 29, "s": "SENTRY", "d": "개발팀에서 에러 추적 관리를 위한 툴인 Sentry 비용을 자동 결제 합니다.", "u": "", "status": "구독중", "a": "기본 29달러 /추가 예산 40달러", "m": "2893", "c": "월결제", "sd": "2024-10-26", "ed": "", "note": "추가예산 30달러 -> 40달러(11/24일 업그레이드)"}, {"id": 30, "s": "모두싸인(서플라이+스타디움)", "d": "전자계약 서비스/Team 월정액 + 월 10건 추가 제공(1년)", "u": "", "status": "구독중", "a": "39,900", "m": "5025", "c": "월결제", "sd": "2024-11-12", "ed": "", "note": ""}, {"id": 31, "s": "폴인", "d": "'일하는 나'를 위한 인사이트, 폴인", "u": "Rami", "status": "구독중", "a": "14,800원", "m": "2411", "c": "월결제", "sd": "2024-12-07", "ed": "", "note": ""}, {"id": 32, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "HODOO", "status": "구독중", "a": "20달러", "m": "5108", "c": "월결제", "sd": "2025-01-14", "ed": "", "note": "1차구독 2025.10.23-2025.11.25"}, {"id": 33, "s": "핵클", "d": "고객 행동 데이터와 AI를 활용해 A/B 테스트, 데이터 분석, 개인화 CRM 마케팅 솔루션을 제공하며, 기능 플래그 및 원격 구성을 지원합니다", "u": "", "status": "구독중", "a": "(15개월) 33,000,000원", "m": "계좌이체", "c": "연결제", "sd": "2025-01-15", "ed": "", "note": "2026.03.31까지"}, {"id": 34, "s": "미소", "d": "정기청소", "u": "Burns", "status": "구독중", "a": "1회당 70,000원", "m": "5025", "c": "월결제", "sd": "2025-01-18", "ed": "", "note": ""}, {"id": 35, "s": "모두싸인(매니저)", "d": "전자계약 서비스/2,800건 유료 + 200건 무상 (총 3,000건) 조건의 견적으로 재계약 진행 완료", "u": "", "status": "구독중", "a": "2,464,000원", "m": "계좌이체", "c": "연결제", "sd": "2025-01-22", "ed": "", "note": ""}, {"id": 36, "s": "코드잇", "d": "SQL 강의", "u": "Aki,SALT", "status": "구독중", "a": "39,800원", "m": "5025", "c": "월결제", "sd": "2025-01-24", "ed": "", "note": ""}, {"id": 37, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "dDubi", "status": "구독중", "a": "22달러", "m": "5041", "c": "월결제", "sd": "2025-02-06", "ed": "", "note": ""}, {"id": 38, "s": "supabase", "d": "MVP 테스트용 데이터베이스 (무료 플랜 초과)", "u": "Cus", "status": "구독중", "a": "25달러", "m": "8405", "c": "월결제", "sd": "2025-03-18", "ed": "", "note": ""}, {"id": 39, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Stone", "status": "구독중", "a": "22달러", "m": "6385", "c": "월결제", "sd": "2025-03-20", "ed": "", "note": ""}, {"id": 40, "s": "Github Copilot", "d": "AI 매치 관련 웹/AI 개발 ( IDE + AI)", "u": "Beaver", "status": "구독중", "a": "10달러", "m": "0203", "c": "월결제", "sd": "2025-03-26", "ed": "", "note": ""}, {"id": 41, "s": "Github Copilot", "d": "AI 매치 관련 웹/AI 개발 ( IDE + AI)", "u": "Pepe", "status": "구독중", "a": "10달러", "m": "8496", "c": "월결제", "sd": "2025-03-27", "ed": "", "note": ""}, {"id": 42, "s": "AWS-개발", "d": "클라우드 컴퓨팅 플랫폼을 구성하는 원격 컴퓨팅 서비스(웹 서비스라고도 함) 모음", "u": "", "status": "구독중", "a": "약 1800원 / 사용량에 따라 상이", "m": "계좌이체", "c": "월결제", "sd": "2025-03-31", "ed": "", "note": ""}, {"id": 43, "s": "Datadog", "d": "모니터링 분석 도구", "u": "", "status": "구독중", "a": "약 200만원 / 사용량에 따라 상이", "m": "계좌이체", "c": "월결제", "sd": "2025-03-31", "ed": "", "note": ""}, {"id": 44, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Q", "status": "구독중", "a": "22달러", "m": "3744", "c": "월결제", "sd": "2025-04-02", "ed": "", "note": ""}, {"id": 45, "s": "어도비", "d": "사진, 동영상, 이미지와 그래픽 디자인 등의 미디어에 관한 작업을 목적으로 하는 소프트웨어/ 모든앱 1,366,200원 일러스트 578,600 포토샵 578,600원", "u": "Cus,Zerry,Rilla,HODOO,Sante,Aqoo", "status": "구독중", "a": "9,724,000원", "m": "계좌이체/분납", "c": "연결제", "sd": "2025-05-07", "ed": "", "note": ""}, {"id": 46, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Sante", "status": "구독중", "a": "22달러", "m": "8989", "c": "월결제", "sd": "2025-05-21", "ed": "", "note": ""}, {"id": 47, "s": "SLACK", "d": "클라우드 기반 팀 협업 도구/사용자 추가, 삭제에 대한 금액만 추가로 결제/연 결제 Pro 플랜", "u": "", "status": "구독중", "a": "1인당 7.975달러", "m": "3728", "c": "연결제", "sd": "2025-06-10", "ed": "", "note": ""}, {"id": 48, "s": "NOTION", "d": "프로젝트 관리 및 기록 소프트웨어/사용자 추가, 삭제에 대한 금액만 추가로 결제", "u": "", "status": "구독중", "a": "1인당 120달러", "m": "3769", "c": "연결제", "sd": "2025-06-16", "ed": "", "note": ""}, {"id": 49, "s": "산돌", "d": "폰트 구독료 /산돌라이프 플랜(최대 10인)/254패밀리 887종", "u": "Cus,HODOO,Zerry", "status": "구독중", "a": "1,056,000원", "m": "3769", "c": "연결제", "sd": "2025-07-04", "ed": "", "note": ""}, {"id": 50, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Peach", "status": "구독중", "a": "22달러", "m": "3728", "c": "월결제", "sd": "2025-07-17", "ed": "", "note": ""}, {"id": 51, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Aqoo", "status": "구독중", "a": "20달러", "m": "7271", "c": "월결제", "sd": "2025-07-21", "ed": "", "note": ""}, {"id": 52, "s": "Midjourney", "d": "이미지를 생성하는 인공지능 프로그램", "u": "Cus", "status": "구독중", "a": "66달러", "m": "8405", "c": "월결제", "sd": "2025-07-23", "ed": "", "note": ""}, {"id": 53, "s": "아웃스탠딩", "d": "쉽고 재미있는 IT뉴스, 아웃스탠딩!", "u": "Minu", "status": "구독중", "a": "94,800원", "m": "3728", "c": "연결제", "sd": "2025-08-03", "ed": "", "note": ""}, {"id": 54, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Hook", "status": "구독중", "a": "22달러", "m": "7658", "c": "월결제", "sd": "2025-08-09", "ed": "", "note": ""}, {"id": 55, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "YA-MU-CHI", "status": "구독중", "a": "22달러", "m": "3827", "c": "월결제", "sd": "2025-08-14", "ed": "", "note": ""}, {"id": 56, "s": "OPEN AI", "d": "chatGPI API 자동 결제 (잔액 10달러 이하시 100달러까지 자동 결제)", "u": "Beaver,Turkey,Pepe", "status": "구독중", "a": "사용량에 따라 상이", "m": "0203", "c": "월결제", "sd": "2025-08-14", "ed": "", "note": ""}, {"id": 57, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "SALT", "status": "구독중", "a": "22달러", "m": "8295", "c": "월결제", "sd": "2025-09-04", "ed": "", "note": ""}, {"id": 58, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Teddy", "status": "구독중", "a": "22달러", "m": "1893", "c": "월결제", "sd": "2025-09-10", "ed": "", "note": ""}, {"id": 59, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "IRON", "status": "구독중", "a": "20달러", "m": "3769", "c": "월결제", "sd": "2025-09-30", "ed": "", "note": ""}, {"id": 60, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Zerry", "status": "구독중", "a": "22달러", "m": "6302", "c": "월결제", "sd": "2025-10-18", "ed": "", "note": ""}, {"id": 61, "s": "AWS-AI", "d": "클라우드 컴퓨팅 플랫폼을 구성하는 원격 컴퓨팅 서비스(웹 서비스라고도 함) 모음", "u": "", "status": "구독중", "a": "약 30만원 / 사용량에 따라 상이", "m": "계좌이체", "c": "월결제", "sd": "2025-10-22", "ed": "", "note": ""}, {"id": 62, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Pire", "status": "구독중", "a": "22달러", "m": "3369", "c": "월결제", "sd": "2025-10-29", "ed": "", "note": ""}, {"id": 63, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Yello", "status": "구독중", "a": "20달러", "m": "5034", "c": "월결제", "sd": "2025-11-05", "ed": "", "note": ""}, {"id": 64, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Minu", "status": "구독중", "a": "22달러", "m": "8173", "c": "월결제", "sd": "2025-11-14", "ed": "", "note": ""}, {"id": 65, "s": "구글스토리지 1TB", "d": "저장용량 1TB", "u": "", "status": "구독중", "a": "28달러", "m": "5493", "c": "월결제", "sd": "2025-11-15", "ed": "", "note": ""}, {"id": 66, "s": "더브이씨", "d": "투자 관련 정보", "u": "Q", "status": "구독중", "a": "330000", "m": "3744", "c": "월결제", "sd": "2025-11-19", "ed": "2025-12-18", "note": "1개월 사용"}, {"id": 67, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Sian", "status": "구독중", "a": "20달러", "m": "5017", "c": "월결제", "sd": "2025-11-20", "ed": "", "note": ""}, {"id": 68, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Woz", "status": "구독중", "a": "110달러", "m": "2893", "c": "월결제", "sd": "2025-11-21", "ed": "", "note": "26/01/09 요금제 업그레이드 결제일 9일로 변경(22달러-110달러)"}, {"id": 69, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Moomin", "status": "구독중", "a": "22달러", "m": "5901", "c": "월결제", "sd": "2025-11-22", "ed": "", "note": ""}, {"id": 70, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Lark", "status": "구독중", "a": "20달러", "m": "5041", "c": "월결제", "sd": "2025-11-25", "ed": "", "note": "11/25 토큰 부족으로 맥스플랜 업그레이드 월 결제일 11일에서 25일로 변경12/25 요금제 다운그레이드"}, {"id": 71, "s": "linkedin", "d": "링크드인 비즈니스 기능 결제(월 비용)", "u": "MewTwo", "status": "구독중", "a": "70000", "m": "6369", "c": "월결제", "sd": "2025-11-27", "ed": "", "note": ""}, {"id": 72, "s": "Airbridge", "d": "데이터 수집, 딥링크 관리", "u": "", "status": "구독중", "a": "27,588,000원", "m": "계좌이체", "c": "연결제", "sd": "2025-12-01", "ed": "", "note": ""}, {"id": 73, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Rami", "status": "구독중", "a": "22달러", "m": "2411", "c": "월결제", "sd": "2025-12-19", "ed": "", "note": ""}, {"id": 74, "s": "TIRO", "d": "회의 AI 기록 툴 구독 (플랩 구글 공용 계정)", "u": "Zerry,LIME,Stone,new_jean", "status": "구독중", "a": "29달러", "m": "6302", "c": "월결제", "sd": "2026-01-05", "ed": "", "note": ""}, {"id": 75, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Burns", "status": "구독중", "a": "20달러", "m": "3936", "c": "월결제", "sd": "2026-01-06", "ed": "", "note": ""}, {"id": 76, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Rooney", "status": "구독중", "a": "110달러", "m": "7914", "c": "월결제", "sd": "2026-01-09", "ed": "", "note": ""}, {"id": 77, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "endo", "status": "구독중", "a": "110달러", "m": "6167", "c": "월결제", "sd": "2026-01-09", "ed": "", "note": ""}, {"id": 78, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Jeongnam", "status": "구독중", "a": "110달러", "m": "5058", "c": "월결제", "sd": "2026-01-09", "ed": "", "note": ""}, {"id": 79, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Cus", "status": "구독중", "a": "110달러", "m": "8405", "c": "월결제", "sd": "2026-01-10", "ed": "", "note": ""}, {"id": 80, "s": "Jira(atlassian)", "d": "AI파이프라인 자동화를 위한 도구 정기 결제 건(standard)", "u": "Rooney,Kikr,Woz,Rokoon,MacGook,DDao,endo,Hero,Jeongnam,Stone,Sian", "status": "구독중", "a": "1인당 9.05 달러", "m": "8292", "c": "월결제", "sd": "2026-01-11", "ed": "", "note": "1월 10일 업그레이드 했을 때, 실제 활성 사용자 3명이었어서 3인 비용으로 청구이전에 무료버전 사용중이었음"}, {"id": 81, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "DDao", "status": "구독중", "a": "110달러", "m": "2377", "c": "월결제", "sd": "2026-01-13", "ed": "", "note": ""}, {"id": 82, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Mush", "status": "구독중", "a": "22달러", "m": "5025", "c": "월결제", "sd": "2026-01-16", "ed": "", "note": ""}, {"id": 83, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "MacGook", "status": "구독중", "a": "110달러", "m": "3819", "c": "월결제", "sd": "2026-01-17", "ed": "", "note": ""}, {"id": 84, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "LIME", "status": "구독중", "a": "20달러", "m": "6302", "c": "월결제", "sd": "2026-01-19", "ed": "", "note": ""}, {"id": 85, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Rokoon", "status": "구독중", "a": "110달러", "m": "5066", "c": "월결제", "sd": "2026-01-19", "ed": "", "note": ""}, {"id": 86, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Junta", "status": "구독중", "a": "20달러", "m": "2430", "c": "월결제", "sd": "2026-01-20", "ed": "", "note": ""}, {"id": 87, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Hero", "status": "구독중", "a": "110달러", "m": "2763", "c": "월결제", "sd": "2026-01-25", "ed": "", "note": ""}, {"id": 88, "s": "Airbyte", "d": "Kevin(사내 데이터 분석 도구) 개발 및 운영을 위한 데이터 관리(ELT) 서비스", "u": "Stone", "status": "구독중", "a": "10달러", "m": "6385", "c": "월결제", "sd": "2026-01-26", "ed": "", "note": "과금 고려하면 당분간 15-20$ 이하 예상"}, {"id": 89, "s": "supabase", "d": "Kevin(사내 데이터 분석 도구) 개발 및 운영을 위한 데이터 관리(DB) 서비스", "u": "Stone", "status": "구독중", "a": "25달러", "m": "6385", "c": "월결제", "sd": "2026-01-26", "ed": "", "note": ""}, {"id": 90, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Pucca", "status": "구독중", "a": "22달러", "m": "1997", "c": "월결제", "sd": "2026-01-31", "ed": "", "note": ""}, {"id": 91, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Kikr", "status": "구독중", "a": "110달러", "m": "8292", "c": "월결제", "sd": "2026-02-04", "ed": "", "note": ""}, {"id": 92, "s": "genspark", "d": "자료 제작을 위해 2~3개월동안 사용", "u": "Rilla", "status": "구독중", "a": "27.49달러", "m": "6294", "c": "월결제", "sd": "2026-02-23", "ed": "", "note": ""}, {"id": 93, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Turkey", "status": "구독중", "a": "20달러", "m": "8456", "c": "월결제", "sd": "2026-02-25", "ed": "", "note": ""}, {"id": 94, "s": "Resend", "d": "글로벌 이메일 자동발송 서비스", "u": "IRON", "status": "구독중", "a": "20달러", "m": "3769", "c": "월결제", "sd": "2026-02-27", "ed": "", "note": ""}, {"id": 95, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Aki", "status": "구독중", "a": "22달러", "m": "0623", "c": "월결제", "sd": "2026-03-04", "ed": "", "note": ""}, {"id": 96, "s": "어도비 포토샵", "d": "\"다양한 조직 문화 컨텐츠 제작을 위해 사진 촬영, 편집을 진행하고 있습니다. 실제로 편집의 유무가 콘텐츠의 퀄리티를 좌우합니다. 여러 가지 무료 도구를 활용하지 않고, 한 가지 툴만 사용함으로 써 얻는 시간 절약,", "u": "Rilla", "status": "구독종료", "a": "46,200원", "m": "6294", "c": "월결제", "sd": "2024-08-21", "ed": "2025-05-02", "note": "연결제 플랜으로 이동"}, {"id": 97, "s": "우피(oopy)", "d": "구장주 가이드 노션 페이지를 보다 나은 가독성을 위해 우피로 게시해요.", "u": "Rami", "status": "구독종료", "a": "6,490원", "m": "2411", "c": "월결제", "sd": "2024-10-06", "ed": "2026-03-10", "note": ""}, {"id": 98, "s": "커서", "d": "개발툴 활용( IDE + AI)", "u": "Rooney", "status": "구독종료", "a": "20달러", "m": "7914", "c": "월결제", "sd": "2025-01-16", "ed": "2026-01-09", "note": ""}, {"id": 99, "s": "커서", "d": "개발툴 활용( IDE + AI)", "u": "Woz", "status": "구독종료", "a": "20달러", "m": "2893", "c": "월결제", "sd": "2025-01-22", "ed": "2025-11-21", "note": ""}, {"id": 100, "s": "커서", "d": "개발툴 활용( IDE + AI)", "u": "endo", "status": "구독종료", "a": "20달러", "m": "6167", "c": "월결제", "sd": "2025-01-26", "ed": "2025-12-22", "note": ""}, {"id": 101, "s": "커서", "d": "개발툴 활용( IDE + AI)", "u": "MacGook", "status": "구독종료", "a": "20달러", "m": "3819", "c": "월결제", "sd": "2025-02-02", "ed": "2026-02-02", "note": ""}, {"id": 102, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Rami", "status": "구독종료", "a": "22달러", "m": "2411", "c": "월결제", "sd": "2025-02-04", "ed": "2025-12-19", "note": ""}, {"id": 103, "s": "커서", "d": "개발툴 활용( IDE + AI)", "u": "IRON", "status": "구독종료", "a": "20달러", "m": "3769", "c": "월결제", "sd": "2025-02-05", "ed": "2025-03-05", "note": ""}, {"id": 104, "s": "커서", "d": "개발툴 활용( IDE + AI)", "u": "Rokoon", "status": "구독종료", "a": "20달러", "m": "5066", "c": "월결제", "sd": "2025-02-17", "ed": "2026-01-19", "note": ""}, {"id": 105, "s": "커서", "d": "개발툴 활용( IDE + AI)", "u": "Sian", "status": "구독종료", "a": "20달러", "m": "5017", "c": "월결제", "sd": "2025-02-19", "ed": "2025-11-21", "note": ""}, {"id": 106, "s": "커서", "d": "개발툴 활용( IDE + AI)", "u": "Cus", "status": "구독종료", "a": "60달러", "m": "8405", "c": "월결제", "sd": "2025-03-04", "ed": "2025-11-21", "note": "최근에 토큰 부족으로 요금제 업그레이드 - 현재 해지"}, {"id": 107, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Yello", "status": "구독종료", "a": "20달러", "m": "5034", "c": "월결제", "sd": "2025-03-28", "ed": "2025-11-25", "note": ""}, {"id": 108, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Mush", "status": "구독종료", "a": "20달러", "m": "5025", "c": "월결제", "sd": "2025-04-03", "ed": "2026-01-16", "note": ""}, {"id": 109, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "HODOO", "status": "구독종료", "a": "20달러", "m": "5108", "c": "월결제", "sd": "2025-04-14", "ed": "2026-01-14", "note": ""}, {"id": 110, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Aki", "status": "구독종료", "a": "22달러", "m": "0623", "c": "월결제", "sd": "2025-04-23", "ed": "2026-03-04", "note": ""}, {"id": 111, "s": "커서", "d": "개발툴 활용( IDE + AI)", "u": "Hero", "status": "구독종료", "a": "20달러", "m": "3329", "c": "월결제", "sd": "2025-06-12", "ed": "", "note": ""}, {"id": 112, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Pucca", "status": "구독종료", "a": "20달러", "m": "1997", "c": "월결제", "sd": "2025-08-26", "ed": "2026-02-02", "note": ""}, {"id": 113, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Moomin", "status": "구독종료", "a": "22달러", "m": "5901", "c": "월결제", "sd": "2025-09-03", "ed": "2025-11-22", "note": ""}, {"id": 114, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Chovy", "status": "구독종료", "a": "22달러", "m": "6443", "c": "월결제", "sd": "2025-10-15", "ed": "2025-11-25", "note": ""}, {"id": 115, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Kikr", "status": "구독종료", "a": "22달러", "m": "3785", "c": "월결제", "sd": "2025-11-09", "ed": "2026-01-09", "note": ""}, {"id": 116, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Cus", "status": "구독종료", "a": "22달러", "m": "8405", "c": "월결제", "sd": "2025-11-18", "ed": "2026-01-11", "note": ""}];
+let selCat='전체', CY_M='월결제', ST_M='구독중', editId=null, nextId=DATA.length+1;
+let sortCol=null, sortDir=1;
+const msState={'ms-status':new Set(),'ms-user':new Set(),'ms-card':new Set()};
+
+// 배포 후 실제 URL로 자동 설정
+const WEBHOOK_URL = window.location.origin + '/api/webhook';
+
+// 오늘 날짜 표시
+document.getElementById('today-lbl').textContent = TODAY_STR.replace(/-/g,'.');
+
+const CM={"Claude":"AI","ChatGPT":"AI","OPEN AI":"AI","Midjourney":"AI","genspark":"AI","Github Copilot":"AI","커서":"AI","TIRO":"AI","FIGMA":"디자인","어도비":"디자인","산돌":"디자인","Artlist":"미디어","아웃스탠딩":"미디어","폴인":"미디어","더브이씨":"미디어","GITHUB":"개발","Jira":"개발","JetBrains":"개발","SENTRY":"개발","Vercel":"개발","Airbyte":"개발","supabase":"개발","Resend":"개발","AWS":"인프라","Datadog":"인프라","구글 클라우드":"인프라","구글스토리지":"인프라","SLACK":"협업","NOTION":"협업","마이크로소프트":"협업","linkedin":"협업","구글워크스페이스":"협업","채널톡":"고객지원","비즈엠":"고객지원","팝빌":"업무","에어테이블":"업무","우피":"업무","자버":"업무","모두싸인":"업무","플렉스":"업무","본인확인":"업무","Zapier":"자동화","핵클":"마케팅","Airbridge":"마케팅","미소":"시설","코드잇":"교육"};
+const TAGS={"AI":"background:#eff6ff;color:#1e40af","디자인":"background:#fdf2f8;color:#9d174d","개발":"background:#f0fdf4;color:#166534","인프라":"background:#fffbeb;color:#92400e","협업":"background:#f5f3ff;color:#5b21b6","업무":"background:#faf5ff;color:#6b21a8","고객지원":"background:#fefce8;color:#854d0e","마케팅":"background:#fff1f2;color:#9f1239","미디어":"background:#ecfdf5;color:#065f46","자동화":"background:#f0fdfa;color:#134e4a","교육":"background:#fefce8;color:#854d0e","시설":"background:#f8fafc;color:#475569","기타":"background:#f8fafc;color:#64748b"};
+const gc=s=>{for(const[k,v]of Object.entries(CM))if(s.includes(k))return v;return'기타';};
+const gNext=(sd,cy)=>{if(!sd)return null;const s=new Date(sd),t=TODAY;if(isNaN(s))return null;if(cy==='월결제'){const d=s.getDate();let c=new Date(t.getFullYear(),t.getMonth(),d);if(c<=t)c=new Date(t.getFullYear(),t.getMonth()+1,d);return c;}if(cy==='연결제'){let c=new Date(t.getFullYear(),s.getMonth(),s.getDate());if(c<=t)c=new Date(t.getFullYear()+1,s.getMonth(),s.getDate());return c;}return null;};
+const dl=d=>d?Math.ceil((d-TODAY)/86400000):null;
+const fd=d=>d?d.toLocaleDateString('ko-KR',{month:'long',day:'numeric'}):'-';
+const fd2=d=>d?d.toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'}):'-';
+const fm=m=>!m?'-':m==='계좌이체'?'계좌이체':m.replace(/\s+/g,'');
+const ddl=n=>n===0?'D-DAY':n<0?'D+'+Math.abs(n):'D-'+n;
+const ddc=n=>n<=3?'urg':n<=7?'warn':'norm';
+const esc=s=>s?String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'):'';
+const activeData=()=>DATA.filter(d=>d.status==='구독중');
+
+// ── 웹훅 URL 표시 ─────────────────────────────────────────
+document.getElementById('webhook-url').textContent = WEBHOOK_URL;
+
+// ── Zapier 상태 확인 ──────────────────────────────────────
+async function checkZapier() {
+  try {
+    const res = await fetch('/api/webhook');
+    if (res.ok) {
+      const json = await res.json();
+      const zapItems = (json.data||[]).filter(d=>d.source==='zapier');
+      const el = document.getElementById('zapier-status');
+      if (zapItems.length > 0) {
+        el.className = 'status-indicator ok';
+        el.innerHTML = `<span>🟢</span><span>연결 완료 · 자피어로 ${zapItems.length}건 수신됨</span>`;
+        document.getElementById('zapier-dot').className = 'zapier-dot connected';
+        renderZapierItems(zapItems);
+        // 새 항목 병합
+        zapItems.forEach(zi => { if(!DATA.find(d=>d.id===zi.id)) { DATA.push(zi); } });
+        renderDash();
+      } else {
+        el.className = 'status-indicator off';
+        el.innerHTML = `<span>⚪</span><span>서버 연결 OK · 아직 자피어 데이터 없음</span>`;
+      }
+      showToast('✓ 상태 확인 완료');
+    }
+  } catch(e) {
+    const el = document.getElementById('zapier-status');
+    el.className = 'status-indicator off';
+    el.innerHTML = `<span>⚪</span><span>로컬 환경 · 배포 후 사용 가능해요</span>`;
+  }
+}
+
+function renderZapierItems(items) {
+  const el = document.getElementById('zapier-items-list');
+  if(!items.length) { el.innerHTML='<div style="color:var(--text3);font-size:13px;padding:10px 0">아직 자피어로 등록된 항목이 없어요</div>'; return; }
+  el.innerHTML = items.map(d=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)">
+      <div>
+        <span style="font-weight:600;font-size:13px">${esc(d.s)}</span>
+        <span class="new-badge">ZAPIER</span>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">👤 ${esc(d.u)||'—'} · ${esc(d.a)} · ${d.created_at?new Date(d.created_at).toLocaleString('ko-KR'):'—'}</div>
+      </div>
+      <button class="edit-btn" onclick="openModal(${d.id})">수정</button>
+    </div>`).join('');
+}
+
+async function testWebhook() {
+  const testData = {
+    service: "테스트 서비스",
+    user: "TestUser",
+    amount: "29달러",
+    payment: "9999",
+    cycle: "월결제",
+    start_date: TODAY_STR,
+    description: "자피어 연동 테스트",
+    note: "테스트 데이터"
+  };
+  try {
+    const res = await fetch('/api/webhook', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(testData)
+    });
+    if(res.ok) {
+      const json = await res.json();
+      DATA.push(json.added);
+      showToast('🧪 테스트 데이터 등록 완료!');
+      checkZapier();
+      document.getElementById('cat-chips').innerHTML='';
+      renderDash(); renderList();
+    }
+  } catch(e) {
+    // 로컬 환경에서는 직접 추가
+    const item = {id:nextId++, ...testData, s:testData.service, u:testData.user, a:testData.amount, m:testData.payment, c:testData.cycle, sd:testData.start_date, d:testData.description, note:testData.note, status:'구독중', source:'zapier', ed:'', created_at:new Date().toISOString()};
+    DATA.push(item);
+    showToast('🧪 테스트 데이터 등록 완료! (로컬)');
+    document.getElementById('cat-chips').innerHTML='';
+    renderDash(); renderList();
+  }
+}
+
+function copyUrl() {
+  navigator.clipboard.writeText(WEBHOOK_URL).then(()=>showToast('✓ URL 복사됨!'));
+}
+
+// ── Multi-select ──────────────────────────────────────────
+function initMsUser(){const u=[...new Set(DATA.flatMap(d=>(d.u||'').split(',').map(u=>u.trim()).filter(Boolean)))].sort();renderMsList('ms-user',u);}
+function initMsCard(){const c=[...new Set(DATA.map(d=>d.m).filter(m=>m&&m.trim()))].sort((a,b)=>a==='계좌이체'?1:b==='계좌이체'?-1:a.localeCompare(b));renderMsList('ms-card',c);}
+function renderMsList(id,items){const el=document.getElementById(id+'-list');if(!el)return;el.innerHTML=items.map(v=>`<div class="ms-item${msState[id].has(v)?' checked':''}" data-val="${esc(v)}" onclick="toggleMsItem('${id}','${v.replace(/'/g,"\\'")}')"><div class="cb">${msState[id].has(v)?'✓':''}</div>${esc(v)}</div>`).join('');}
+function filterMsList(id){const q=(document.getElementById(id+'-search').value||'').toLowerCase();document.querySelectorAll(`#${id}-list .ms-item`).forEach(el=>{el.style.display=el.dataset.val.toLowerCase().includes(q)?'':'none';});}
+function toggleMs(id){const dd=document.getElementById(id+'-dd'),isOpen=dd.classList.contains('open');document.querySelectorAll('.ms-dropdown').forEach(d=>d.classList.remove('open'));if(!isOpen){dd.classList.add('open');const si=document.getElementById(id+'-search');if(si){si.value='';filterMsList(id);si.focus();}}}
+function toggleMsItem(id,val){if(msState[id].has(val))msState[id].delete(val);else msState[id].add(val);updateMsTrigger(id);const el=document.getElementById(id+'-list');if(el)el.querySelectorAll('.ms-item').forEach(el=>{const v=el.dataset.val;el.classList.toggle('checked',msState[id].has(v));el.querySelector('.cb').textContent=msState[id].has(v)?'✓':'';});applyAll();}
+function updateMsTrigger(id){const s=msState[id],lbl=document.getElementById(id+'-lbl'),cnt=document.getElementById(id+'-cnt'),tr=document.querySelector(`#${id} .ms-trigger`);if(s.size===0){lbl.textContent=id==='ms-status'?'전체 상태':id==='ms-user'?'사용자':'결제수단';tr.classList.remove('has-val');if(cnt)cnt.textContent='';}else{const a=[...s];lbl.textContent=a.length===1?a[0]:a[0]+' 외 '+(a.length-1);tr.classList.add('has-val');if(cnt)cnt.textContent=a.length+'개 선택';}}
+function clearMs(id){msState[id].clear();updateMsTrigger(id);document.querySelectorAll(`#${id}-list .ms-item`).forEach(el=>{el.classList.remove('checked');const cb=el.querySelector('.cb');if(cb)cb.textContent='';});applyAll();}
+document.addEventListener('click',e=>{if(!e.target.closest('.ms-wrap'))document.querySelectorAll('.ms-dropdown').forEach(d=>d.classList.remove('open'));});
+
+// ── Sort ──────────────────────────────────────────────────
+function setSort(col){if(sortCol===col)sortDir*=-1;else{sortCol=col;sortDir=1;}document.querySelectorAll('.sort-btn').forEach(el=>{if(el.dataset.col===col){el.classList.add('active');el.textContent=col+' '+(sortDir===1?'↑':'↓');}else{el.classList.remove('active');el.textContent=el.dataset.col+(el.dataset.col==='s'?' ↕':el.dataset.col==='sd'?' ↕':el.dataset.col==='next'?' ↕':' ↕');}});applyAll();}
+function sortData(arr){if(!sortCol)return arr;return[...arr].sort((a,b)=>{let av,bv;if(sortCol==='next'){av=a.status==='구독중'?(gNext(a.sd,a.c)||new Date('9999')):new Date(a.ed||'9999');bv=b.status==='구독중'?(gNext(b.sd,b.c)||new Date('9999')):new Date(b.ed||'9999');return(av-bv)*sortDir;}if(sortCol==='sd'){av=a.sd||'';bv=b.sd||'';return av.localeCompare(bv)*sortDir;}if(sortCol==='status'){av=a.status||'';bv=b.status||'';return av.localeCompare(bv)*sortDir;}av=String(a[sortCol]||'').toLowerCase();bv=String(b[sortCol]||'').toLowerCase();return av.localeCompare(bv)*sortDir;});}
+
+// ── Apply filters ─────────────────────────────────────────
+function applyAll(){
+  const q=(document.getElementById('g-search').value||'').toLowerCase();
+  const stF=msState['ms-status'],uF=msState['ms-user'],cF=msState['ms-card'];
+  const hasAny=q||stF.size||uF.size||cF.size||(selCat!=='전체');
+  document.getElementById('reset-all').classList.toggle('show',!!hasAny);
+  let filt=DATA.filter(d=>{
+    if(stF.size&&!stF.has(d.status))return false;
+    if(uF.size){const du=(d.u||'').split(',').map(u=>u.trim());if(!du.some(u=>uF.has(u)))return false;}
+    if(cF.size&&!cF.has(d.m))return false;
+    if(selCat!=='전체'&&gc(d.s)!==selCat)return false;
+    if(q&&!d.s.toLowerCase().includes(q)&&!(d.u||'').toLowerCase().includes(q)&&!(d.d||'').toLowerCase().includes(q)&&!(d.m||'').toLowerCase().includes(q))return false;
+    return true;
+  });
+  filt=sortData(filt);
+  document.getElementById('list-body').innerHTML=filt.map(d=>{
+    const np=gNext(d.sd,d.c),days=dl(np),isOn=d.status==='구독중';
+    const urg=isOn&&days!=null&&days<=3,sn=isOn&&days!=null&&days<=7&&days>3;
+    const cat=gc(d.s),shortD=d.d?(d.d.length>28?d.d.slice(0,28)+'…':d.d):'',shortN=d.note?(d.note.length>25?d.note.slice(0,25)+'…':d.note):'';
+    const isNew=d.source==='zapier';
+    return`<tr class="${isOn?'':'ended'}${isNew?' zapier-new':''}">
+      <td style="font-weight:600;min-width:110px">
+        ${urg?'<span style="width:7px;height:7px;border-radius:50%;background:var(--red);display:inline-block;margin-right:4px;vertical-align:middle"></span>':sn?'<span style="width:7px;height:7px;border-radius:50%;background:var(--amber);display:inline-block;margin-right:4px;vertical-align:middle"></span>':''}
+        ${esc(d.s)}</td>
+      <td><span class="tag" style="${TAGS[cat]||TAGS['기타']}">${cat}</span></td>
+      <td style="max-width:90px;overflow:hidden;text-overflow:ellipsis;color:var(--text2)">${esc(d.u)||'—'}</td>
+      <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;color:var(--text3)" title="${esc(d.d)}">${esc(shortD)||'—'}</td>
+      <td style="font-family:var(--mono);font-weight:600;color:var(--text2)">${esc(d.a)}</td>
+      <td><span style="font-family:var(--mono);font-size:10px;font-weight:700;color:${d.c==='연결제'?'var(--amber)':'var(--blue)'}">${d.c}</span></td>
+      <td style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--blue)">${fm(d.m)}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${d.sd||'—'}</td>
+      <td style="font-family:var(--mono);font-size:11px;font-weight:600;color:${urg?'var(--red)':sn?'var(--amber)':'var(--text2)'}">
+        ${isOn&&np?fd(np)+(days!=null?' · D-'+days:''):(d.ed?'종료: '+d.ed:'—')}</td>
+      <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;color:var(--text3);font-size:11px" title="${esc(d.note)}">${esc(shortN)||'—'}</td>
+      <td><button class="status-btn ${isOn?'on':'off'}" onclick="toggleStatus(${d.id})">${isOn?'구독중':'종료됨'}</button></td>
+      <td><button class="edit-btn" onclick="openModal(${d.id})">수정</button></td>
+    </tr>`;
+  }).join('');
+  const onCnt=filt.filter(d=>d.status==='구독중').length;
+  document.getElementById('list-count').textContent=`표시: ${filt.length}건 (구독중 ${onCnt} · 종료 ${filt.length-onCnt}) / 전체 ${DATA.length}건`;
+}
+
+function resetAll(){document.getElementById('g-search').value='';['ms-status','ms-user','ms-card'].forEach(id=>{msState[id].clear();updateMsTrigger(id);});document.querySelectorAll('.ms-item').forEach(el=>{el.classList.remove('checked');const cb=el.querySelector('.cb');if(cb)cb.textContent='';});selCat='전체';document.querySelectorAll('#cat-chips .chip').forEach(b=>b.classList.toggle('sel',b.textContent==='전체'));applyAll();}
+
+function renderList(){
+  selCat='전체'; initMsUser(); initMsCard();
+  const allCats=['전체',...new Set(DATA.map(d=>gc(d.s)))].sort((a,b)=>a==='전체'?-1:b==='전체'?1:a.localeCompare(b));
+  document.getElementById('cat-chips').innerHTML=allCats.map(c=>`<button class="chip${selCat===c?' sel':''}" onclick="selCat='${c}';document.querySelectorAll('#cat-chips .chip').forEach(b=>b.classList.toggle('sel',b.textContent==='${c}'));applyAll()">${c}</button>`).join('');
+  applyAll();
+}
+
+function toggleStatus(id){const d=DATA.find(x=>x.id===id);if(!d)return;if(d.status==='구독중'){d.status='구독종료';if(!d.ed)d.ed=TODAY_STR;showToast('✕ '+d.s+' → 구독종료');}else{d.status='구독중';d.ed='';showToast('✓ '+d.s+' → 구독중');}initMsUser();initMsCard();applyAll();renderDash();}
+
+// ── Dashboard ─────────────────────────────────────────────
+function renderDash(){
+  const active=activeData(),withNP=active.map(d=>{const np=gNext(d.sd,d.c);return{...d,np,days:dl(np)};});
+  const up30=withNP.filter(d=>d.days!=null&&d.days>=0&&d.days<=30).sort((a,b)=>a.days-b.days);
+  const urg=up30.filter(d=>d.days<=7);
+  const newFromZapier=DATA.filter(d=>d.source==='zapier'&&d.status==='구독중');
+  if(newFromZapier.length>0){
+    const b=document.getElementById('zapier-banner');
+    b.style.display='flex';
+    document.getElementById('zapier-banner-txt').textContent=`⚡ 자피어로 새 구독 ${newFromZapier.length}건이 자동 등록됐어요`;
+  }
+  document.getElementById('stat-grid').innerHTML=[
+    {l:'구독 중',v:active.length+'개',sub:'활성 구독',ac:'#1d4ed8'},
+    {l:'전체 내역',v:DATA.length+'건',sub:'종료 포함',ac:'#64748b'},
+    {l:'7일 내 결제',v:urg.length+'건',sub:urg.filter(d=>d.days<=3).length+'건 D-3 이내',ac:'#b91c1c'},
+    {l:'연결제 수',v:active.filter(d=>d.c==='연결제').length+'건',sub:'갱신 주의 필요',ac:'#b45309'},
+  ].map(s=>`<div class="sc" style="--ac:${s.ac}"><div class="sc-l">${s.l}</div><div class="sc-v" style="color:${s.ac}">${s.v}</div><div class="sc-s">${s.sub}</div></div>`).join('');
+  const map={};up30.forEach(d=>{if(!d.np)return;const k=d.np.toISOString().slice(0,10);if(!map[k])map[k]={date:d.np,days:d.days,items:[]};map[k].items.push(d);});
+  const groups=Object.values(map).sort((a,b)=>a.date-b.date);
+  if(!groups.length){document.getElementById('dash-content').innerHTML='<div style="text-align:center;padding:60px;color:var(--text3)">30일 이내 결제 예정 없음</div>';return;}
+  let html='<div class="sec-label">결제 예정 — 일자별</div>';
+  groups.forEach(g=>{const dc=ddc(g.days);html+=`<div class="dg ${dc}"><div class="dg-head"><span class="dp ${dc}">${ddl(g.days)}</span><span style="font-size:13px;font-weight:700;font-family:var(--mono)">${fd2(g.date)}</span><span style="font-size:11px;color:var(--text3);font-family:var(--mono)">${g.items.length}건</span></div>${g.items.map(item=>`<div class="pay-row"><div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(item.s)}${item.source==='zapier'?'<span class="new-badge">ZAPIER</span>':''}</div>${item.u?`<div style="font-size:11px;color:var(--text3);margin-top:2px">👤 ${esc(item.u.split(',').slice(0,3).join(', '))}</div>`:''}</div><div style="text-align:right"><div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text2)">${esc(item.a)}</div><div class="pay-card">${fm(item.m)}</div></div></div>`).join('')}</div>`;});
+  document.getElementById('dash-content').innerHTML=html;
+}
+
+// ── Annual ────────────────────────────────────────────────
+function renderAnnual(){const ann=activeData().filter(d=>d.c==='연결제').map(d=>{const np=gNext(d.sd,'연결제');return{...d,np,rdl:dl(np)};}).sort((a,b)=>(a.rdl??9999)-(b.rdl??9999));document.getElementById('annual-list').innerHTML=ann.map(d=>{const a30=d.rdl!=null&&d.rdl<=30,dc=a30?ddc(d.rdl??999):'other';const ps=dc==='urg'?'background:var(--red-l);color:var(--red);border:1px solid var(--red-b)':dc==='warn'?'background:var(--amber-l);color:var(--amber);border:1px solid var(--amber-b)':'background:var(--surface2);color:var(--text3);border:1px solid var(--border)';return`<div class="ann-card${a30?' soon':''}"><div style="display:flex;align-items:center;gap:12px"><div class="ann-pill" style="${ps}">${d.rdl!=null?ddl(d.rdl):'—'}</div><div><div style="font-weight:600;font-size:13px">${esc(d.s)}</div><div style="font-size:11px;color:var(--text3);margin-top:2px">${esc(d.u)||'—'}</div>${d.note?`<div style="font-size:11px;color:var(--text3);margin-top:2px">📝 ${esc(d.note.slice(0,60))}</div>`:''}</div></div><div style="text-align:right"><div style="font-family:var(--mono);font-weight:700;font-size:14px;color:var(--amber)">${esc(d.a)}</div><div style="font-family:var(--mono);font-size:12px;color:var(--text2);margin-top:2px">${fd2(d.np)}</div><div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--blue);margin-top:2px">${fm(d.m)}</div><button class="edit-btn" style="margin-top:6px" onclick="openModal(${d.id})">수정</button></div></div>`;}).join('');}
+
+// ── Modal ─────────────────────────────────────────────────
+function openModal(id){editId=id;const d=id?DATA.find(x=>x.id===id):null;document.getElementById('modal-title-txt').textContent=d?'구독 수정':'구독 추가';document.getElementById('btn-del').style.display=d?'block':'none';document.getElementById('f-svc').value=d?.s||'';document.getElementById('f-users').value=d?.u||'';document.getElementById('f-desc').value=d?.d||'';document.getElementById('f-amt').value=d?.a||'';document.getElementById('f-method').value=d?.m||'';document.getElementById('f-sd').value=d?.sd||TODAY_STR;document.getElementById('f-ed').value=d?.ed||'';document.getElementById('f-note').value=d?.note||'';CY_M=d?.c||'월결제';ST_M=d?.status||'구독중';document.getElementById('cy-m').classList.toggle('sel',CY_M==='월결제');document.getElementById('cy-y').classList.toggle('sel',CY_M==='연결제');document.getElementById('st-on').classList.toggle('sel',ST_M==='구독중');document.getElementById('st-off').classList.toggle('sel',ST_M==='구독종료');chk();document.getElementById('modal').classList.add('open');}
+function closeModal(){document.getElementById('modal').classList.remove('open');editId=null;}
+function setCy(v){CY_M=v;document.getElementById('cy-m').classList.toggle('sel',v==='월결제');document.getElementById('cy-y').classList.toggle('sel',v==='연결제');}
+function setSt(v){ST_M=v;document.getElementById('st-on').classList.toggle('sel',v==='구독중');document.getElementById('st-off').classList.toggle('sel',v==='구독종료');}
+function chk(){document.getElementById('btn-ok').disabled=!(document.getElementById('f-svc').value.trim()&&document.getElementById('f-amt').value.trim());}
+function saveModal(){const item={id:editId||nextId++,s:document.getElementById('f-svc').value.trim(),d:document.getElementById('f-desc').value.trim(),u:document.getElementById('f-users').value.trim(),status:ST_M,a:document.getElementById('f-amt').value.trim(),m:document.getElementById('f-method').value.trim(),c:CY_M,sd:document.getElementById('f-sd').value,ed:document.getElementById('f-ed').value,note:document.getElementById('f-note').value.trim()};if(editId){DATA[DATA.findIndex(x=>x.id===editId)]=item;showToast('✓ '+item.s+' 수정 완료');}else{DATA.push(item);showToast('✓ '+item.s+' 추가 완료');}closeModal();initMsUser();initMsCard();document.getElementById('cat-chips').innerHTML='';renderDash();renderList();}
+function delItem(){const d=DATA.find(x=>x.id===editId);if(!d||!confirm('"'+d.s+'" 삭제할까요?'))return;DATA=DATA.filter(x=>x.id!==editId);closeModal();initMsUser();initMsCard();document.getElementById('cat-chips').innerHTML='';showToast('🗑 '+d.s+' 삭제됨');renderDash();renderList();}
+
+// ── Nav / Toast ───────────────────────────────────────────
+function showTab(id,btn){['dash','list','annual','zapier'].forEach(t=>document.getElementById('tab-'+t).style.display=t===id?'block':'none');document.querySelectorAll('.nb').forEach(b=>b.classList.remove('active'));btn.classList.add('active');if(id==='list'){document.getElementById('cat-chips').innerHTML='';renderList();}if(id==='annual')renderAnnual();if(id==='zapier')checkZapier();}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',2500);}
+
+// 초기화
+renderDash();
+// 배포 환경이면 자피어 데이터 자동 fetch
+if(window.location.hostname !== 'localhost' && !window.location.protocol.startsWith('file')) {
+  fetch('/api/webhook').then(r=>r.json()).then(json=>{
+    const zapItems=(json.data||[]).filter(d=>d.source==='zapier');
+    if(zapItems.length>0){
+      zapItems.forEach(zi=>{if(!DATA.find(d=>d.id===zi.id))DATA.push(zi);});
+      document.getElementById('zapier-dot').className='zapier-dot connected';
+      renderDash();
+    }
+  }).catch(()=>{});
+}
+</script>
+</body>
+</html>
