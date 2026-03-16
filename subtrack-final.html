@@ -1,0 +1,1551 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>SubTrack</title>
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#F2F4F6;--surface:#fff;--surface2:#F8F9FA;--border:#E5E8EB;
+  --text:#191F28;--text2:#4E5968;--text3:#8B95A1;
+  --blue:#3182F6;--blue-l:#EBF3FF;--blue-b:#C2D9FF;
+  --green:#00B34D;--green-l:#E8FFF1;--green-b:#A7F0C4;
+  --red:#F45452;--red-l:#FFF3F0;--red-b:#FFCCC6;
+  --amber:#FF9F0A;--amber-l:#FFF9EE;--amber-b:#FFE0A0;
+  --purple:#6B4EFF;--purple-l:#F2EFFF;--purple-b:#D3CAFF;
+  --shadow:0 1px 12px rgba(0,0,0,.08);
+  --shadow-lg:0 4px 24px rgba(0,0,0,.12);
+  --radius:12px;--radius-lg:16px;
+  --mono:'SF Mono','Fira Code',monospace;
+  --sans:'Pretendard',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14px;min-height:100vh;}
+
+/* ── 로그인 화면 ─────────────────────────── */
+#login-screen{
+  position:fixed;inset:0;background:var(--bg);z-index:10000;
+  display:flex;align-items:center;justify-content:center;
+}
+.login-wrap{width:420px;}
+.login-logo{display:flex;align-items:center;gap:10px;margin-bottom:32px;}
+.login-logo-mark{
+  width:44px;height:44px;background:var(--blue);border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;font-weight:800;font-size:16px;letter-spacing:-.5px;
+  box-shadow:0 4px 12px rgba(49,130,246,.35);
+}
+.login-logo-name{font-size:22px;font-weight:800;letter-spacing:-.5px;}
+.login-logo-sub{font-size:12px;color:var(--text3);margin-top:1px;}
+.login-card{
+  background:var(--surface);border-radius:var(--radius-lg);
+  padding:28px;box-shadow:var(--shadow-lg);border:1px solid var(--border);
+  margin-bottom:12px;
+}
+.login-card-title{font-size:17px;font-weight:700;margin-bottom:4px;}
+.login-card-sub{font-size:13px;color:var(--text3);margin-bottom:22px;}
+.login-btns{display:flex;gap:10px;}
+.login-btn-item{
+  flex:1;padding:16px 12px;border-radius:var(--radius);border:1.5px solid var(--border);
+  background:var(--surface);cursor:pointer;transition:all .18s;text-align:center;
+}
+.login-btn-item:hover{border-color:var(--blue);background:var(--blue-l);transform:translateY(-1px);box-shadow:var(--shadow);}
+.login-btn-icon{font-size:24px;margin-bottom:8px;}
+.login-btn-name{font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px;}
+.login-btn-desc{font-size:11px;color:var(--text3);}
+.login-btn-item.admin{border-color:var(--blue);background:var(--blue-l);}
+.login-btn-item.admin .login-btn-name{color:var(--blue);}
+
+/* 비밀번호 모달 */
+#pw-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.4);backdrop-filter:blur(4px);
+  z-index:10001;display:none;align-items:center;justify-content:center;
+}
+#pw-overlay.open{display:flex;}
+.pw-modal{
+  background:var(--surface);border-radius:var(--radius-lg);padding:28px;
+  width:360px;box-shadow:var(--shadow-lg);
+}
+.pw-modal-title{font-size:16px;font-weight:700;margin-bottom:4px;}
+.pw-modal-sub{font-size:13px;color:var(--text3);margin-bottom:20px;}
+.pw-input{
+  width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:var(--radius);
+  background:var(--surface2);font-size:14px;font-family:var(--sans);color:var(--text);
+  margin-bottom:10px;outline:none;transition:border .15s;
+}
+.pw-input:focus{border-color:var(--blue);background:var(--surface);}
+.pw-err{color:var(--red);font-size:12px;margin-bottom:12px;display:none;}
+.pw-btns{display:flex;gap:8px;justify-content:flex-end;}
+.pw-cancel{
+  padding:10px 18px;border:1.5px solid var(--border);border-radius:var(--radius);
+  background:transparent;color:var(--text2);font-size:14px;font-family:var(--sans);cursor:pointer;
+}
+.pw-ok{
+  padding:10px 22px;background:var(--blue);border:none;border-radius:var(--radius);
+  color:#fff;font-size:14px;font-weight:600;font-family:var(--sans);cursor:pointer;
+}
+.pw-cancel:hover{background:var(--surface2);}
+.pw-ok:hover{background:#1b6fe0;}
+
+/* ── 앱 레이아웃 ─────────────────────────── */
+#app{display:flex;min-height:100vh;display:none;}
+.sidebar{
+  width:220px;background:var(--surface);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;height:100vh;position:sticky;top:0;flex-shrink:0;
+}
+.sidebar-logo{
+  padding:20px 18px 16px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;
+}
+.sidebar-logo-mark{
+  width:32px;height:32px;background:var(--blue);border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;font-weight:800;font-size:13px;
+}
+.sidebar-logo-info{}
+.sidebar-logo-name{font-size:14px;font-weight:700;}
+.sidebar-logo-date{font-size:11px;color:var(--text3);margin-top:1px;}
+.sidebar-nav{flex:1;padding:10px 8px;}
+.nav-btn{
+  width:100%;display:flex;align-items:center;gap:9px;padding:10px 12px;
+  border-radius:10px;border:none;cursor:pointer;font-size:13px;font-weight:500;
+  font-family:var(--sans);color:var(--text2);background:transparent;
+  margin-bottom:2px;text-align:left;transition:all .12s;
+}
+.nav-btn:hover{background:var(--surface2);color:var(--text);}
+.nav-btn.active{background:var(--blue-l);color:var(--blue);font-weight:600;}
+.nav-icon{font-size:16px;width:20px;text-align:center;}
+.sidebar-foot{
+  padding:12px 8px;border-top:1px solid var(--border);
+  display:flex;flex-direction:column;gap:6px;
+}
+.add-main-btn{
+  width:100%;padding:10px;background:var(--blue);border:none;border-radius:10px;
+  color:#fff;font-size:13px;font-weight:600;font-family:var(--sans);cursor:pointer;
+  transition:background .15s;
+}
+.add-main-btn:hover{background:#1b6fe0;}
+.pw-change-btn{
+  width:100%;padding:8px;border:1.5px solid var(--border);border-radius:10px;
+  background:transparent;color:var(--text3);font-size:12px;font-family:var(--sans);
+  cursor:pointer;transition:all .12s;
+}
+.pw-change-btn:hover{border-color:var(--border);color:var(--text2);background:var(--surface2);}
+.logout-btn{
+  width:100%;padding:8px;border:none;border-radius:10px;
+  background:transparent;color:var(--text3);font-size:12px;font-family:var(--sans);
+  cursor:pointer;transition:all .12s;
+}
+.logout-btn:hover{background:var(--red-l);color:var(--red);}
+
+/* ── 메인 영역 ─────────────────────────────── */
+.main{flex:1;padding:28px 28px 60px;overflow-y:auto;max-height:100vh;}
+.pg-title{font-size:22px;font-weight:800;letter-spacing:-.5px;margin-bottom:3px;}
+.pg-sub{font-size:13px;color:var(--text3);margin-bottom:24px;}
+
+/* 스탯 카드 */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
+.sc{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:18px;border-top:3px solid var(--ac,var(--blue));
+  box-shadow:var(--shadow);
+}
+.sc-l{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;}
+.sc-v{font-size:22px;font-weight:800;letter-spacing:-.5px;color:var(--text);}
+.sc-s{font-size:11px;color:var(--text3);margin-top:4px;}
+
+/* 섹션 라벨 */
+.sec-label{
+  font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;
+  letter-spacing:.6px;margin:0 0 12px;display:flex;align-items:center;gap:8px;
+}
+.sec-label::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* 대시보드 결제 그룹 */
+.dg{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  margin-bottom:10px;overflow:hidden;box-shadow:var(--shadow);
+}
+.dg.urg{border-color:var(--red-b);}
+.dg.warn{border-color:var(--amber-b);}
+.dg-head{
+  display:flex;align-items:center;padding:12px 16px;gap:12px;
+  background:var(--surface2);border-bottom:1px solid var(--border);
+}
+.dg.urg .dg-head{background:var(--red-l);border-bottom-color:var(--red-b);}
+.dg.warn .dg-head{background:var(--amber-l);border-bottom-color:var(--amber-b);}
+.dg-head-title{font-size:13px;font-weight:700;}
+.dg-head-cnt{font-size:11px;color:var(--text3);font-family:var(--mono);}
+.dp{
+  font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;
+  font-family:var(--mono);
+}
+.dp.urg{background:var(--red-l);color:var(--red);border:1px solid var(--red-b);}
+.dp.warn{background:var(--amber-l);color:var(--amber);border:1px solid var(--amber-b);}
+.dp.norm{background:var(--blue-l);color:var(--blue);border:1px solid var(--blue-b);}
+.pay-row{
+  display:flex;align-items:center;padding:12px 16px;
+  border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;
+  position:relative;
+}
+.pay-row:last-child{border-bottom:none;}
+.pay-row:hover{background:var(--surface2);}
+.pay-info{flex:1;}
+.pay-name{font-size:14px;font-weight:600;}
+.pay-user{font-size:11px;color:var(--text3);margin-top:2px;}
+.pay-amt{font-size:14px;font-weight:700;font-family:var(--mono);color:var(--blue);}
+
+/* ── 호버 툴팁 ─────────────────────────────── */
+.tt-popup{
+  display:none;position:fixed;z-index:9999;
+  background:#1A1F2E;color:#fff;padding:14px 16px;border-radius:var(--radius);
+  font-size:12px;font-family:var(--sans);line-height:1.8;
+  max-width:300px;pointer-events:none;
+  box-shadow:0 8px 28px rgba(0,0,0,.3);
+}
+.tt-row{display:flex;gap:12px;align-items:flex-start;}
+.tt-key{color:#8B95A1;font-size:11px;min-width:52px;flex-shrink:0;}
+.tt-val{color:#F0F2F5;font-size:12px;word-break:break-word;}
+
+/* ── 전체 목록 ─────────────────────────────── */
+.filter-bar{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;margin-bottom:12px;}
+.srch{
+  padding:8px 12px;border-radius:var(--radius);border:1.5px solid var(--border);
+  background:var(--surface);color:var(--text);font-size:13px;font-family:var(--sans);
+  width:220px;height:36px;outline:none;transition:border .15s;
+}
+.srch:focus{border-color:var(--blue);}
+.srch::placeholder{color:var(--text3);}
+/* 멀티셀렉트 */
+.ms-wrap{position:relative;}
+.ms-trigger{
+  display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:var(--radius);
+  border:1.5px solid var(--border);background:var(--surface);cursor:pointer;
+  font-size:12px;font-family:var(--mono);color:var(--text2);height:36px;
+  min-width:110px;white-space:nowrap;user-select:none;transition:all .12s;
+}
+.ms-trigger:hover{border-color:var(--border);}
+.ms-trigger.has-val{border-color:var(--blue);background:var(--blue-l);color:var(--blue);}
+.ms-trigger .arrow{margin-left:auto;opacity:.5;font-size:10px;}
+.ms-dropdown{
+  display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:200;
+  background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);
+  box-shadow:var(--shadow-lg);min-width:200px;overflow:hidden;
+}
+.ms-dropdown.open{display:block;}
+.ms-search{
+  width:100%;padding:8px 10px;border:none;border-bottom:1px solid var(--border);
+  font-size:12px;font-family:var(--sans);color:var(--text);background:var(--surface2);outline:none;
+}
+.ms-list{max-height:200px;overflow-y:auto;}
+.ms-item{
+  display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;
+  font-size:12px;color:var(--text2);transition:background .1s;
+}
+.ms-item:hover{background:var(--surface2);}
+.ms-item.checked{color:var(--blue);font-weight:600;}
+.ms-item .cb{
+  width:14px;height:14px;border-radius:3px;border:1.5px solid var(--border);
+  display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0;
+}
+.ms-item.checked .cb{background:var(--blue);border-color:var(--blue);color:#fff;}
+.ms-footer{
+  padding:8px 10px;border-top:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;
+}
+.ms-clear{font-size:11px;color:var(--text3);cursor:pointer;font-family:var(--mono);}
+.ms-clear:hover{color:var(--red);}
+.ms-count{font-size:11px;color:var(--text3);font-family:var(--mono);}
+/* 정렬 바 */
+.sort-bar{display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap;}
+.sort-lbl{font-size:11px;color:var(--text3);font-family:var(--mono);}
+.sort-btn{
+  padding:4px 10px;border-radius:6px;border:1.5px solid var(--border);
+  background:transparent;color:var(--text3);font-size:11px;font-family:var(--mono);cursor:pointer;
+  transition:all .12s;
+}
+.sort-btn:hover{border-color:var(--border);color:var(--text2);}
+.sort-btn.active{border-color:var(--blue);background:var(--blue-l);color:var(--blue);font-weight:600;}
+.reset-all{
+  margin-left:auto;padding:4px 10px;border-radius:6px;border:1.5px solid var(--border);
+  background:transparent;color:var(--text3);font-size:11px;font-family:var(--mono);
+  cursor:pointer;display:none;
+}
+.reset-all.show{display:block;}
+.reset-all:hover{border-color:var(--red-b);color:var(--red);background:var(--red-l);}
+/* 카테고리 칩 */
+.chips{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px;}
+.chip{
+  padding:4px 10px;border-radius:20px;font-size:11px;font-family:var(--mono);
+  cursor:pointer;border:1.5px solid var(--border);background:transparent;color:var(--text3);
+  font-weight:500;transition:all .12s;
+}
+.chip:hover{border-color:var(--border);color:var(--text2);}
+.chip.sel{border-color:var(--blue);background:var(--blue-l);color:var(--blue);}
+/* 테이블 */
+.tbl-wrap{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  overflow:auto;max-height:58vh;box-shadow:var(--shadow);
+}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th{
+  padding:10px 12px;text-align:left;font-size:10px;font-weight:600;
+  color:var(--text3);text-transform:uppercase;letter-spacing:.5px;
+  border-bottom:1px solid var(--border);background:var(--surface2);
+  white-space:nowrap;position:sticky;top:0;z-index:1;cursor:pointer;user-select:none;
+}
+th:hover{color:var(--text2);}
+th.sorted{color:var(--blue);}
+td{
+  padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text);
+  white-space:nowrap;vertical-align:middle;
+}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--surface2);}
+tr.ended td{opacity:.5;}
+tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
+.tag{
+  display:inline-block;border-radius:6px;padding:2px 7px;
+  font-size:10px;font-weight:600;font-family:var(--mono);
+}
+.status-btn{
+  font-family:var(--mono);font-size:10px;font-weight:700;padding:4px 9px;
+  border-radius:6px;cursor:pointer;border:1.5px solid;transition:all .12s;
+}
+.status-btn.on{background:var(--green-l);color:var(--green);border-color:var(--green-b);}
+.status-btn.on:hover{background:#dcfce7;}
+.status-btn.off{background:var(--surface2);color:var(--text3);border-color:var(--border);}
+.status-btn.off:hover{background:var(--blue-l);color:var(--blue);border-color:var(--blue-b);}
+.edit-btn{
+  padding:3px 8px;border-radius:6px;border:1.5px solid var(--border);
+  background:transparent;color:var(--text3);font-size:11px;font-family:var(--mono);cursor:pointer;
+}
+.edit-btn:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-l);}
+.list-count{margin-top:7px;font-size:11px;color:var(--text3);font-family:var(--mono);}
+.new-badge{
+  background:var(--purple-l);color:var(--purple);border:1px solid var(--purple-b);
+  font-size:9px;font-family:var(--mono);font-weight:700;padding:1px 5px;
+  border-radius:4px;margin-left:5px;vertical-align:middle;
+}
+
+/* ── 연결제 알림 ─────────────────────────────── */
+.ann-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;
+  justify-content:space-between;box-shadow:var(--shadow);cursor:pointer;
+  transition:border .15s;
+}
+.ann-card:hover{border-color:var(--border);}
+.ann-card.soon{background:var(--blue-l);border-color:var(--blue-b);}
+.ann-pill{
+  font-family:var(--mono);font-size:12px;font-weight:700;border-radius:8px;
+  padding:8px 12px;min-width:64px;text-align:center;
+}
+
+/* ── 자피어 연동 ─────────────────────────────── */
+.zapier-page{max-width:680px;}
+.z-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:20px;margin-bottom:14px;box-shadow:var(--shadow);
+}
+.z-card h3{font-size:13px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+.z-step{display:flex;gap:12px;margin-bottom:12px;align-items:flex-start;}
+.z-num{
+  width:24px;height:24px;border-radius:50%;background:var(--blue);color:#fff;
+  font-family:var(--mono);font-size:11px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;
+}
+.z-content{flex:1;font-size:13px;color:var(--text2);line-height:1.6;}
+.z-content strong{color:var(--text);}
+.url-box{
+  background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);
+  padding:10px 14px;font-family:var(--mono);font-size:12px;color:var(--blue);
+  display:flex;align-items:center;justify-content:space-between;margin-top:8px;word-break:break-all;
+}
+.copy-btn{
+  padding:5px 12px;border-radius:7px;border:1.5px solid var(--blue-b);
+  background:var(--blue-l);color:var(--blue);font-size:11px;font-family:var(--mono);
+  cursor:pointer;white-space:nowrap;margin-left:12px;flex-shrink:0;
+}
+.copy-btn:hover{background:var(--blue);color:#fff;}
+.status-indicator{
+  display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:var(--radius);
+  font-size:12px;font-family:var(--mono);
+}
+.status-indicator.ok{background:var(--green-l);border:1px solid var(--green-b);color:var(--green);}
+.status-indicator.off{background:var(--surface2);border:1px solid var(--border);color:var(--text3);}
+.zapier-dot{
+  width:8px;height:8px;border-radius:50%;background:#ccc;
+  display:inline-block;margin-right:4px;flex-shrink:0;
+}
+.zapier-dot.connected{background:#00C853;box-shadow:0 0 6px #00C85388;}
+.field-map{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-top:8px;}
+.field-map table{width:100%;font-size:12px;}
+.field-map th{font-size:10px;padding:7px 12px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.4px;}
+.field-map td{padding:6px 12px;border-top:1px solid var(--border);font-family:var(--mono);}
+.field-map td:first-child{color:var(--blue);font-weight:600;}
+.field-map td:last-child{color:var(--text2);}
+
+/* ── 모달 ─────────────────────────────────────── */
+.overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.35);backdrop-filter:blur(4px);z-index:999;
+  align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto;
+}
+.overlay.open{display:flex;}
+.modal{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);
+  padding:24px;width:500px;box-shadow:var(--shadow-lg);margin:auto;
+}
+.modal-title{font-size:15px;font-weight:700;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;}
+.close-x{background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;padding:2px 5px;border-radius:5px;line-height:1;}
+.close-x:hover{background:var(--surface2);}
+.field{margin-bottom:12px;}
+.field label{display:block;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
+.field input,.field textarea{
+  width:100%;padding:9px 12px;border-radius:var(--radius);border:1.5px solid var(--border);
+  background:var(--surface2);color:var(--text);font-size:13px;font-family:var(--sans);outline:none;
+  transition:border .15s;
+}
+.field textarea{resize:vertical;min-height:56px;}
+.field input:focus,.field textarea:focus{border-color:var(--blue);background:var(--surface);}
+.field input::placeholder,.field textarea::placeholder{color:var(--text3);}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.cy-row{display:flex;gap:8px;margin-top:4px;}
+.cy-btn{
+  flex:1;padding:8px;border-radius:var(--radius);border:1.5px solid var(--border);
+  background:transparent;color:var(--text2);font-size:13px;font-family:var(--sans);
+  cursor:pointer;font-weight:500;transition:all .12s;
+}
+.cy-btn.sel{border-color:var(--blue);background:var(--blue-l);color:var(--blue);font-weight:600;}
+.mfooter{
+  display:flex;gap:8px;justify-content:flex-end;margin-top:18px;
+  padding-top:16px;border-top:1px solid var(--border);
+}
+.btn-cancel{
+  padding:8px 16px;background:transparent;border:1.5px solid var(--border);
+  border-radius:var(--radius);color:var(--text2);font-size:13px;font-family:var(--sans);cursor:pointer;
+}
+.btn-cancel:hover{background:var(--surface2);}
+.btn-ok{
+  padding:8px 20px;background:var(--blue);border:none;border-radius:var(--radius);
+  color:#fff;font-size:13px;font-weight:600;font-family:var(--sans);cursor:pointer;
+}
+.btn-ok:hover{background:#1b6fe0;}
+.btn-ok:disabled{background:var(--surface2);color:var(--text3);cursor:not-allowed;}
+.btn-danger{
+  padding:8px 16px;background:var(--red-l);border:1.5px solid var(--red-b);
+  border-radius:var(--radius);color:var(--red);font-size:13px;font-family:var(--sans);
+  cursor:pointer;margin-right:auto;
+}
+.btn-danger:hover{background:#fee2e2;}
+
+/* ── 리서처 뷰 ─────────────────────────────────── */
+#researcher-view{
+  display:none;min-height:100vh;background:var(--bg);
+}
+.rv-header{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:16px 24px;display:flex;align-items:center;justify-content:space-between;
+  box-shadow:var(--shadow);
+}
+.rv-header-left{display:flex;align-items:center;gap:12px;}
+.rv-logo-mark{
+  width:34px;height:34px;background:var(--blue);border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;font-weight:800;font-size:13px;
+}
+.rv-title{font-size:17px;font-weight:800;letter-spacing:-.4px;}
+.rv-badge{
+  background:var(--green-l);color:var(--green);border:1px solid var(--green-b);
+  padding:3px 9px;border-radius:20px;font-size:10px;font-family:var(--mono);font-weight:700;
+}
+.rv-logout{
+  padding:7px 14px;border-radius:var(--radius);border:1.5px solid var(--border);
+  background:transparent;font-size:12px;cursor:pointer;font-family:var(--mono);
+  color:var(--text3);transition:all .12s;
+}
+.rv-logout:hover{border-color:var(--red-b);color:var(--red);background:var(--red-l);}
+.rv-body{padding:24px;}
+.rv-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;}
+.rv-stat{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:16px 18px;box-shadow:var(--shadow);
+}
+.rv-stat-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+.rv-stat-value{font-size:20px;font-weight:800;letter-spacing:-.5px;}
+.rv-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+.rv-count{font-size:12px;color:var(--text3);font-family:var(--mono);margin-bottom:10px;}
+
+/* ── 토스트 ─────────────────────────────────── */
+#toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  background:#1A1F2E;color:#fff;padding:11px 22px;border-radius:10px;
+  font-size:13px;font-weight:500;display:none;z-index:1200;
+  font-family:var(--mono);box-shadow:0 4px 16px rgba(0,0,0,.2);
+}
+
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+</style>
+</head>
+<body>
+
+<!-- ── 로그인 화면 ──────────────────────────────── -->
+<div id="login-screen">
+  <div class="login-wrap">
+    <div class="login-logo">
+      <div class="login-logo-mark">ST</div>
+      <div>
+        <div class="login-logo-name">SubTrack</div>
+        <div class="login-logo-sub">구독 결제 관리 시스템</div>
+      </div>
+    </div>
+    <div class="login-card">
+      <div class="login-card-title">접속 유형을 선택해주세요</div>
+      <div class="login-card-sub">관리자는 전체 기능을, 리서처는 조회 전용으로 이용합니다</div>
+      <div class="login-btns">
+        <div class="login-btn-item admin" id="admin-btn">
+          <div class="login-btn-icon">🔒</div>
+          <div class="login-btn-name">관리자용</div>
+          <div class="login-btn-desc">전체 수정 · 추가 · 삭제</div>
+        </div>
+        <div class="login-btn-item" id="researcher-btn">
+          <div class="login-btn-icon">👀</div>
+          <div class="login-btn-name">리서처용</div>
+          <div class="login-btn-desc">구독 현황 조회 전용</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 비밀번호 모달 ──────────────────────────── -->
+<div id="pw-overlay">
+  <div class="pw-modal">
+    <div class="pw-modal-title" id="pw-title">🔒 관리자 로그인</div>
+    <div class="pw-modal-sub" id="pw-sub">관리자 비밀번호를 입력하세요</div>
+    <input class="pw-input" id="pw-input" type="password" placeholder="비밀번호 입력"/>
+    <div class="pw-err" id="pw-err">비밀번호가 올바르지 않습니다</div>
+    <div class="pw-btns">
+      <button class="pw-cancel" id="pw-cancel-btn">취소</button>
+      <button class="pw-ok" id="pw-ok-btn">확인</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 리서처 뷰 ──────────────────────────────── -->
+<div id="researcher-view">
+  <div class="rv-header">
+    <div class="rv-header-left">
+      <div class="rv-logo-mark">ST</div>
+      <div>
+        <div class="rv-title">구독 현황</div>
+      </div>
+      <span class="rv-badge">리서처용</span>
+    </div>
+    <button class="rv-logout" id="rv-logout-btn">← 나가기</button>
+  </div>
+  <div class="rv-body">
+    <div class="rv-stats">
+      <div class="rv-stat">
+        <div class="rv-stat-label">구독 중</div>
+        <div class="rv-stat-value" id="rv-active-cnt" style="color:var(--green)">-</div>
+      </div>
+      <div class="rv-stat">
+        <div class="rv-stat-label">전체</div>
+        <div class="rv-stat-value" id="rv-total-cnt">-</div>
+      </div>
+      <div class="rv-stat">
+        <div class="rv-stat-label">7일 내 결제</div>
+        <div class="rv-stat-value" id="rv-soon-cnt" style="color:var(--red)">-</div>
+      </div>
+    </div>
+    <div class="rv-filters">
+      <input class="srch" id="rv-search" placeholder="🔍 서비스명 · 사용자 검색"/>
+      <div class="ms-wrap" id="rv-ms-user">
+        <div class="ms-trigger" id="rv-ms-user-trigger">
+          <span id="rv-ms-user-lbl">사용자</span><span class="arrow">▾</span>
+        </div>
+        <div class="ms-dropdown" id="rv-ms-user-dd">
+          <input class="ms-search" id="rv-ms-user-search" placeholder="검색..." onclick="event.stopPropagation()"/>
+          <div class="ms-list" id="rv-ms-user-list"></div>
+          <div class="ms-footer"><span class="ms-clear" id="rv-ms-user-clear">초기화</span><span class="ms-count" id="rv-ms-user-cnt"></span></div>
+        </div>
+      </div>
+      <div class="ms-wrap" id="rv-ms-card">
+        <div class="ms-trigger" id="rv-ms-card-trigger">
+          <span id="rv-ms-card-lbl">결제수단</span><span class="arrow">▾</span>
+        </div>
+        <div class="ms-dropdown" id="rv-ms-card-dd">
+          <input class="ms-search" id="rv-ms-card-search" placeholder="검색..." onclick="event.stopPropagation()"/>
+          <div class="ms-list" id="rv-ms-card-list"></div>
+          <div class="ms-footer"><span class="ms-clear" id="rv-ms-card-clear">초기화</span><span class="ms-count" id="rv-ms-card-cnt"></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="rv-count" id="rv-count"></div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>서비스명</th><th>내용</th><th>사용자</th><th>금액</th>
+          <th>결제수단</th><th>결제주기</th><th>구독시작</th><th>다음결제</th><th>비고</th>
+        </tr></thead>
+        <tbody id="rv-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── 관리자 앱 ──────────────────────────────── -->
+<div id="app">
+<div class="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-mark">ST</div>
+    <div class="sidebar-logo-info">
+      <div class="sidebar-logo-name">SubTrack</div>
+      <div class="sidebar-logo-date" id="today-lbl"></div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <button class="nav-btn active" id="nav-dash" onclick="showTab('dash',this)">
+      <span class="nav-icon">▣</span> 대시보드
+    </button>
+    <button class="nav-btn" id="nav-list" onclick="showTab('list',this)">
+      <span class="nav-icon">≡</span> 전체 목록
+    </button>
+    <button class="nav-btn" id="nav-annual" onclick="showTab('annual',this)">
+      <span class="nav-icon">◷</span> 연결제 알림
+    </button>
+    <button class="nav-btn" id="nav-zapier" onclick="showTab('zapier',this)">
+      <span class="nav-icon" id="zapier-dot-nav">●</span> 자피어 연동
+    </button>
+  </nav>
+  <div class="sidebar-foot">
+    <button class="add-main-btn" onclick="openModal(null)">+ 구독 추가</button>
+    <button class="pw-change-btn" id="pw-change-btn">🔑 비밀번호 변경</button>
+    <button class="logout-btn" id="admin-logout-btn">← 로그아웃</button>
+  </div>
+</div>
+
+<div class="main">
+<!-- 대시보드 -->
+<div id="tab-dash">
+  <div class="pg-title">대시보드</div>
+  <div class="pg-sub">결제 현황과 다가오는 결제일을 확인하세요</div>
+  <div id="zapier-banner" style="display:none;background:var(--purple-l);border:1px solid var(--purple-b);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--purple);display:flex;align-items:center;gap:8px;">
+    <span style="font-size:16px;">⚡</span><span id="zapier-banner-txt"></span>
+  </div>
+  <div class="stat-grid" id="stat-grid"></div>
+  <div id="dash-content"></div>
+</div>
+
+<!-- 전체 목록 -->
+<div id="tab-list" style="display:none">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+    <div>
+      <div class="pg-title">전체 목록</div>
+      <div class="pg-sub" style="margin-bottom:0;">항목 클릭 → 수정 · 삭제</div>
+    </div>
+    <button class="add-main-btn" style="width:auto;padding:8px 16px;font-size:13px;" onclick="openModal(null)">+ 구독 추가</button>
+  </div>
+  <div class="filter-bar">
+    <input class="srch" id="g-search" placeholder="🔍 서비스 · 사용자 · 결제수단 검색" oninput="applyAll()"/>
+    <div class="ms-wrap" id="ms-status">
+      <div class="ms-trigger" onclick="toggleMs('ms-status')"><span id="ms-status-lbl">구독상태</span><span class="arrow">▾</span></div>
+      <div class="ms-dropdown" id="ms-status-dd">
+        <div class="ms-list">
+          <div class="ms-item" data-val="구독중" onclick="toggleMsItem('ms-status','구독중')"><div class="cb"></div>구독중</div>
+          <div class="ms-item" data-val="구독종료" onclick="toggleMsItem('ms-status','구독종료')"><div class="cb"></div>구독종료</div>
+        </div>
+        <div class="ms-footer"><span class="ms-clear" onclick="clearMs('ms-status')">초기화</span><span class="ms-count" id="ms-status-cnt"></span></div>
+      </div>
+    </div>
+    <div class="ms-wrap" id="ms-user">
+      <div class="ms-trigger" onclick="toggleMs('ms-user')"><span id="ms-user-lbl">사용자</span><span class="arrow">▾</span></div>
+      <div class="ms-dropdown" id="ms-user-dd">
+        <input class="ms-search" id="ms-user-search" placeholder="사용자 검색..." oninput="filterMsList('ms-user')" onclick="event.stopPropagation()"/>
+        <div class="ms-list" id="ms-user-list"></div>
+        <div class="ms-footer"><span class="ms-clear" onclick="clearMs('ms-user')">초기화</span><span class="ms-count" id="ms-user-cnt"></span></div>
+      </div>
+    </div>
+    <div class="ms-wrap" id="ms-card">
+      <div class="ms-trigger" onclick="toggleMs('ms-card')"><span id="ms-card-lbl">결제수단</span><span class="arrow">▾</span></div>
+      <div class="ms-dropdown" id="ms-card-dd">
+        <input class="ms-search" id="ms-card-search" placeholder="결제수단 검색..." oninput="filterMsList('ms-card')" onclick="event.stopPropagation()"/>
+        <div class="ms-list" id="ms-card-list"></div>
+        <div class="ms-footer"><span class="ms-clear" onclick="clearMs('ms-card')">초기화</span><span class="ms-count" id="ms-card-cnt"></span></div>
+      </div>
+    </div>
+    <button class="reset-all" id="reset-all" onclick="resetAll()">✕ 전체 초기화</button>
+  </div>
+  <div class="chips" id="cat-chips"></div>
+  <div class="sort-bar">
+    <span class="sort-lbl">정렬</span>
+    <button class="sort-btn" data-col="s" onclick="setSort('s')">서비스명 ↕</button>
+    <button class="sort-btn" data-col="sd" onclick="setSort('sd')">구독시작 ↕</button>
+    <button class="sort-btn" data-col="next" onclick="setSort('next')">다음결제 ↕</button>
+    <button class="sort-btn" data-col="status" onclick="setSort('status')">상태 ↕</button>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th onclick="setSort('s')">서비스명</th><th>내용</th>
+        <th onclick="setSort('u')">사용자</th><th>금액</th>
+        <th>상태</th><th>결제주기</th><th onclick="setSort('m')">결제수단</th>
+        <th onclick="setSort('sd')">구독시작</th><th onclick="setSort('next')">다음결제/종료</th>
+        <th>비고</th><th onclick="setSort('status')">상태변경</th><th>수정</th>
+      </tr></thead>
+      <tbody id="list-body"></tbody>
+    </table>
+  </div>
+  <div class="list-count" id="list-count"></div>
+</div>
+
+<!-- 연결제 알림 -->
+<div id="tab-annual" style="display:none">
+  <div class="pg-title">연결제 알림</div>
+  <div class="pg-sub">연간 결제 예정 서비스를 확인하세요</div>
+  <div id="annual-content"></div>
+</div>
+
+<!-- 자피어 연동 -->
+<div id="tab-zapier" style="display:none">
+  <div class="zapier-page">
+    <div class="pg-title">자피어 연동</div>
+    <div class="pg-sub" style="margin-bottom:20px;">슬랙 메시지로 구독 항목을 자동 등록해요</div>
+    <div class="z-card">
+      <h3><span class="zapier-dot" id="zapier-dot"></span> 연동 상태</h3>
+      <div id="zapier-status-box" class="status-indicator off">⚡ 자피어 웹훅 대기 중</div>
+    </div>
+    <div class="z-card">
+      <h3>🔗 웹훅 URL</h3>
+      <div class="z-step">
+        <div class="z-num">1</div>
+        <div class="z-content">자피어에서 <strong>Webhook by Zapier</strong>를 트리거로 선택하세요</div>
+      </div>
+      <div class="z-step">
+        <div class="z-num">2</div>
+        <div class="z-content">아래 URL을 복사해서 자피어 웹훅 URL에 붙여넣으세요</div>
+      </div>
+      <div class="url-box">
+        <span id="webhook-url-text"></span>
+        <button class="copy-btn" onclick="copyWebhook()">복사</button>
+      </div>
+    </div>
+    <div class="z-card">
+      <h3>📋 필드 매핑</h3>
+      <div class="field-map">
+        <table>
+          <thead><tr><th>자피어 필드</th><th>설명</th></tr></thead>
+          <tbody>
+            <tr><td>service</td><td>서비스명 (필수)</td></tr>
+            <tr><td>description</td><td>내용 설명</td></tr>
+            <tr><td>user</td><td>사용자</td></tr>
+            <tr><td>amount</td><td>금액</td></tr>
+            <tr><td>payment</td><td>결제수단</td></tr>
+            <tr><td>cycle</td><td>결제주기 (월결제/연결제)</td></tr>
+            <tr><td>start_date</td><td>구독 시작일 (YYYY-MM-DD)</td></tr>
+            <tr><td>note</td><td>비고</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+</div><!-- /main -->
+</div><!-- /app -->
+
+<!-- ── 수정/추가 모달 ─────────────────────────── -->
+<div class="overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="modal-title-txt">구독 추가</span>
+      <button class="close-x" onclick="closeModal()">×</button>
+    </div>
+    <div class="field"><label>서비스명</label><input id="f-svc" placeholder="예: ChatGPT"/></div>
+    <div class="field"><label>내용 설명</label><textarea id="f-desc" placeholder="서비스 설명"></textarea></div>
+    <div class="row2">
+      <div class="field"><label>사용자</label><input id="f-users" placeholder="예: Peach, Burns"/></div>
+      <div class="field"><label>금액</label><input id="f-amt" placeholder="예: 22달러"/></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>결제수단</label><input id="f-method" placeholder="예: 3728"/></div>
+      <div class="field"><label>결제주기</label>
+        <div class="cy-row">
+          <button class="cy-btn sel" id="cy-monthly" onclick="setCycle('월결제')">월결제</button>
+          <button class="cy-btn" id="cy-yearly" onclick="setCycle('연결제')">연결제</button>
+          <button class="cy-btn" id="cy-once" onclick="setCycle('1회성')">1회성</button>
+        </div>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>구독 시작일</label><input type="date" id="f-sd"/></div>
+      <div class="field"><label>구독 종료일</label><input type="date" id="f-ed"/></div>
+    </div>
+    <div class="field"><label>구독상태</label>
+      <div class="cy-row">
+        <button class="cy-btn sel" id="st-on" onclick="setSt('구독중')">구독중</button>
+        <button class="cy-btn" id="st-off" onclick="setSt('구독종료')">구독종료</button>
+      </div>
+    </div>
+    <div class="field"><label>비고</label><textarea id="f-note" placeholder="메모"></textarea></div>
+    <div class="mfooter">
+      <button class="btn-danger" id="del-btn" onclick="delItem()">삭제</button>
+      <button class="btn-cancel" onclick="closeModal()">취소</button>
+      <button class="btn-ok" id="save-btn" onclick="saveModal()">저장</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── Supabase 설정 ─────────────────────────────
+const _SB_URL = 'https://hwppttcigebpvpvzidex.supabase.co';
+const _SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cHB0dGNpZ2VicHZwdnppZGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MzE4NTUsImV4cCI6MjA4OTIwNzg1NX0.oNe50eIvP2guEugRk9x8GVlqvHUmYG6jPDWabukk3M8';
+const _SB_HDR = {
+  'apikey': _SB_KEY,
+  'Authorization': 'Bearer ' + _SB_KEY,
+  'Content-Type': 'application/json',
+  'Prefer': 'resolution=merge-duplicates,return=minimal'
+};
+
+// ── 데이터 ───────────────────────────────────
+let DATA = [{"id": 1, "s": "비즈엠", "d": "알림톡 @ 4.5친구톡(텍스트) @ 10친구톡(이미지) @16LMS @ 24.5", "u": "", "status": "구독중", "a": "사용량에 따라 상이", "m": "계좌이체", "c": "월결제", "sd": "", "ed": "", "note": ""}, {"id": 2, "s": "팝빌", "d": "예금주 조회 서비스", "u": "", "status": "구독중", "a": "1회 110,000원 / 포인트 충전 방식", "m": "계좌이체", "c": "월결제", "sd": "", "ed": "", "note": "포인트 소진 시 충전"}, {"id": 3, "s": "구글워크스페이스", "d": "라우드 컴퓨팅 생산성 및 협업 소프트웨어 도구, 소프트웨어 모음 / Starter 플랜Flexible 요금제", "u": "", "status": "구독중", "a": "1인당 7.14달러", "m": "5493", "c": "월결제", "sd": "2023-05-05", "ed": "", "note": ""}, {"id": 4, "s": "FIGMA(Collab)", "d": "인터페이스 디자인을 위한 협업 웹 애플리케이션/collab: figjam, figma slides", "u": "Sante", "status": "구독중", "a": "1인당 39.6달러", "m": "5108", "c": "연결제", "sd": "2023-08-05", "ed": "", "note": ""}, {"id": 5, "s": "FIGMA(full)", "d": "인터페이스 디자인을 위한 협업 웹 애플리케이션/full: figma, dev, figjam, figma slides/ 머시 - 플랩공용계정 인원", "u": "HODOO,Cus,Aqoo,Zerry,Hero,Rooney,Jeongnam,Kikr,Rilla,Mush", "status": "구독중", "a": "1인당 211.2달러", "m": "5108", "c": "연결제", "sd": "2023-08-05", "ed": "", "note": ""}, {"id": 6, "s": "본인확인 서비스(PASS)", "d": "매니저 본인확인 서비스(패스인증)", "u": "Yello", "status": "구독중", "a": "2,136,486원", "m": "계좌이체", "c": "연결제", "sd": "2023-09-18", "ed": "", "note": ""}, {"id": 7, "s": "마이크로소프트365(앱)", "d": "", "u": "dDubi,Sian,Funky,Junta,Q,Aki,Teddy,Hook,Mush,Rami,Moomin", "status": "구독중", "a": "1인당 11,990원", "m": "5025", "c": "월결제", "sd": "2023-10-18", "ed": "", "note": ""}, {"id": 8, "s": "Zapier", "d": "앱과 앱을 연결해 업무를 자동화할 수 있게 도와주는 노-코드 서비스입니다. 리서처 생산성 향상을 위해 공용으로 사용해요.", "u": "", "status": "구독중", "a": "3,468달러", "m": "3769", "c": "연결제", "sd": "2023-10-28", "ed": "", "note": ""}, {"id": 9, "s": "플렉스", "d": "HR 데이터를 한 곳에 모아 연결하고, AI로 자동화하고 맥락을 더해, 문제를 근본부터 해결합니다.", "u": "", "status": "구독중", "a": "1인당 7,700원", "m": "6294", "c": "월결제", "sd": "2023-11-01", "ed": "", "note": ""}, {"id": 10, "s": "마이크로소프트365(웹)", "d": "", "u": "Sante,Chovy,Zerry,Peach,MewTwo,Lark,Aqoo", "status": "구독중", "a": "1인당 8,910원", "m": "5025", "c": "월결제", "sd": "2023-11-03", "ed": "", "note": ""}, {"id": 11, "s": "에어테이블(전체)", "d": "외부 데이터 베이스를 만들고 관리할 수 있는 도구예요. DB안에서 반복 업무를 자동화할 수 있고, 다른 앱과 연결에 워크플로를 구축할 수 있습니다.", "u": "", "status": "구독중", "a": "240달러", "m": "3769", "c": "연결제", "sd": "2023-11-03", "ed": "", "note": ""}, {"id": 12, "s": "에어테이블(피컬 워크스페이스)", "d": "외부 데이터 베이스를 만들고 관리할 수 있는 도구예요. DB안에서 반복 업무를 자동화할 수 있고, 다른 앱과 연결에 워크플로를 구축할 수 있습니다.", "u": "Rilla,Burns,MewTwo", "status": "구독중", "a": "240달러", "m": "3769", "c": "연결제", "sd": "2023-11-07", "ed": "", "note": ""}, {"id": 13, "s": "우피(oopy)", "d": "노션 페이지 커스텀 툴- 플랩풋볼 약관 및 정책을 노션에서 관리- 커스텀 도메인을 지원", "u": "MacGook", "status": "구독중", "a": "6,490원", "m": "3819", "c": "월결제", "sd": "2023-11-20", "ed": "", "note": ""}, {"id": 14, "s": "에어테이블(편성 통합)", "d": "외부 데이터 베이스를 만들고 관리할 수 있는 도구예요. DB안에서 반복 업무를 자동화할 수 있고, 다른 앱과 연결에 워크플로를 구축할 수 있습니다.", "u": "", "status": "구독중", "a": "240달러", "m": "3769", "c": "연결제", "sd": "2023-11-27", "ed": "", "note": ""}, {"id": 15, "s": "Vercel Pro Plan", "d": "Vercel - 프론트엔드 인프라 툴", "u": "Rooney,Beaver,Turkey,Pepe", "status": "구독중", "a": "1인당 20달러 + 추가사용량에 따라 과금", "m": "7914", "c": "월결제", "sd": "2024-01-04", "ed": "", "note": ""}, {"id": 16, "s": "Artlist", "d": "콘텐츠 제작 음원 사이트 구독", "u": "Zerry", "status": "구독중", "a": "299달러", "m": "6302", "c": "연결제", "sd": "2024-03-31", "ed": "", "note": ""}, {"id": 17, "s": "채널톡(구장주)", "d": "1. 마케팅 기능 사용시 문자 또는 소셜미디어로 발송하는 경우 - 거의 없음2. 팔로업 알림 비용 - 4분 30초 이상 움직임이 없거나, 다른 화면을 보고있는 경우 발송 3. 카카오 상담톡 비용 - 24시간 단위, ", "u": "", "status": "구독중", "a": "사용량에 따라 상이", "m": "3751", "c": "월결제", "sd": "2024-07-26", "ed": "", "note": ""}, {"id": 18, "s": "채널톡(매니저)", "d": "1. 마케팅 기능 사용시 문자 또는 소셜미디어로 발송하는 경우 - 거의 없음2. 팔로업 알림 비용 - 4분 30초 이상 움직임이 없거나, 다른 화면을 보고있는 경우 발송 3. 매니저 채널에서 새 상담을 여는 경우 -", "u": "", "status": "구독중", "a": "사용량에 따라 상이", "m": "3751", "c": "월결제", "sd": "2024-07-26", "ed": "", "note": ""}, {"id": 19, "s": "채널톡(플랩풋볼)", "d": "1. 마케팅 기능 사용시 문자 또는 소셜미디어로 발송하는 경우 - 거의 없음2. 팔로업 알림 비용 - 4분 30초 이상 움직임이 없거나, 다른 화면을 보고있는 경우 발송 3. 알프 초과 비용 - 계약된 건 수 외 초", "u": "", "status": "구독중", "a": "사용량에 따라 상이", "m": "3751", "c": "월결제", "sd": "2024-07-26", "ed": "", "note": ""}, {"id": 20, "s": "채널톡(구장주)", "d": "비즈니스를 위한 커뮤니케이션 채널", "u": "", "status": "구독중", "a": "(25년) 2,145,000원", "m": "계좌이체", "c": "연결제", "sd": "2024-07-26", "ed": "", "note": ""}, {"id": 21, "s": "채널톡(매니저)", "d": "비즈니스를 위한 커뮤니케이션 채널", "u": "", "status": "구독중", "a": "(25년) 7,656,000원", "m": "계좌이체", "c": "연결제", "sd": "2024-07-26", "ed": "", "note": ""}, {"id": 22, "s": "채널톡(플랩풋볼)", "d": "비즈니스를 위한 커뮤니케이션 채널", "u": "", "status": "구독중", "a": "(25년) 34,320,000원", "m": "계좌이체", "c": "연결제", "sd": "2024-07-26", "ed": "", "note": ""}, {"id": 23, "s": "구글 클라우드", "d": "", "u": "Stone", "status": "구독중", "a": "약 20만원 / 사용량에 따라 상이", "m": "계좌이체", "c": "월결제", "sd": "2024-08-31", "ed": "", "note": ""}, {"id": 24, "s": "JetBrains", "d": "PyCharm", "u": "Jeongnam", "status": "구독중", "a": "10.89달러", "m": "2893", "c": "월결제", "sd": "2024-10-11", "ed": "", "note": ""}, {"id": 25, "s": "JetBrains", "d": "WebStorm", "u": "Jeongnam", "status": "구독중", "a": "7.59달러", "m": "2893", "c": "월결제", "sd": "2024-10-11", "ed": "", "note": ""}, {"id": 26, "s": "자버", "d": "전자계약, 증명서, 정보요청 등 문서 관리", "u": "Burns,Mush", "status": "구독중", "a": "계약문서 1100원, 일반문서 55원", "m": "3769", "c": "월결제", "sd": "2024-10-12", "ed": "", "note": "기존) 5,900원(고정요금제) -> 건당 과금으로 변경 251128"}, {"id": 27, "s": "GITHUB", "d": "개발자들이 코드를 공유하고 협업할 수 있는 플랫폼, 코드 저장소 Github 툴 비용입니다.", "u": "Rooney,Kikr,Woz,Rokoon,MacGook,DDao,endo,Hero,Jeongnam,Beaver,Turkey,Pepe,Cus", "status": "구독중", "a": "1인당 4달러", "m": "2893", "c": "월결제", "sd": "2024-10-14", "ed": "", "note": "251119 벨 제외(퇴사)"}, {"id": 28, "s": "JetBrains", "d": "PyCharm ide (개발도구)", "u": "DDao", "status": "구독중", "a": "8.69달러", "m": "2377", "c": "월결제", "sd": "2024-10-18", "ed": "", "note": ""}, {"id": 29, "s": "SENTRY", "d": "개발팀에서 에러 추적 관리를 위한 툴인 Sentry 비용을 자동 결제 합니다.", "u": "", "status": "구독중", "a": "기본 29달러 /추가 예산 40달러", "m": "2893", "c": "월결제", "sd": "2024-10-26", "ed": "", "note": "추가예산 30달러 -> 40달러(11/24일 업그레이드)"}, {"id": 30, "s": "모두싸인(서플라이+스타디움)", "d": "전자계약 서비스/Team 월정액 + 월 10건 추가 제공(1년)", "u": "", "status": "구독중", "a": "39,900", "m": "5025", "c": "월결제", "sd": "2024-11-12", "ed": "", "note": ""}, {"id": 31, "s": "폴인", "d": "'일하는 나'를 위한 인사이트, 폴인", "u": "Rami", "status": "구독중", "a": "14,800원", "m": "2411", "c": "월결제", "sd": "2024-12-07", "ed": "", "note": ""}, {"id": 32, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "HODOO", "status": "구독중", "a": "20달러", "m": "5108", "c": "월결제", "sd": "2025-01-14", "ed": "", "note": "1차구독 2025.10.23-2025.11.25"}, {"id": 33, "s": "핵클", "d": "고객 행동 데이터와 AI를 활용해 A/B 테스트, 데이터 분석, 개인화 CRM 마케팅 솔루션을 제공하며, 기능 플래그 및 원격 구성을 지원합니다", "u": "", "status": "구독중", "a": "(15개월) 33,000,000원", "m": "계좌이체", "c": "연결제", "sd": "2025-01-15", "ed": "", "note": "2026.03.31까지"}, {"id": 34, "s": "미소", "d": "정기청소", "u": "Burns", "status": "구독중", "a": "1회당 70,000원", "m": "5025", "c": "월결제", "sd": "2025-01-18", "ed": "", "note": ""}, {"id": 35, "s": "모두싸인(매니저)", "d": "전자계약 서비스/2,800건 유료 + 200건 무상 (총 3,000건) 조건의 견적으로 재계약 진행 완료", "u": "", "status": "구독중", "a": "2,464,000원", "m": "계좌이체", "c": "연결제", "sd": "2025-01-22", "ed": "", "note": ""}, {"id": 36, "s": "코드잇", "d": "SQL 강의", "u": "Aki,SALT", "status": "구독중", "a": "39,800원", "m": "5025", "c": "월결제", "sd": "2025-01-24", "ed": "", "note": ""}, {"id": 37, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "dDubi", "status": "구독중", "a": "22달러", "m": "5041", "c": "월결제", "sd": "2025-02-06", "ed": "", "note": ""}, {"id": 38, "s": "supabase", "d": "MVP 테스트용 데이터베이스 (무료 플랜 초과)", "u": "Cus", "status": "구독중", "a": "25달러", "m": "8405", "c": "월결제", "sd": "2025-03-18", "ed": "", "note": ""}, {"id": 39, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Stone", "status": "구독중", "a": "22달러", "m": "6385", "c": "월결제", "sd": "2025-03-20", "ed": "", "note": ""}, {"id": 40, "s": "Github Copilot", "d": "AI 매치 관련 웹/AI 개발 ( IDE + AI)", "u": "Beaver", "status": "구독중", "a": "10달러", "m": "0203", "c": "월결제", "sd": "2025-03-26", "ed": "", "note": ""}, {"id": 41, "s": "Github Copilot", "d": "AI 매치 관련 웹/AI 개발 ( IDE + AI)", "u": "Pepe", "status": "구독중", "a": "10달러", "m": "8496", "c": "월결제", "sd": "2025-03-27", "ed": "", "note": ""}, {"id": 42, "s": "AWS-개발", "d": "클라우드 컴퓨팅 플랫폼을 구성하는 원격 컴퓨팅 서비스(웹 서비스라고도 함) 모음", "u": "", "status": "구독중", "a": "약 1800원 / 사용량에 따라 상이", "m": "계좌이체", "c": "월결제", "sd": "2025-03-31", "ed": "", "note": ""}, {"id": 43, "s": "Datadog", "d": "모니터링 분석 도구", "u": "", "status": "구독중", "a": "약 200만원 / 사용량에 따라 상이", "m": "계좌이체", "c": "월결제", "sd": "2025-03-31", "ed": "", "note": ""}, {"id": 44, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Q", "status": "구독중", "a": "22달러", "m": "3744", "c": "월결제", "sd": "2025-04-02", "ed": "", "note": ""}, {"id": 45, "s": "어도비", "d": "사진, 동영상, 이미지와 그래픽 디자인 등의 미디어에 관한 작업을 목적으로 하는 소프트웨어/ 모든앱 1,366,200원 일러스트 578,600 포토샵 578,600원", "u": "Cus,Zerry,Rilla,HODOO,Sante,Aqoo", "status": "구독중", "a": "9,724,000원", "m": "계좌이체/분납", "c": "연결제", "sd": "2025-05-07", "ed": "", "note": ""}, {"id": 46, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Sante", "status": "구독중", "a": "22달러", "m": "8989", "c": "월결제", "sd": "2025-05-21", "ed": "", "note": ""}, {"id": 47, "s": "SLACK", "d": "클라우드 기반 팀 협업 도구/사용자 추가, 삭제에 대한 금액만 추가로 결제/연 결제 Pro 플랜", "u": "", "status": "구독중", "a": "1인당 7.975달러", "m": "3728", "c": "연결제", "sd": "2025-06-10", "ed": "", "note": ""}, {"id": 48, "s": "NOTION", "d": "프로젝트 관리 및 기록 소프트웨어/사용자 추가, 삭제에 대한 금액만 추가로 결제", "u": "", "status": "구독중", "a": "1인당 120달러", "m": "3769", "c": "연결제", "sd": "2025-06-16", "ed": "", "note": ""}, {"id": 49, "s": "산돌", "d": "폰트 구독료 /산돌라이프 플랜(최대 10인)/254패밀리 887종", "u": "Cus,HODOO,Zerry", "status": "구독중", "a": "1,056,000원", "m": "3769", "c": "연결제", "sd": "2025-07-04", "ed": "", "note": ""}, {"id": 50, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Peach", "status": "구독중", "a": "22달러", "m": "3728", "c": "월결제", "sd": "2025-07-17", "ed": "", "note": ""}, {"id": 51, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Aqoo", "status": "구독중", "a": "20달러", "m": "7271", "c": "월결제", "sd": "2025-07-21", "ed": "", "note": ""}, {"id": 52, "s": "Midjourney", "d": "이미지를 생성하는 인공지능 프로그램", "u": "Cus", "status": "구독중", "a": "66달러", "m": "8405", "c": "월결제", "sd": "2025-07-23", "ed": "", "note": ""}, {"id": 53, "s": "아웃스탠딩", "d": "쉽고 재미있는 IT뉴스, 아웃스탠딩!", "u": "Minu", "status": "구독중", "a": "94,800원", "m": "3728", "c": "연결제", "sd": "2025-08-03", "ed": "", "note": ""}, {"id": 54, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Hook", "status": "구독중", "a": "22달러", "m": "7658", "c": "월결제", "sd": "2025-08-09", "ed": "", "note": ""}, {"id": 55, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "YA-MU-CHI", "status": "구독중", "a": "22달러", "m": "3827", "c": "월결제", "sd": "2025-08-14", "ed": "", "note": ""}, {"id": 56, "s": "OPEN AI", "d": "chatGPI API 자동 결제 (잔액 10달러 이하시 100달러까지 자동 결제)", "u": "Beaver,Turkey,Pepe", "status": "구독중", "a": "사용량에 따라 상이", "m": "0203", "c": "월결제", "sd": "2025-08-14", "ed": "", "note": ""}, {"id": 57, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "SALT", "status": "구독중", "a": "22달러", "m": "8295", "c": "월결제", "sd": "2025-09-04", "ed": "", "note": ""}, {"id": 58, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Teddy", "status": "구독중", "a": "22달러", "m": "1893", "c": "월결제", "sd": "2025-09-10", "ed": "", "note": ""}, {"id": 59, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "IRON", "status": "구독중", "a": "20달러", "m": "3769", "c": "월결제", "sd": "2025-09-30", "ed": "", "note": ""}, {"id": 60, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Zerry", "status": "구독중", "a": "22달러", "m": "6302", "c": "월결제", "sd": "2025-10-18", "ed": "", "note": ""}, {"id": 61, "s": "AWS-AI", "d": "클라우드 컴퓨팅 플랫폼을 구성하는 원격 컴퓨팅 서비스(웹 서비스라고도 함) 모음", "u": "", "status": "구독중", "a": "약 30만원 / 사용량에 따라 상이", "m": "계좌이체", "c": "월결제", "sd": "2025-10-22", "ed": "", "note": ""}, {"id": 62, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Pire", "status": "구독중", "a": "22달러", "m": "3369", "c": "월결제", "sd": "2025-10-29", "ed": "", "note": ""}, {"id": 63, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Yello", "status": "구독중", "a": "20달러", "m": "5034", "c": "월결제", "sd": "2025-11-05", "ed": "", "note": ""}, {"id": 64, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Minu", "status": "구독중", "a": "22달러", "m": "8173", "c": "월결제", "sd": "2025-11-14", "ed": "", "note": ""}, {"id": 65, "s": "구글스토리지 1TB", "d": "저장용량 1TB", "u": "", "status": "구독중", "a": "28달러", "m": "5493", "c": "월결제", "sd": "2025-11-15", "ed": "", "note": ""}, {"id": 66, "s": "더브이씨", "d": "투자 관련 정보", "u": "Q", "status": "구독중", "a": "330000", "m": "3744", "c": "월결제", "sd": "2025-11-19", "ed": "2025-12-18", "note": "1개월 사용"}, {"id": 67, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Sian", "status": "구독중", "a": "20달러", "m": "5017", "c": "월결제", "sd": "2025-11-20", "ed": "", "note": ""}, {"id": 68, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Woz", "status": "구독중", "a": "110달러", "m": "2893", "c": "월결제", "sd": "2025-11-21", "ed": "", "note": "26/01/09 요금제 업그레이드 결제일 9일로 변경(22달러-110달러)"}, {"id": 69, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Moomin", "status": "구독중", "a": "22달러", "m": "5901", "c": "월결제", "sd": "2025-11-22", "ed": "", "note": ""}, {"id": 70, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Lark", "status": "구독중", "a": "20달러", "m": "5041", "c": "월결제", "sd": "2025-11-25", "ed": "", "note": "11/25 토큰 부족으로 맥스플랜 업그레이드 월 결제일 11일에서 25일로 변경12/25 요금제 다운그레이드"}, {"id": 71, "s": "linkedin", "d": "링크드인 비즈니스 기능 결제(월 비용)", "u": "MewTwo", "status": "구독중", "a": "70000", "m": "6369", "c": "월결제", "sd": "2025-11-27", "ed": "", "note": ""}, {"id": 72, "s": "Airbridge", "d": "데이터 수집, 딥링크 관리", "u": "", "status": "구독중", "a": "27,588,000원", "m": "계좌이체", "c": "연결제", "sd": "2025-12-01", "ed": "", "note": ""}, {"id": 73, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Rami", "status": "구독중", "a": "22달러", "m": "2411", "c": "월결제", "sd": "2025-12-19", "ed": "", "note": ""}, {"id": 74, "s": "TIRO", "d": "회의 AI 기록 툴 구독 (플랩 구글 공용 계정)", "u": "Zerry,LIME,Stone,new_jean", "status": "구독중", "a": "29달러", "m": "6302", "c": "월결제", "sd": "2026-01-05", "ed": "", "note": ""}, {"id": 75, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Burns", "status": "구독중", "a": "20달러", "m": "3936", "c": "월결제", "sd": "2026-01-06", "ed": "", "note": ""}, {"id": 76, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Rooney", "status": "구독중", "a": "110달러", "m": "7914", "c": "월결제", "sd": "2026-01-09", "ed": "", "note": ""}, {"id": 77, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "endo", "status": "구독중", "a": "110달러", "m": "6167", "c": "월결제", "sd": "2026-01-09", "ed": "", "note": ""}, {"id": 78, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Jeongnam", "status": "구독중", "a": "110달러", "m": "5058", "c": "월결제", "sd": "2026-01-09", "ed": "", "note": ""}, {"id": 79, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Cus", "status": "구독중", "a": "110달러", "m": "8405", "c": "월결제", "sd": "2026-01-10", "ed": "", "note": ""}, {"id": 80, "s": "Jira(atlassian)", "d": "AI파이프라인 자동화를 위한 도구 정기 결제 건(standard)", "u": "Rooney,Kikr,Woz,Rokoon,MacGook,DDao,endo,Hero,Jeongnam,Stone,Sian", "status": "구독중", "a": "1인당 9.05 달러", "m": "8292", "c": "월결제", "sd": "2026-01-11", "ed": "", "note": "1월 10일 업그레이드 했을 때, 실제 활성 사용자 3명이었어서 3인 비용으로 청구이전에 무료버전 사용중이었음"}, {"id": 81, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "DDao", "status": "구독중", "a": "110달러", "m": "2377", "c": "월결제", "sd": "2026-01-13", "ed": "", "note": ""}, {"id": 82, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Mush", "status": "구독중", "a": "22달러", "m": "5025", "c": "월결제", "sd": "2026-01-16", "ed": "", "note": ""}, {"id": 83, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "MacGook", "status": "구독중", "a": "110달러", "m": "3819", "c": "월결제", "sd": "2026-01-17", "ed": "", "note": ""}, {"id": 84, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "LIME", "status": "구독중", "a": "20달러", "m": "6302", "c": "월결제", "sd": "2026-01-19", "ed": "", "note": ""}, {"id": 85, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Rokoon", "status": "구독중", "a": "110달러", "m": "5066", "c": "월결제", "sd": "2026-01-19", "ed": "", "note": ""}, {"id": 86, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Junta", "status": "구독중", "a": "20달러", "m": "2430", "c": "월결제", "sd": "2026-01-20", "ed": "", "note": ""}, {"id": 87, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Hero", "status": "구독중", "a": "110달러", "m": "2763", "c": "월결제", "sd": "2026-01-25", "ed": "", "note": ""}, {"id": 88, "s": "Airbyte", "d": "Kevin(사내 데이터 분석 도구) 개발 및 운영을 위한 데이터 관리(ELT) 서비스", "u": "Stone", "status": "구독중", "a": "10달러", "m": "6385", "c": "월결제", "sd": "2026-01-26", "ed": "", "note": "과금 고려하면 당분간 15-20$ 이하 예상"}, {"id": 89, "s": "supabase", "d": "Kevin(사내 데이터 분석 도구) 개발 및 운영을 위한 데이터 관리(DB) 서비스", "u": "Stone", "status": "구독중", "a": "25달러", "m": "6385", "c": "월결제", "sd": "2026-01-26", "ed": "", "note": ""}, {"id": 90, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Pucca", "status": "구독중", "a": "22달러", "m": "1997", "c": "월결제", "sd": "2026-01-31", "ed": "", "note": ""}, {"id": 91, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Kikr", "status": "구독중", "a": "110달러", "m": "8292", "c": "월결제", "sd": "2026-02-04", "ed": "", "note": ""}, {"id": 92, "s": "genspark", "d": "자료 제작을 위해 2~3개월동안 사용", "u": "Rilla", "status": "구독중", "a": "27.49달러", "m": "6294", "c": "월결제", "sd": "2026-02-23", "ed": "", "note": ""}, {"id": 93, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Turkey", "status": "구독중", "a": "20달러", "m": "8456", "c": "월결제", "sd": "2026-02-25", "ed": "", "note": ""}, {"id": 94, "s": "Resend", "d": "글로벌 이메일 자동발송 서비스", "u": "IRON", "status": "구독중", "a": "20달러", "m": "3769", "c": "월결제", "sd": "2026-02-27", "ed": "", "note": ""}, {"id": 95, "s": "Claude", "d": "Claude Plus 월 구독 (AI)", "u": "Aki", "status": "구독중", "a": "22달러", "m": "0623", "c": "월결제", "sd": "2026-03-04", "ed": "", "note": ""}, {"id": 96, "s": "어도비 포토샵", "d": "\"다양한 조직 문화 컨텐츠 제작을 위해 사진 촬영, 편집을 진행하고 있습니다. 실제로 편집의 유무가 콘텐츠의 퀄리티를 좌우합니다. 여러 가지 무료 도구를 활용하지 않고, 한 가지 툴만 사용함으로 써 얻는 시간 절약,", "u": "Rilla", "status": "구독종료", "a": "46,200원", "m": "6294", "c": "월결제", "sd": "2024-08-21", "ed": "2025-05-02", "note": "연결제 플랜으로 이동"}, {"id": 97, "s": "우피(oopy)", "d": "구장주 가이드 노션 페이지를 보다 나은 가독성을 위해 우피로 게시해요.", "u": "Rami", "status": "구독종료", "a": "6,490원", "m": "2411", "c": "월결제", "sd": "2024-10-06", "ed": "2026-03-10", "note": ""}, {"id": 98, "s": "커서", "d": "개발툴 활용( IDE + AI)", "u": "Rooney", "status": "구독종료", "a": "20달러", "m": "7914", "c": "월결제", "sd": "2025-01-16", "ed": "2026-01-09", "note": ""}, {"id": 99, "s": "커서", "d": "개발툴 활용( IDE + AI)", "u": "Woz", "status": "구독종료", "a": "20달러", "m": "2893", "c": "월결제", "sd": "2025-01-22", "ed": "2025-11-21", "note": ""}, {"id": 100, "s": "커서", "d": "개발툴 활용( IDE + AI)", "u": "endo", "status": "구독종료", "a": "20달러", "m": "6167", "c": "월결제", "sd": "2025-01-26", "ed": "2025-12-22", "note": ""}, {"id": 101, "s": "커서", "d": "개발툴 활용( IDE + AI)", "u": "MacGook", "status": "구독종료", "a": "20달러", "m": "3819", "c": "월결제", "sd": "2025-02-02", "ed": "2026-02-02", "note": ""}, {"id": 102, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Rami", "status": "구독종료", "a": "22달러", "m": "2411", "c": "월결제", "sd": "2025-02-04", "ed": "2025-12-19", "note": ""}, {"id": 103, "s": "커서", "d": "개발툴 활용( IDE + AI)", "u": "IRON", "status": "구독종료", "a": "20달러", "m": "3769", "c": "월결제", "sd": "2025-02-05", "ed": "2025-03-05", "note": ""}, {"id": 104, "s": "커서", "d": "개발툴 활용( IDE + AI)", "u": "Rokoon", "status": "구독종료", "a": "20달러", "m": "5066", "c": "월결제", "sd": "2025-02-17", "ed": "2026-01-19", "note": ""}, {"id": 105, "s": "커서", "d": "개발툴 활용( IDE + AI)", "u": "Sian", "status": "구독종료", "a": "20달러", "m": "5017", "c": "월결제", "sd": "2025-02-19", "ed": "2025-11-21", "note": ""}, {"id": 106, "s": "커서", "d": "개발툴 활용( IDE + AI)", "u": "Cus", "status": "구독종료", "a": "60달러", "m": "8405", "c": "월결제", "sd": "2025-03-04", "ed": "2025-11-21", "note": "최근에 토큰 부족으로 요금제 업그레이드 - 현재 해지"}, {"id": 107, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Yello", "status": "구독종료", "a": "20달러", "m": "5034", "c": "월결제", "sd": "2025-03-28", "ed": "2025-11-25", "note": ""}, {"id": 108, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Mush", "status": "구독종료", "a": "20달러", "m": "5025", "c": "월결제", "sd": "2025-04-03", "ed": "2026-01-16", "note": ""}, {"id": 109, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "HODOO", "status": "구독종료", "a": "20달러", "m": "5108", "c": "월결제", "sd": "2025-04-14", "ed": "2026-01-14", "note": ""}, {"id": 110, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Aki", "status": "구독종료", "a": "22달러", "m": "0623", "c": "월결제", "sd": "2025-04-23", "ed": "2026-03-04", "note": ""}, {"id": 111, "s": "커서", "d": "개발툴 활용( IDE + AI)", "u": "Hero", "status": "구독종료", "a": "20달러", "m": "3329", "c": "월결제", "sd": "2025-06-12", "ed": "", "note": ""}, {"id": 112, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Pucca", "status": "구독종료", "a": "20달러", "m": "1997", "c": "월결제", "sd": "2025-08-26", "ed": "2026-02-02", "note": ""}, {"id": 113, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Moomin", "status": "구독종료", "a": "22달러", "m": "5901", "c": "월결제", "sd": "2025-09-03", "ed": "2025-11-22", "note": ""}, {"id": 114, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Chovy", "status": "구독종료", "a": "22달러", "m": "6443", "c": "월결제", "sd": "2025-10-15", "ed": "2025-11-25", "note": ""}, {"id": 115, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Kikr", "status": "구독종료", "a": "22달러", "m": "3785", "c": "월결제", "sd": "2025-11-09", "ed": "2026-01-09", "note": ""}, {"id": 116, "s": "ChatGPT", "d": "ChatGPT Plus 월 구독 (AI)", "u": "Cus", "status": "구독종료", "a": "22달러", "m": "8405", "c": "월결제", "sd": "2025-11-18", "ed": "2026-01-11", "note": ""}];
+let nextId = Math.max(...DATA.map(function(d){return d.id;})) + 1;
+
+// ── 날짜 ─────────────────────────────────────
+var TODAY = new Date();
+TODAY.setHours(0,0,0,0);
+function _p(n){return String(n).padStart(2,'0');}
+var TODAY_STR = TODAY.getFullYear()+'-'+_p(TODAY.getMonth()+1)+'-'+_p(TODAY.getDate());
+const IS_DEPLOYED = window.location.hostname !== 'localhost' && !window.location.protocol.startsWith('file');
+
+// ── 상태 ─────────────────────────────────────
+var APP_MODE = null;
+var ADMIN_PW = 'dnvwer0915!';
+var PW_MODE = 'login';
+var SORT_COL = null, SORT_ASC = true;
+var CY_M = '월결제', ST_M = '구독중';
+var editId = null;
+
+// ── 저장 ─────────────────────────────────────
+async function serverSave(){
+  if(!IS_DEPLOYED) return;
+  try {
+    await fetch(_SB_URL+'/rest/v1/subscriptions', {
+      method:'POST', headers:_SB_HDR, body:JSON.stringify(DATA)
+    });
+    var ids = DATA.map(function(d){return d.id;}).join(',');
+    await fetch(_SB_URL+'/rest/v1/subscriptions?id=not.in.('+ids+')', {
+      method:'DELETE', headers:_SB_HDR
+    });
+  } catch(e){console.warn('저장실패',e);}
+}
+
+// ── 로그인 ───────────────────────────────────
+document.getElementById('admin-btn').onclick = function(){
+  PW_MODE = 'login';
+  document.getElementById('pw-title').textContent = '🔒 관리자 로그인';
+  document.getElementById('pw-sub').textContent = '관리자 비밀번호를 입력하세요';
+  document.getElementById('pw-input').value = '';
+  document.getElementById('pw-err').style.display = 'none';
+  document.getElementById('pw-overlay').classList.add('open');
+  setTimeout(function(){document.getElementById('pw-input').focus();}, 100);
+};
+document.getElementById('researcher-btn').onclick = function(){
+  enterResearcher();
+};
+document.getElementById('pw-cancel-btn').onclick = function(){
+  document.getElementById('pw-overlay').classList.remove('open');
+};
+document.getElementById('pw-ok-btn').onclick = function(){
+  checkPw();
+};
+document.getElementById('pw-input').onkeydown = function(e){
+  if(e.key === 'Enter') checkPw();
+};
+document.getElementById('pw-change-btn').onclick = function(){
+  PW_MODE = 'change';
+  document.getElementById('pw-title').textContent = '🔑 비밀번호 변경';
+  document.getElementById('pw-sub').textContent = '현재비밀번호|새비밀번호 형식으로 입력';
+  document.getElementById('pw-input').value = '';
+  document.getElementById('pw-err').style.display = 'none';
+  document.getElementById('pw-overlay').classList.add('open');
+  setTimeout(function(){document.getElementById('pw-input').focus();}, 100);
+};
+document.getElementById('admin-logout-btn').onclick = function(){
+  logoutToLogin();
+};
+document.getElementById('rv-logout-btn').onclick = function(){
+  logoutToLogin();
+};
+
+function checkPw(){
+  var val = document.getElementById('pw-input').value;
+  if(PW_MODE === 'change'){
+    var parts = val.split('|');
+    if(parts.length !== 2){showPwErr('현재비밀번호|새비밀번호 형식으로 입력해주세요'); return;}
+    if(parts[0] !== ADMIN_PW){showPwErr('현재 비밀번호가 올바르지 않습니다'); return;}
+    if(parts[1].length < 4){showPwErr('새 비밀번호는 4자 이상이어야 합니다'); return;}
+    ADMIN_PW = parts[1];
+    document.getElementById('pw-overlay').classList.remove('open');
+    showToast('✓ 비밀번호가 변경됐어요');
+  } else {
+    if(val !== ADMIN_PW){showPwErr('비밀번호가 올바르지 않습니다'); return;}
+    document.getElementById('pw-overlay').classList.remove('open');
+    enterAdmin();
+  }
+}
+function showPwErr(msg){
+  var el = document.getElementById('pw-err');
+  el.textContent = msg; el.style.display = 'block';
+}
+function enterAdmin(){
+  APP_MODE = 'admin';
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('researcher-view').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+}
+function enterResearcher(){
+  APP_MODE = 'researcher';
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('researcher-view').style.display = 'block';
+  initRV();
+}
+function logoutToLogin(){
+  APP_MODE = null;
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('researcher-view').style.display = 'none';
+  document.getElementById('app').style.display = 'none';
+}
+
+// ── 탭 ───────────────────────────────────────
+function showTab(id, btn){
+  var tabs = ['dash','list','annual','zapier'];
+  tabs.forEach(function(t){
+    var el = document.getElementById('tab-'+t);
+    if(el) el.style.display = t===id?'block':'none';
+  });
+  document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('active');});
+  if(btn) btn.classList.add('active');
+  if(id==='list'){document.getElementById('cat-chips').innerHTML='';renderList();}
+  if(id==='annual') renderAnnual();
+  if(id==='zapier') checkZapier();
+}
+
+// ── 날짜 계산 ─────────────────────────────────
+function calcNext(d){
+  if(d.status==='구독종료') return d.ed||'';
+  if(!d.sd) return '';
+  var start = new Date(d.sd);
+  if(isNaN(start)) return '';
+  if(d.c==='1회성') return d.sd;
+  var next = new Date(start);
+  if(d.c==='연결제'){
+    while(next <= TODAY) next.setFullYear(next.getFullYear()+1);
+  } else {
+    while(next <= TODAY) next.setMonth(next.getMonth()+1);
+  }
+  return next.getFullYear()+'-'+_p(next.getMonth()+1)+'-'+_p(next.getDate());
+}
+function daysUntil(dateStr){
+  if(!dateStr) return 9999;
+  var d = new Date(dateStr); d.setHours(0,0,0,0);
+  return Math.round((d-TODAY)/86400000);
+}
+
+// ── 통계 ─────────────────────────────────────
+function calcStats(){
+  var active = DATA.filter(function(d){return d.status==='구독중';}).length;
+  var total = DATA.length;
+  var soon = DATA.filter(function(d){
+    if(d.status!=='구독중') return false;
+    var n = calcNext(d); if(!n) return false;
+    var days = daysUntil(n);
+    return days>=0&&days<=7;
+  }).length;
+  var annual = DATA.filter(function(d){
+    if(d.status!=='구독중') return false;
+    var n = calcNext(d); if(!n) return false;
+    var days = daysUntil(n);
+    return d.c==='연결제'&&days>=0&&days<=90;
+  }).length;
+  return {active:active, total:total, soon:soon, annual:annual};
+}
+
+// ── 대시보드 렌더 ─────────────────────────────
+function renderDash(){
+  var st = calcStats();
+  var sg = document.getElementById('stat-grid');
+  if(sg){
+    sg.innerHTML =
+      '<div class="sc" style="--ac:var(--blue)">' +
+        '<div class="sc-l">구독 중</div>' +
+        '<div class="sc-v">'+st.active+'개</div>' +
+        '<div class="sc-s">활성 구독</div>' +
+      '</div>' +
+      '<div class="sc" style="--ac:var(--text3)">' +
+        '<div class="sc-l">전체 내역</div>' +
+        '<div class="sc-v">'+st.total+'건</div>' +
+        '<div class="sc-s">종료 포함</div>' +
+      '</div>' +
+      '<div class="sc" style="--ac:var(--red)">' +
+        '<div class="sc-l">7일 내 결제</div>' +
+        '<div class="sc-v" style="color:var(--red)">'+st.soon+'건</div>' +
+        '<div class="sc-s">' + (st.soon > 0 ? '확인이 필요해요' : '여유 있어요') + '</div>' +
+      '</div>' +
+      '<div class="sc" style="--ac:var(--amber)">' +
+        '<div class="sc-l">연결제 알림</div>' +
+        '<div class="sc-v" style="color:var(--amber)">'+st.annual+'건</div>' +
+        '<div class="sc-s">90일 이내 갱신</div>' +
+      '</div>';
+  }
+  // 결제 예정 그룹화
+  var upcomingAll = DATA.filter(function(d){
+    if(d.status!=='구독중') return false;
+    var n = calcNext(d); if(!n) return false;
+    return daysUntil(n) >= 0 && daysUntil(n) <= 30;
+  }).sort(function(a,b){return calcNext(a).localeCompare(calcNext(b));});
+
+  // 날짜별 그룹
+  var groups = {};
+  upcomingAll.forEach(function(d){
+    var n = calcNext(d);
+    if(!groups[n]) groups[n] = [];
+    groups[n].push(d);
+  });
+  var dc = document.getElementById('dash-content');
+  if(!dc) return;
+  var html = '<div class="sec-label">결제 예정 — 일자별</div>';
+  var dates = Object.keys(groups).sort();
+  if(dates.length === 0){
+    html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center;color:var(--text3);font-size:13px;">30일 내 결제 예정 없음</div>';
+  }
+  dates.forEach(function(dt){
+    var days = daysUntil(dt);
+    var cls = days<=3?'urg':days<=7?'warn':'';
+    var dpCls = days<=3?'urg':days<=7?'warn':'norm';
+    var label = days===0?'오늘':days===1?'내일':'D-'+days;
+    var dtObj = new Date(dt);
+    var dtFmt = dtObj.getFullYear()+'년 '+(dtObj.getMonth()+1)+'월 '+dtObj.getDate()+'일';
+    html += '<div class="dg '+cls+'">' +
+      '<div class="dg-head">' +
+        '<span class="dp '+dpCls+'">'+label+'</span>' +
+        '<span class="dg-head-title">'+dtFmt+'</span>' +
+        '<span class="dg-head-cnt">'+groups[dt].length+'건</span>' +
+      '</div>';
+    groups[dt].forEach(function(d){
+      html += '<div class="pay-row" onclick="openModal('+d.id+')">' +
+        '<div class="pay-info">' +
+          '<div class="pay-name">'+d.s+'</div>' +
+          '<div class="pay-user">'+(d.u||'')+' '+(d.m?'· '+d.m:'')+'</div>' +
+        '</div>' +
+        '<div class="pay-amt">'+(d.a||'')+'</div>' +
+      '</div>';
+    });
+    html += '</div>';
+  });
+  dc.innerHTML = html;
+}
+
+// ── 전체 목록 렌더 ───────────────────────────
+function initMsUser(){
+  var users = [];
+  DATA.forEach(function(d){ if(d.u){d.u.split(',').forEach(function(u){var t=u.trim();if(t&&users.indexOf(t)<0)users.push(t);});}});
+  users.sort();
+  var el = document.getElementById('ms-user-list');
+  if(!el) return;
+  el.innerHTML = users.map(function(u){
+    return '<div class="ms-item" data-val="'+u+'" onclick="toggleMsItem(\'ms-user\',\''+u.replace(/'/g,"\\'")+'\')"><div class="cb"></div>'+u+'</div>';
+  }).join('');
+}
+function initMsCard(){
+  var cards = [];
+  DATA.forEach(function(d){ if(d.m&&cards.indexOf(d.m)<0) cards.push(d.m); });
+  cards.sort();
+  var el = document.getElementById('ms-card-list');
+  if(!el) return;
+  el.innerHTML = cards.map(function(c){
+    return '<div class="ms-item" data-val="'+c+'" onclick="toggleMsItem(\'ms-card\',\''+c.replace(/'/g,"\\'")+'\')"><div class="cb"></div>'+c+'</div>';
+  }).join('');
+}
+function renderList(){
+  var q = (document.getElementById('g-search')||{value:''}).value.toLowerCase();
+  var stSel = getMsSel('ms-status');
+  var uSel = getMsSel('ms-user');
+  var cSel = getMsSel('ms-card');
+  var chips = [...document.querySelectorAll('#cat-chips .chip.sel')].map(function(c){return c.dataset.val;});
+
+  var rows = DATA.slice();
+  if(q) rows = rows.filter(function(d){
+    return (d.s||'').toLowerCase().includes(q)||(d.u||'').toLowerCase().includes(q)||(d.m||'').toLowerCase().includes(q)||(d.d||'').toLowerCase().includes(q);
+  });
+  if(stSel.length) rows = rows.filter(function(d){return stSel.includes(d.status);});
+  if(uSel.length) rows = rows.filter(function(d){return d.u&&uSel.some(function(u){return d.u.includes(u);});});
+  if(cSel.length) rows = rows.filter(function(d){return cSel.includes(d.m);});
+  if(chips.length) rows = rows.filter(function(d){
+    var svc = (d.s||'').toUpperCase();
+    return chips.some(function(ch){return svc.startsWith(ch);});
+  });
+
+  if(SORT_COL){
+    rows.sort(function(a,b){
+      var av = SORT_COL==='next'?calcNext(a):a[SORT_COL]||'';
+      var bv = SORT_COL==='next'?calcNext(b):b[SORT_COL]||'';
+      var r = av < bv ? -1 : av > bv ? 1 : 0;
+      return SORT_ASC ? r : -r;
+    });
+  }
+
+  var tbody = document.getElementById('list-body');
+  if(!tbody) return;
+  tbody.innerHTML = rows.map(function(d){
+    var next = calcNext(d);
+    var isSoon = d.status==='구독중'&&next&&daysUntil(next)>=0&&daysUntil(next)<=7;
+    var trCls = d.status==='구독종료'?'ended':'';
+    return '<tr class="'+trCls+' list-row" data-id="'+d.id+'" style="cursor:pointer;">' +
+      '<td><strong>'+d.s+'</strong>'+(d.source==='zapier'?'<span class="new-badge">NEW</span>':'')+'</td>' +
+      '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;color:var(--text3);">'+(d.d||'')+'</td>' +
+      '<td>'+(d.u||'')+'</td>' +
+      '<td style="font-family:var(--mono);">'+(d.a||'')+'</td>' +
+      '<td><span class="tag" style="background:'+(d.status==='구독중'?'var(--green-l)':'var(--surface2)')+';color:'+(d.status==='구독중'?'var(--green)':'var(--text3)')+';">'+(d.status||'')+'</span></td>' +
+      '<td><span class="tag" style="background:var(--blue-l);color:var(--blue);">'+(d.c||'')+'</span></td>' +
+      '<td style="font-family:var(--mono);font-size:12px;">'+(d.m||'')+'</td>' +
+      '<td style="font-family:var(--mono);font-size:12px;">'+(d.sd||'')+'</td>' +
+      '<td style="font-family:var(--mono);font-size:12px;color:'+(isSoon?'var(--red)':'var(--blue)')+';">'+next+'</td>' +
+      '<td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;color:var(--text3);">'+(d.note||'')+'</td>' +
+      '<td>' +
+        '<button class="status-btn '+(d.status==='구독중'?'on':'off')+'" onclick="event.stopPropagation();toggleStatus('+d.id+')">' +
+          (d.status==='구독중'?'구독중':'종료') +
+        '</button>' +
+      '</td>' +
+      '<td><button class="edit-btn" onclick="event.stopPropagation();openModal('+d.id+')">수정</button></td>' +
+    '</tr>';
+  }).join('');
+
+  document.getElementById('list-count').textContent = '총 '+rows.length+'건';
+
+  // 툴팁 바인딩
+  document.querySelectorAll('.list-row').forEach(function(tr){
+    var id = parseInt(tr.dataset.id);
+    var d = DATA.find(function(x){return x.id===id;});
+    if(!d) return;
+    tr.addEventListener('mouseenter', function(e){ showTooltip(d, e); });
+    tr.addEventListener('mousemove', function(e){ moveTooltip(e); });
+    tr.addEventListener('mouseleave', function(){ hideTooltip(); });
+    tr.addEventListener('click', function(){ openModal(id); });
+  });
+
+  // 초기화 버튼
+  var hasFilter = q||stSel.length||uSel.length||cSel.length||chips.length;
+  var resetBtn = document.getElementById('reset-all');
+  if(resetBtn) resetBtn.classList.toggle('show', !!hasFilter);
+}
+
+// ── 툴팁 ─────────────────────────────────────
+var _ttEl = null;
+function getTooltipEl(){
+  if(!_ttEl){
+    _ttEl = document.createElement('div');
+    _ttEl.className = 'tt-popup';
+    _ttEl.id = 'main-tooltip';
+    document.body.appendChild(_ttEl);
+  }
+  return _ttEl;
+}
+function showTooltip(d, e){
+  var tt = getTooltipEl();
+  tt.innerHTML =
+    '<div class="tt-row"><span class="tt-key">서비스</span><span class="tt-val">'+(d.s||'-')+'</span></div>' +
+    '<div class="tt-row"><span class="tt-key">내용</span><span class="tt-val">'+(d.d||'-')+'</span></div>' +
+    '<div class="tt-row"><span class="tt-key">사용자</span><span class="tt-val">'+(d.u||'-')+'</span></div>' +
+    '<div class="tt-row"><span class="tt-key">금액</span><span class="tt-val">'+(d.a||'-')+'</span></div>' +
+    '<div class="tt-row"><span class="tt-key">결제수단</span><span class="tt-val">'+(d.m||'-')+'</span></div>' +
+    '<div class="tt-row"><span class="tt-key">결제주기</span><span class="tt-val">'+(d.c||'-')+'</span></div>' +
+    '<div class="tt-row"><span class="tt-key">시작일</span><span class="tt-val">'+(d.sd||'-')+'</span></div>' +
+    (d.note?'<div class="tt-row"><span class="tt-key">비고</span><span class="tt-val">'+d.note+'</span></div>':'');
+  tt.style.display = 'block';
+  moveTooltip(e);
+}
+function moveTooltip(e){
+  var tt = getTooltipEl();
+  var x = e.clientX+16, y = e.clientY-10;
+  if(x+300>window.innerWidth) x = e.clientX-310;
+  if(y+250>window.innerHeight) y = e.clientY-220;
+  tt.style.left = x+'px'; tt.style.top = y+'px';
+}
+function hideTooltip(){
+  var tt = getTooltipEl();
+  tt.style.display = 'none';
+}
+
+// ── 연결제 알림 ──────────────────────────────
+function renderAnnual(){
+  var items = DATA.filter(function(d){
+    if(d.status!=='구독중'||d.c!=='연결제') return false;
+    var n = calcNext(d); if(!n) return false;
+    return daysUntil(n) >= 0;
+  }).sort(function(a,b){return calcNext(a).localeCompare(calcNext(b));});
+  var el = document.getElementById('annual-content');
+  if(!el) return;
+  if(items.length===0){
+    el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);">연결제 항목이 없어요</div>';
+    return;
+  }
+  el.innerHTML = items.map(function(d){
+    var next = calcNext(d);
+    var days = daysUntil(next);
+    var soon = days<=90;
+    var pillBg = days<=30?'var(--red-l)':days<=90?'var(--amber-l)':'var(--blue-l)';
+    var pillColor = days<=30?'var(--red)':days<=90?'var(--amber)':'var(--blue)';
+    return '<div class="ann-card '+(soon?'soon':'')+'" onclick="openModal('+d.id+')">' +
+      '<div>' +
+        '<div style="font-size:14px;font-weight:600;">' + d.s + '</div>' +
+        '<div style="font-size:12px;color:var(--text3);margin-top:3px;">'+(d.u||'')+' · '+(d.a||'')+'</div>' +
+      '</div>' +
+      '<div style="text-align:right;">' +
+        '<div class="ann-pill" style="background:'+pillBg+';color:'+pillColor+';">D-'+days+'</div>' +
+        '<div style="font-size:11px;color:var(--text3);margin-top:4px;font-family:var(--mono);">'+next+'</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// ── 자피어 ───────────────────────────────────
+function checkZapier(){
+  var host = window.location.origin;
+  var urlEl = document.getElementById('webhook-url-text');
+  if(urlEl) urlEl.textContent = host+'/api/webhook';
+}
+function copyWebhook(){
+  var host = window.location.origin;
+  navigator.clipboard.writeText(host+'/api/webhook').then(function(){showToast('✓ URL 복사됨');});
+}
+
+// ── 멀티셀렉트 ──────────────────────────────
+function toggleMs(wrpId){
+  var dd = document.getElementById(wrpId+'-dd');
+  if(!dd) return;
+  var isOpen = dd.classList.contains('open');
+  document.querySelectorAll('.ms-dropdown.open').forEach(function(el){el.classList.remove('open');});
+  if(!isOpen) dd.classList.add('open');
+}
+function toggleMsItem(wrpId, val){
+  var items = document.querySelectorAll('#'+wrpId+'-dd .ms-item');
+  items.forEach(function(item){
+    if(item.dataset.val === val){
+      item.classList.toggle('checked');
+      var cb = item.querySelector('.cb');
+      if(cb) cb.textContent = item.classList.contains('checked') ? '✓' : '';
+    }
+  });
+  updateMsTrigger(wrpId);
+  applyAll();
+}
+function clearMs(wrpId){
+  document.querySelectorAll('#'+wrpId+'-dd .ms-item').forEach(function(item){
+    item.classList.remove('checked');
+    var cb = item.querySelector('.cb');
+    if(cb) cb.textContent = '';
+  });
+  updateMsTrigger(wrpId);
+  applyAll();
+}
+function getMsSel(wrpId){
+  return [...document.querySelectorAll('#'+wrpId+'-dd .ms-item.checked')].map(function(el){return el.dataset.val;});
+}
+function updateMsTrigger(wrpId){
+  var sel = getMsSel(wrpId);
+  var lbl = document.getElementById(wrpId+'-lbl');
+  var cnt = document.getElementById(wrpId+'-cnt');
+  var trigger = document.querySelector('#'+wrpId+' .ms-trigger');
+  if(!lbl) return;
+  var defaultLabels = {'ms-status':'구독상태','ms-user':'사용자','ms-card':'결제수단','rv-ms-user':'사용자','rv-ms-card':'결제수단','rv-ms-cycle':'결제주기'};
+  if(sel.length===0){
+    lbl.textContent = defaultLabels[wrpId]||wrpId;
+    if(trigger) trigger.classList.remove('has-val');
+  } else {
+    lbl.textContent = sel.length===1?sel[0]:sel.length+'개 선택';
+    if(trigger) trigger.classList.add('has-val');
+  }
+  if(cnt) cnt.textContent = sel.length?sel.length+'개 선택':'';
+}
+function filterMsList(wrpId){
+  var search = document.getElementById(wrpId+'-search');
+  if(!search) return;
+  var q = search.value.toLowerCase();
+  document.querySelectorAll('#'+wrpId+'-dd .ms-item').forEach(function(item){
+    item.style.display = item.dataset.val.toLowerCase().includes(q)?'flex':'none';
+  });
+}
+document.addEventListener('click', function(e){
+  if(!e.target.closest('.ms-wrap')){
+    document.querySelectorAll('.ms-dropdown.open').forEach(function(el){el.classList.remove('open');});
+  }
+});
+
+// ── 정렬 ─────────────────────────────────────
+function setSort(col){
+  if(SORT_COL===col) SORT_ASC=!SORT_ASC; else{SORT_COL=col;SORT_ASC=true;}
+  document.querySelectorAll('.sort-btn').forEach(function(b){
+    b.classList.toggle('active', b.dataset.col===col);
+  });
+  renderList();
+}
+function applyAll(){
+  var q = (document.getElementById('g-search')||{value:''}).value;
+  var stSel = getMsSel('ms-status');
+  var uSel = getMsSel('ms-user');
+  var cSel = getMsSel('ms-card');
+  renderList();
+  // 초기화 버튼
+  var hasFilter = q||stSel.length||uSel.length||cSel.length;
+  var resetBtn = document.getElementById('reset-all');
+  if(resetBtn) resetBtn.classList.toggle('show', !!hasFilter);
+}
+function resetAll(){
+  var searchEl = document.getElementById('g-search');
+  if(searchEl) searchEl.value = '';
+  ['ms-status','ms-user','ms-card'].forEach(function(id){clearMs(id);});
+  document.getElementById('cat-chips').innerHTML = '';
+  renderList();
+}
+
+// ── 모달 ─────────────────────────────────────
+function openModal(id){
+  editId = id;
+  var d = id ? DATA.find(function(x){return x.id===id;}) : null;
+  document.getElementById('modal-title-txt').textContent = id ? d.s+' 수정' : '구독 추가';
+  document.getElementById('f-svc').value = d?d.s:'';
+  document.getElementById('f-desc').value = d?d.d:'';
+  document.getElementById('f-users').value = d?d.u:'';
+  document.getElementById('f-amt').value = d?d.a:'';
+  document.getElementById('f-method').value = d?d.m:'';
+  document.getElementById('f-sd').value = d?d.sd:'';
+  document.getElementById('f-ed').value = d?d.ed:'';
+  document.getElementById('f-note').value = d?d.note:'';
+  setCycle(d?d.c:'월결제');
+  setSt(d?d.status:'구독중');
+  document.getElementById('del-btn').style.display = id?'block':'none';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal(){
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+function setCycle(c){
+  CY_M = c;
+  ['cy-monthly','cy-yearly','cy-once'].forEach(function(id){
+    var btn = document.getElementById(id);
+    if(btn) btn.classList.remove('sel');
+  });
+  var map = {'월결제':'cy-monthly','연결제':'cy-yearly','1회성':'cy-once'};
+  var el = document.getElementById(map[c]);
+  if(el) el.classList.add('sel');
+}
+function setSt(s){
+  ST_M = s;
+  var on = document.getElementById('st-on');
+  var off = document.getElementById('st-off');
+  if(on) on.classList.toggle('sel', s==='구독중');
+  if(off) off.classList.toggle('sel', s==='구독종료');
+}
+function saveModal(){
+  var item = {
+    id: editId||nextId++,
+    s: document.getElementById('f-svc').value.trim(),
+    d: document.getElementById('f-desc').value.trim(),
+    u: document.getElementById('f-users').value.trim(),
+    status: ST_M,
+    a: document.getElementById('f-amt').value.trim(),
+    m: document.getElementById('f-method').value.trim(),
+    c: CY_M,
+    sd: document.getElementById('f-sd').value,
+    ed: document.getElementById('f-ed').value,
+    note: document.getElementById('f-note').value.trim()
+  };
+  if(editId){
+    DATA[DATA.findIndex(function(x){return x.id===editId;})]=item;
+    showToast('✓ '+item.s+' 수정 완료');
+  } else {
+    DATA.push(item);
+    showToast('✓ '+item.s+' 추가 완료');
+  }
+  closeModal();
+  initMsUser(); initMsCard();
+  document.getElementById('cat-chips').innerHTML='';
+  renderDash(); renderList();
+  serverSave();
+}
+function delItem(){
+  var d = DATA.find(function(x){return x.id===editId;});
+  if(!d||!confirm('"'+d.s+'" 삭제할까요?')) return;
+  DATA = DATA.filter(function(x){return x.id!==editId;});
+  closeModal();
+  initMsUser(); initMsCard();
+  document.getElementById('cat-chips').innerHTML='';
+  showToast('🗑 '+d.s+' 삭제됨');
+  renderDash(); renderList();
+  serverSave();
+}
+function toggleStatus(id){
+  var d = DATA.find(function(x){return x.id===id;});
+  if(!d) return;
+  if(d.status==='구독중'){
+    d.status='구독종료';
+    if(!d.ed) d.ed=TODAY_STR;
+    showToast('✕ '+d.s+' → 구독종료');
+  } else {
+    d.status='구독중';
+    d.ed='';
+    showToast('✓ '+d.s+' → 구독중');
+  }
+  initMsUser(); initMsCard();
+  applyAll(); renderDash();
+  serverSave();
+}
+
+// ── 토스트 ───────────────────────────────────
+function showToast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(function(){t.style.display='none';}, 2500);
+}
+
+// ── 리서처 뷰 ────────────────────────────────
+function initRV(){
+  var active = DATA.filter(function(d){return d.status==='구독중';});
+  document.getElementById('rv-active-cnt').textContent = active.length+'개';
+  document.getElementById('rv-total-cnt').textContent = DATA.length+'건';
+  var soon = active.filter(function(d){
+    var n=calcNext(d); return n&&daysUntil(n)>=0&&daysUntil(n)<=7;
+  }).length;
+  document.getElementById('rv-soon-cnt').textContent = soon+'건';
+
+  // 사용자 목록
+  var users = [];
+  active.forEach(function(d){if(d.u){d.u.split(',').forEach(function(u){var t=u.trim();if(t&&users.indexOf(t)<0)users.push(t);});}});
+  users.sort();
+  var uList = document.getElementById('rv-ms-user-list');
+  if(uList) uList.innerHTML = users.map(function(u){
+    return '<div class="ms-item" data-val="'+u+'" onclick="rvToggleMsItem(\'rv-ms-user\',\''+u.replace(/'/g,"\\'")+'\')"><div class="cb"></div>'+u+'</div>';
+  }).join('');
+
+  // 결제수단 목록
+  var cards = [];
+  active.forEach(function(d){if(d.m&&cards.indexOf(d.m)<0)cards.push(d.m);});
+  cards.sort();
+  var cList = document.getElementById('rv-ms-card-list');
+  if(cList) cList.innerHTML = cards.map(function(c){
+    return '<div class="ms-item" data-val="'+c+'" onclick="rvToggleMsItem(\'rv-ms-card\',\''+c.replace(/'/g,"\\'")+'\')"><div class="cb"></div>'+c+'</div>';
+  }).join('');
+
+  // 이벤트 바인딩
+  var rvSearch = document.getElementById('rv-search');
+  if(rvSearch) rvSearch.oninput = renderRV;
+  var rvUserTrigger = document.getElementById('rv-ms-user-trigger');
+  if(rvUserTrigger) rvUserTrigger.onclick = function(){toggleMs('rv-ms-user');};
+  var rvCardTrigger = document.getElementById('rv-ms-card-trigger');
+  if(rvCardTrigger) rvCardTrigger.onclick = function(){toggleMs('rv-ms-card');};
+  var rvUserSearch = document.getElementById('rv-ms-user-search');
+  if(rvUserSearch) rvUserSearch.oninput = function(){filterMsList('rv-ms-user');};
+  var rvCardSearch = document.getElementById('rv-ms-card-search');
+  if(rvCardSearch) rvCardSearch.oninput = function(){filterMsList('rv-ms-card');};
+  var rvUserClear = document.getElementById('rv-ms-user-clear');
+  if(rvUserClear) rvUserClear.onclick = function(){clearMs('rv-ms-user');renderRV();};
+  var rvCardClear = document.getElementById('rv-ms-card-clear');
+  if(rvCardClear) rvCardClear.onclick = function(){clearMs('rv-ms-card');renderRV();};
+
+  renderRV();
+}
+function rvToggleMsItem(wrpId, val){
+  toggleMsItem(wrpId, val);
+  updateMsTrigger(wrpId);
+  renderRV();
+}
+function renderRV(){
+  var q = ((document.getElementById('rv-search')||{}).value||'').toLowerCase();
+  var uSel = getMsSel('rv-ms-user');
+  var cSel = getMsSel('rv-ms-card');
+  updateMsTrigger('rv-ms-user');
+  updateMsTrigger('rv-ms-card');
+
+  var rows = DATA.filter(function(d){return d.status==='구독중';});
+  if(q) rows = rows.filter(function(d){
+    return (d.s||'').toLowerCase().includes(q)||(d.u||'').toLowerCase().includes(q)||(d.d||'').toLowerCase().includes(q);
+  });
+  if(uSel.length) rows = rows.filter(function(d){return d.u&&uSel.some(function(u){return d.u.includes(u);});});
+  if(cSel.length) rows = rows.filter(function(d){return cSel.includes(d.m);});
+
+  var cntEl = document.getElementById('rv-count');
+  if(cntEl) cntEl.textContent = '총 '+rows.length+'건';
+
+  var tbody = document.getElementById('rv-tbody');
+  if(!tbody) return;
+  tbody.innerHTML = rows.map(function(d){
+    var next = calcNext(d);
+    var isSoon = next&&daysUntil(next)>=0&&daysUntil(next)<=7;
+    return '<tr>' +
+      '<td><strong>'+d.s+'</strong></td>' +
+      '<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;color:var(--text3);font-size:12px;">'+(d.d||'')+'</td>' +
+      '<td>'+(d.u||'')+'</td>' +
+      '<td style="font-family:var(--mono);">'+(d.a||'')+'</td>' +
+      '<td style="font-family:var(--mono);font-size:12px;">'+(d.m||'')+'</td>' +
+      '<td><span class="tag" style="background:var(--blue-l);color:var(--blue);">'+(d.c||'')+'</span></td>' +
+      '<td style="font-family:var(--mono);font-size:12px;">'+(d.sd||'')+'</td>' +
+      '<td style="font-family:var(--mono);font-size:12px;color:'+(isSoon?'var(--red)':'var(--blue)')+';">'+next+'</td>' +
+      '<td style="font-size:12px;color:var(--text3);">'+(d.note||'')+'</td>' +
+    '</tr>';
+  }).join('');
+}
+
+// ── 초기화 ───────────────────────────────────
+async function initApp(){
+  // 날짜 표시
+  var todayEl = document.getElementById('today-lbl');
+  if(todayEl) todayEl.textContent = TODAY.getFullYear()+'.'+(TODAY.getMonth()+1)+'.'+TODAY.getDate();
+
+  if(IS_DEPLOYED){
+    try {
+      var res = await fetch(_SB_URL+'/rest/v1/subscriptions?select=*&order=id.asc&limit=1000', {
+        headers:{'apikey':_SB_KEY,'Authorization':'Bearer '+_SB_KEY}
+      });
+      var list = await res.json();
+      if(Array.isArray(list) && list.length > 0){
+        DATA = list;
+        nextId = Math.max.apply(null, DATA.map(function(d){return d.id;})) + 1;
+      } else {
+        await serverSave();
+      }
+    } catch(e){console.warn('서버 연결 실패',e);}
+  }
+
+  initMsUser(); initMsCard();
+  renderDash();
+
+  // 자피어 웹훅 데이터 체크
+  if(IS_DEPLOYED){
+    try {
+      var zr = await fetch('/api/webhook');
+      var zj = await zr.json();
+      var zapItems = (zj.data||[]).filter(function(d){return d.source==='zapier';});
+      if(zapItems.length>0){
+        zapItems.forEach(function(zi){if(!DATA.find(function(d){return d.id===zi.id;}))DATA.push(zi);});
+        var dot = document.getElementById('zapier-dot');
+        if(dot) dot.classList.add('connected');
+        var navDot = document.getElementById('zapier-dot-nav');
+        if(navDot) navDot.style.color = 'var(--green)';
+      }
+    } catch(e){}
+  }
+}
+
+initApp();
+</script>
+</body>
+</html>
