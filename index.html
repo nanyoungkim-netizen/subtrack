@@ -555,9 +555,9 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 24px 40px;min-height:260px;">
       <div style="font-size:22px;margin-bottom:16px;">🛠️</div>
       <div style="font-size:18px;font-weight:700;color:var(--text);letter-spacing:-.4px;margin-bottom:8px;">구독하고 있는 툴을 확인하세요</div>
-      <div style="font-size:13px;color:var(--text3);margin-bottom:28px;">닉네임 또는 한글 이름으로 검색해요</div>
+      <div style="font-size:13px;color:var(--text3);margin-bottom:28px;">닉네임, 한글 이름, 카드번호로 검색할 수 있어요</div>
       <div style="display:flex;gap:8px;width:100%;max-width:380px;margin-bottom:20px;">
-        <input id="rv-name-input" style="flex:1;padding:11px 14px;border-radius:var(--radius);border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;font-family:var(--sans);outline:none;" placeholder="닉네임 입력 (예: mush, 머시...)"/>
+        <input id="rv-name-input" style="flex:1;padding:11px 14px;border-radius:var(--radius);border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;font-family:var(--sans);outline:none;" placeholder="닉네임 · 한글이름 · 카드번호 (예: mush, 머시, 3728)"/>
         <button onclick="rvLookup()" style="padding:11px 20px;background:var(--blue);border:none;border-radius:var(--radius);color:#fff;font-size:14px;font-weight:600;font-family:var(--sans);cursor:pointer;white-space:nowrap;">조회</button>
       </div>
     </div>
@@ -862,7 +862,7 @@ const IS_DEPLOYED = window.location.hostname !== 'localhost' && !window.location
 
 // ── 상태 ─────────────────────────────────────
 var APP_MODE = null;
-var ADMIN_PW = 'dnvwer0915';
+var ADMIN_PW = '980915';
 var PW_MODE = 'login';
 var SORT_COL = null, SORT_ASC = true;
 var CY_M = '월결제', ST_M = '구독중';
@@ -1575,8 +1575,12 @@ function rvLookup(){
   if(!q){ return; }
   // 닉네임 또는 한글로 검색
   var qLo = q.toLowerCase();
+  // 카드번호로 검색하는지 확인 (숫자 4자리 이상)
+  var isCardSearch = /^d{4,}$/.test(q);
   var rows = DATA.filter(function(d){
     if(d.status!=='구독중') return false;
+    // 카드번호 검색
+    if(isCardSearch && d.m && d.m.toString().includes(q)) return true;
     if(!d.u) return false;
     var users = d.u.split(',').map(function(u){return u.trim();});
     return users.some(function(u){
@@ -1597,7 +1601,9 @@ function rvLookup(){
     });
   });
   var koName = matchNick?(KO_MAP[matchNick]||matchNick):'';
-  var displayName = matchNick + (koName&&koName!==matchNick?' ('+koName+')':'');
+  var displayName = isCardSearch && !matchNick
+    ? '카드 ' + q
+    : matchNick + (koName&&koName!==matchNick?' ('+koName+')':'');
   
   document.getElementById('rv-screen-lookup').style.display='none';
   document.getElementById('rv-screen-result').style.display='block';
