@@ -1638,12 +1638,12 @@ function setRVTab(tab){_rvTab=tab;['all','월결제','연결제'].forEach(functi
 function toggleRVChip(svc){var idx=_rvChips.indexOf(svc);if(idx>=0)_rvChips.splice(idx,1);else _rvChips.push(svc);document.querySelectorAll('.rv-chip-btn').forEach(function(b){if(b.dataset.svc===svc){if(_rvChips.indexOf(svc)>=0){b.style.background='var(--blue-l)';b.style.color='var(--blue)';b.style.borderColor='var(--blue)';}else{b.style.background='transparent';b.style.color='var(--text3)';b.style.borderColor='var(--border)';}}});renderRV();}
 function initRV(){
   var active = DATA.filter(function(d){return d.status==='구독중';});
-  document.getElementById('rv-active-cnt').textContent = active.length+'개';
-  document.getElementById('rv-total-cnt').textContent = DATA.length+'건';
+  var _act=document.getElementById('rv-active-cnt'); if(_act) _act.textContent=active.length+'개';
+  var _tot=document.getElementById('rv-total-cnt'); if(_tot) _tot.textContent=DATA.length+'건';
   var soon = active.filter(function(d){
     var n=calcNext(d); return n&&daysUntil(n)>=0&&daysUntil(n)<=7;
   }).length;
-  document.getElementById('rv-soon-cnt').textContent = soon+'건';
+  var _soon2=document.getElementById('rv-soon-cnt'); if(_soon2) _soon2.textContent=soon+'건';
 
   // 사용자 목록
   var users = [];
