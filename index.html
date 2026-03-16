@@ -160,9 +160,89 @@ tr.zapier-new td:first-child::after{content:'NEW';font-family:var(--mono);font-s
 .btn-danger:hover{background:#fee2e2}
 .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:10px 20px;border-radius:9px;font-size:13px;font-weight:500;display:none;z-index:1200;font-family:var(--mono)}
 ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* 툴팁 */
+.tooltip-wrap{position:relative;cursor:pointer;}
+.tooltip-box{display:none;position:fixed;z-index:9999;background:var(--text);color:#fff;padding:10px 14px;border-radius:10px;font-size:12px;font-family:var(--sans);line-height:1.7;max-width:280px;pointer-events:none;box-shadow:0 4px 20px rgba(0,0,0,.25);white-space:pre-line;}
+.tooltip-wrap:hover .tooltip-box{display:block;}
+.tooltip-row{display:flex;gap:8px;}
+.tooltip-key{color:#94a3b8;font-size:11px;min-width:56px;font-family:var(--mono);}
+.tooltip-val{color:#fff;}
+
+/* 로그인 화면 */
+#login-screen{position:fixed;inset:0;background:var(--bg);z-index:10000;display:flex;align-items:center;justify-content:center;}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:40px 36px;width:400px;box-shadow:0 10px 40px rgba(0,0,0,.1);}
+.login-logo{display:flex;align-items:center;gap:12px;margin-bottom:28px;}
+.login-logo-icon{width:40px;height:40px;background:var(--blue);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--mono);font-weight:700;font-size:15px;}
+.login-logo-name{font-family:var(--mono);font-size:18px;font-weight:700;}
+.login-title{font-size:15px;font-weight:600;margin-bottom:6px;}
+.login-sub{font-size:12px;color:var(--text3);margin-bottom:24px;}
+.login-btns{display:flex;gap:10px;}
+.login-btn{flex:1;padding:14px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface2);cursor:pointer;font-size:13px;font-weight:600;font-family:var(--sans);color:var(--text2);transition:all .15s;text-align:center;}
+.login-btn:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-l);}
+.login-btn.admin{border-color:var(--blue);background:var(--blue);color:#fff;}
+.login-btn.admin:hover{background:#1e40af;}
+.login-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-family:var(--mono);font-weight:700;margin-bottom:8px;}
+.login-badge.adm{background:var(--blue-l);color:var(--blue);border:1px solid var(--blue-b);}
+.login-badge.rsr{background:var(--green-l);color:var(--green);border:1px solid var(--green-b);}
+
+/* 비밀번호 입력 */
+#pw-modal{position:fixed;inset:0;background:rgba(15,23,42,.4);backdrop-filter:blur(3px);z-index:10001;display:none;align-items:center;justify-content:center;}
+#pw-modal.open{display:flex;}
+.pw-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;width:340px;}
+.pw-title{font-size:15px;font-weight:700;margin-bottom:16px;}
+.pw-input{width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);font-size:14px;font-family:var(--sans);color:var(--text);margin-bottom:8px;}
+.pw-input:focus{outline:none;border-color:var(--blue);}
+.pw-err{color:var(--red);font-size:12px;margin-bottom:12px;display:none;}
+.pw-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:4px;}
+
+/* 리서처 화면 */
+#researcher-view{display:none;flex:1;padding:24px 24px 48px;overflow-y:auto;max-height:100vh;}
+.rv-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
+.rv-title{font-size:20px;font-weight:700;letter-spacing:-.4px;}
+.rv-badge{background:var(--green-l);color:var(--green);border:1px solid var(--green-b);padding:3px 10px;border-radius:20px;font-size:11px;font-family:var(--mono);font-weight:700;}
+.rv-logout{padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:transparent;font-size:12px;cursor:pointer;font-family:var(--mono);color:var(--text3);}
+.rv-logout:hover{border-color:var(--red-b);color:var(--red);background:var(--red-l);}
+.rv-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+.rv-count{font-size:12px;color:var(--text3);font-family:var(--mono);margin-bottom:10px;}
 </style>
 </head>
 <body>
+<!-- 로그인 화면 -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-icon">ST</div>
+      <div class="login-logo-name">SubTrack</div>
+    </div>
+    <div class="login-title">접속 유형을 선택해주세요</div>
+    <div class="login-sub">관리자는 전체 기능을, 리서처는 조회 전용으로 이용합니다</div>
+    <div class="login-btns">
+      <div onclick="showPwModal()">
+        <div class="login-badge adm">ADMIN</div>
+        <button class="login-btn admin">🔒 관리자용</button>
+      </div>
+      <div onclick="enterResearcher()">
+        <div class="login-badge rsr">VIEWER</div>
+        <button class="login-btn">👀 리서처용</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 비밀번호 모달 -->
+<div id="pw-modal">
+  <div class="pw-card">
+    <div class="pw-title" id="pw-modal-title">🔒 관리자 로그인</div>
+    <input class="pw-input" id="pw-input" type="password" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')checkPw()"/>
+    <div class="pw-err" id="pw-err">비밀번호가 올바르지 않습니다</div>
+    <div class="pw-btns">
+      <button class="btn-cancel" onclick="closePwModal()">취소</button>
+      <button class="btn-ok" onclick="checkPw()">확인</button>
+    </div>
+  </div>
+</div>
+
 <div class="sidebar">
   <div class="logo">
     <div class="logo-icon">ST</div>
@@ -184,6 +264,60 @@ tr.zapier-new td:first-child::after{content:'NEW';font-family:var(--mono);font-s
   </div>
 </div>
 
+
+<!-- 리서처 전용 뷰 -->
+<div id="researcher-view">
+  <div class="rv-header">
+    <div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+        <div class="login-logo-icon" style="width:32px;height:32px;font-size:12px;">ST</div>
+        <span class="rv-title">구독 현황</span>
+        <span class="rv-badge">리서처용</span>
+      </div>
+      <div style="font-size:12px;color:var(--text3)">구독 중인 서비스를 조회할 수 있습니다 (수정 불가)</div>
+    </div>
+    <button class="rv-logout" onclick="logoutToLogin()">← 나가기</button>
+  </div>
+  <div class="rv-filters">
+    <input class="srch" id="rv-search" placeholder="🔍 서비스명 · 사용자 · 결제수단 검색" oninput="renderRV()" style="width:260px;"/>
+    <div class="ms-wrap" id="rv-ms-user">
+      <div class="ms-trigger" onclick="toggleMs('rv-ms-user')"><span id="rv-ms-user-lbl">사용자</span><span class="arrow">▾</span></div>
+      <div class="ms-dropdown" id="rv-ms-user-dd">
+        <input class="ms-search" id="rv-ms-user-search" placeholder="사용자 검색..." oninput="filterMsList('rv-ms-user')" onclick="event.stopPropagation()"/>
+        <div class="ms-list" id="rv-ms-user-list"></div>
+        <div class="ms-footer"><span class="ms-clear" onclick="clearMs('rv-ms-user')">초기화</span><span class="ms-count" id="rv-ms-user-cnt"></span></div>
+      </div>
+    </div>
+    <div class="ms-wrap" id="rv-ms-card">
+      <div class="ms-trigger" onclick="toggleMs('rv-ms-card')"><span id="rv-ms-card-lbl">결제수단</span><span class="arrow">▾</span></div>
+      <div class="ms-dropdown" id="rv-ms-card-dd">
+        <input class="ms-search" id="rv-ms-card-search" placeholder="결제수단 검색..." oninput="filterMsList('rv-ms-card')" onclick="event.stopPropagation()"/>
+        <div class="ms-list" id="rv-ms-card-list"></div>
+        <div class="ms-footer"><span class="ms-clear" onclick="clearMs('rv-ms-card')">초기화</span><span class="ms-count" id="rv-ms-card-cnt"></span></div>
+      </div>
+    </div>
+    <div class="ms-wrap" id="rv-ms-cycle">
+      <div class="ms-trigger" onclick="toggleMs('rv-ms-cycle')"><span id="rv-ms-cycle-lbl">결제주기</span><span class="arrow">▾</span></div>
+      <div class="ms-dropdown" id="rv-ms-cycle-dd">
+        <div class="ms-list">
+          <div class="ms-item" data-val="월결제" onclick="toggleMsItem('rv-ms-cycle','월결제')"><div class="cb"></div>월결제</div>
+          <div class="ms-item" data-val="연결제" onclick="toggleMsItem('rv-ms-cycle','연결제')"><div class="cb"></div>연결제</div>
+          <div class="ms-item" data-val="1회성" onclick="toggleMsItem('rv-ms-cycle','1회성')"><div class="cb"></div>1회성</div>
+        </div>
+        <div class="ms-footer"><span class="ms-clear" onclick="clearMs('rv-ms-cycle')">초기화</span><span class="ms-count" id="rv-ms-cycle-cnt"></span></div>
+      </div>
+    </div>
+  </div>
+  <div class="rv-count" id="rv-count"></div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>서비스명</th><th>사용자</th><th>결제수단</th><th>금액</th><th>결제주기</th><th>구독시작</th><th>다음결제</th><th>비고</th>
+      </tr></thead>
+      <tbody id="rv-body"></tbody>
+    </table>
+  </div>
+</div>
 <div class="main">
 
 <!-- 대시보드 -->
@@ -658,7 +792,155 @@ delItem = function() {
 const _origToggleStatus = toggleStatus;
 toggleStatus = function(id) { _origToggleStatus(id); serverSave(); };
 
+
+// ── 로그인 / 모드 관리 ─────────────────────────────────
+let ADMIN_PW = 'dnvwer0915!';
+let APP_MODE = null; // null=로그인, 'admin', 'researcher'
+let PW_MODE = 'login'; // 'login' or 'change'
+
+function showPwModal(mode) {
+  PW_MODE = mode || 'login';
+  document.getElementById('pw-modal-title').textContent = PW_MODE === 'change' ? '🔑 비밀번호 변경' : '🔒 관리자 로그인';
+  document.getElementById('pw-input').value = '';
+  document.getElementById('pw-err').style.display = 'none';
+  document.getElementById('pw-modal').classList.add('open');
+  setTimeout(() => document.getElementById('pw-input').focus(), 100);
+}
+function closePwModal() {
+  document.getElementById('pw-modal').classList.remove('open');
+}
+function checkPw() {
+  const val = document.getElementById('pw-input').value;
+  if (PW_MODE === 'change') {
+    // 비밀번호 변경: 현재PW|새PW 형식
+    const parts = val.split('|');
+    if (parts.length !== 2) { showPwErr('현재비밀번호|새비밀번호 형식으로 입력해주세요'); return; }
+    if (parts[0] !== ADMIN_PW) { showPwErr('현재 비밀번호가 올바르지 않습니다'); return; }
+    if (parts[1].length < 4) { showPwErr('새 비밀번호는 4자 이상이어야 합니다'); return; }
+    ADMIN_PW = parts[1];
+    closePwModal();
+    showToast('✓ 비밀번호가 변경됐어요');
+  } else {
+    if (val !== ADMIN_PW) { showPwErr('비밀번호가 올바르지 않습니다'); return; }
+    closePwModal();
+    enterAdmin();
+  }
+}
+function showPwErr(msg) {
+  const el = document.getElementById('pw-err');
+  el.textContent = msg; el.style.display = 'block';
+}
+function enterAdmin() {
+  APP_MODE = 'admin';
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('researcher-view').style.display = 'none';
+  document.querySelector('.sidebar').style.display = 'flex';
+  document.querySelector('.main').style.display = 'block';
+  // 비밀번호 변경 버튼 사이드바에 추가
+  if (!document.getElementById('pw-change-btn')) {
+    const btn = document.createElement('button');
+    btn.id = 'pw-change-btn';
+    btn.className = 'add-btn';
+    btn.style.cssText = 'background:var(--surface2);color:var(--text3);border:1px solid var(--border);font-size:11px;margin-top:4px;';
+    btn.textContent = '🔑 비밀번호 변경';
+    btn.onclick = () => showPwModal('change');
+    document.querySelector('.sb-foot').appendChild(btn);
+  }
+}
+function enterResearcher() {
+  APP_MODE = 'researcher';
+  document.getElementById('login-screen').style.display = 'none';
+  document.querySelector('.sidebar').style.display = 'none';
+  document.querySelector('.main').style.display = 'none';
+  document.getElementById('researcher-view').style.display = 'block';
+  initRV();
+}
+function logoutToLogin() {
+  APP_MODE = null;
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('researcher-view').style.display = 'none';
+  document.querySelector('.sidebar').style.display = 'none';
+  document.querySelector('.main').style.display = 'none';
+}
+
+// ── 리서처 뷰 ───────────────────────────────────────────
+function initRV() {
+  // 사용자 목록
+  const users = [...new Set(DATA.filter(d=>d.status==='구독중'&&d.u).map(d=>d.u))].sort();
+  const cards = [...new Set(DATA.filter(d=>d.status==='구독중'&&d.m).map(d=>d.m))].sort();
+  ['rv-ms-user', users, 'rv-ms-user-lbl', 'rv-ms-user-list'].forEach(()=>{});
+  
+  const uList = document.getElementById('rv-ms-user-list');
+  uList.innerHTML = users.map(u => `<div class="ms-item" data-val="${u}" onclick="toggleMsItem('rv-ms-user','${u.replace(/'/g,\"\\\\'\"')}')" ><div class="cb"></div>${u}</div>`).join('');
+  
+  const cList = document.getElementById('rv-ms-card-list');
+  cList.innerHTML = cards.map(c => `<div class="ms-item" data-val="${c}" onclick="toggleMsItem('rv-ms-card','${c.replace(/'/g,\"\\\\'\"')}')" ><div class="cb"></div>${c}</div>`).join('');
+  
+  renderRV();
+}
+function renderRV() {
+  const q = (document.getElementById('rv-search')?.value||'').toLowerCase();
+  const uSel = getMsSelected('rv-ms-user');
+  const cSel = getMsSelected('rv-ms-card');
+  const cyc = getMsSelected('rv-ms-cycle');
+  
+  let rows = DATA.filter(d => d.status === '구독중');
+  if (q) rows = rows.filter(d => (d.s||'').toLowerCase().includes(q)||(d.u||'').toLowerCase().includes(q)||(d.m||'').toLowerCase().includes(q)||(d.d||'').toLowerCase().includes(q));
+  if (uSel.length) rows = rows.filter(d => uSel.includes(d.u));
+  if (cSel.length) rows = rows.filter(d => cSel.includes(d.m));
+  if (cyc.length) rows = rows.filter(d => cyc.includes(d.c));
+  
+  document.getElementById('rv-count').textContent = `총 ${rows.length}건`;
+  
+  const tbody = document.getElementById('rv-body');
+  if (!tbody) return;
+  tbody.innerHTML = rows.map(d => {
+    const next = calcNext(d);
+    return `<tr>
+      <td><strong>${d.s||''}</strong>${d.d?`<br><span style="font-size:11px;color:var(--text3)">${d.d}</span>`:''}
+      </td>
+      <td>${d.u||''}</td>
+      <td style="font-family:var(--mono);font-size:12px;">${d.m||''}</td>
+      <td style="font-family:var(--mono);">${d.a||''}</td>
+      <td><span class="tag" style="background:var(--blue-l);color:var(--blue);">${d.c||''}</span></td>
+      <td style="font-family:var(--mono);font-size:12px;">${d.sd||''}</td>
+      <td style="font-family:var(--mono);font-size:12px;color:var(--blue);">${next||''}</td>
+      <td style="font-size:12px;color:var(--text3);">${d.note||''}</td>
+    </tr>`;
+  }).join('');
+}
+function getMsSelected(wrpId) {
+  return [...document.querySelectorAll(`#${wrpId}-dd .ms-item.checked`)].map(el=>el.dataset.val);
+}
+
+// ── 툴팁 (테이블 행에 적용) ────────────────────────────
+function makeTooltip(d) {
+  return `<div class="tooltip-box" id="tt-${d.id}">
+    <div class="tooltip-row"><span class="tooltip-key">서비스</span><span class="tooltip-val">${d.s||'-'}</span></div>
+    <div class="tooltip-row"><span class="tooltip-key">내용</span><span class="tooltip-val">${d.d||'-'}</span></div>
+    <div class="tooltip-row"><span class="tooltip-key">사용자</span><span class="tooltip-val">${d.u||'-'}</span></div>
+    <div class="tooltip-row"><span class="tooltip-key">금액</span><span class="tooltip-val">${d.a||'-'}</span></div>
+    <div class="tooltip-row"><span class="tooltip-key">결제수단</span><span class="tooltip-val">${d.m||'-'}</span></div>
+    <div class="tooltip-row"><span class="tooltip-key">결제주기</span><span class="tooltip-val">${d.c||'-'}</span></div>
+    <div class="tooltip-row"><span class="tooltip-key">시작일</span><span class="tooltip-val">${d.sd||'-'}</span></div>
+    <div class="tooltip-row"><span class="tooltip-key">비고</span><span class="tooltip-val">${d.note||'-'}</span></div>
+  </div>`;
+}
+// 툴팁 마우스 위치 추적
+document.addEventListener('mousemove', e => {
+  document.querySelectorAll('.tooltip-box').forEach(box => {
+    const rect = box.parentElement.getBoundingClientRect();
+    let x = e.clientX + 16, y = e.clientY - 10;
+    if (x + 290 > window.innerWidth) x = e.clientX - 300;
+    if (y + 200 > window.innerHeight) y = e.clientY - 180;
+    box.style.left = x + 'px';
+    box.style.top = y + 'px';
+  });
+});
 async function initApp() {
+  // 초기화: 사이드바·메인 숨기고 로그인 화면 표시
+  document.querySelector('.sidebar').style.display = 'none';
+  document.querySelector('.main').style.display = 'none';
   if (IS_DEPLOYED) {
     try {
       const res = await fetch('/api/data');
