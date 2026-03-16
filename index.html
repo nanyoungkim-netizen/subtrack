@@ -576,7 +576,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
     <div class="tbl-wrap">
       <table>
         <thead><tr>
-          <th>서비스명</th><th>금액</th><th>결제수단</th><th>결제주기</th><th>구독시작</th><th>다음결제</th><th>비고</th>
+          <th>서비스명</th><th>결제수단 · 금액</th><th>결제주기</th><th>구독시작</th><th>다음결제</th><th>비고</th>
         </tr></thead>
         <tbody id="rv-result-tbody"></tbody>
       </table>
@@ -622,7 +622,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
     <div class="tbl-wrap" style="max-height:52vh;">
       <table>
         <thead><tr>
-          <th>서비스명</th><th>사용자</th><th>금액</th><th>결제수단</th><th>결제주기</th><th>구독시작</th><th>다음결제</th><th>비고</th>
+          <th>서비스명</th><th>사용자</th><th>결제수단 · 금액</th><th>결제주기</th><th>구독시작</th><th>다음결제</th><th>비고</th>
         </tr></thead>
         <tbody id="rv-tbody"></tbody>
       </table>
@@ -1610,7 +1610,7 @@ function rvLookup(){
     var next = calcNext(d);
     var isSoon = next&&daysUntil(next)>=0&&daysUntil(next)<=7;
     return '<tr>'+
-      '<td title="'+(d.d||'')+'" style="cursor:'+(d.d?'help':'default')+'"><strong style="font-size:13px;">'+d.s+'</strong>'+(d.d?'<span style="font-size:10px;color:var(--text3);margin-left:3px;">ℹ</span>':'')+'</td>'+
+      '<td title="'+(d.d||'')+'" style="cursor:'+(d.d?'help':'default')+'"><strong style="font-size:13px;">'+d.s+(d.d?' <span style=\"font-size:10px;color:var(--text3);\">&nbsp;ℹ</span>':'')+'</strong></td>'+
       '<td style="font-family:var(--mono);">'+(d.a||'')+'</td>'+
       '<td style="font-family:var(--mono);font-size:12px;">'+(d.m||'')+'</td>'+
       '<td><span class="tag" style="background:var(--blue-l);color:var(--blue);">'+(d.c||'')+'</span></td>'+
@@ -1719,7 +1719,7 @@ function renderRV(){
     var userMore = userList.length > 1 ? ' <span style="color:var(--blue);font-size:10px;font-weight:600;">+' + (userList.length-1) + '</span>' : '';
     var userTitle = userList.join(', ');
     return '<tr>' +
-      '<td style="min-width:120px;"><strong style="font-size:13px;">'+d.s+'</strong>'+(d.d?'<br><span style="font-size:11px;color:var(--text3);white-space:normal;line-height:1.4;display:block;max-width:220px;">'+d.d+'</span>':'')+'</td>' +
+      '<td title="'+(d.d||'')+'" style="cursor:'+(d.d?'help':'default')+'"><strong style="font-size:13px;">'+d.s+(d.d?' <span style=\"font-size:10px;color:var(--text3);\">&nbsp;ℹ</span>':'')+'</strong></td>' +
       '<td title="'+userTitle+'" style="white-space:nowrap;cursor:default;">'+userFirst+userMore+'</td>' +
       '<td style="font-family:var(--mono);">'+(d.a||'')+'</td>' +
       '<td style="font-family:var(--mono);font-size:12px;">'+(d.m||'')+'</td>' +
