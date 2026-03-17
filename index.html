@@ -1615,7 +1615,7 @@ function rvLookup(){
     var next = calcNext(d);
     var isSoon = next&&daysUntil(next)>=0&&daysUntil(next)<=7;
     return '<tr>'+
-      '<td onmouseenter="'+(d.d?'showTT(event,'+JSON.stringify([{k:'내용',v:d.d}])+')'+ '' : '')+'" onmouseleave="hideTT()" style="cursor:'+(d.d?'help':'default')+'"><strong style="font-size:13px;">'+d.s+(d.d?' <span style=\"font-size:10px;color:var(--text3);\">&nbsp;ℹ</span>':'')+'</strong></td>'+
+      '<td class="svc-desc-cell" data-desc="'+(d.d||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;')+'" onmouseenter="showDescTT(event,this)" onmouseleave="hideTT()" style="cursor:'+(d.d?'help':'default')+'"><strong style="font-size:13px;">'+d.s+(d.d?' <span style=\"font-size:10px;color:var(--text3);\">&nbsp;ℹ</span>':'')+'</strong></td>'+
       '<td style="font-family:var(--mono);">'+(d.a||'')+'</td>'+
       '<td style="font-family:var(--mono);font-size:12px;">'+(d.m||'')+'</td>'+
       '<td><span class="tag" style="background:var(--blue-l);color:var(--blue);">'+(d.c||'')+'</span></td>'+
