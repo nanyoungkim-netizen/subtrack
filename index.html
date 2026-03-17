@@ -1603,7 +1603,7 @@ function rvLookup(){
     var next=calcNext(d);
     var soon=next&&daysUntil(next)>=0&&daysUntil(next)<=7;
     return '<tr>'+
-      '<td data-desc="'+(d.d||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;')+'" onmouseenter="rvShowDesc(event,this)" onmouseleave="hideTooltip()" style="cursor:'+(d.d?'help':'default')+'"><strong style="font-size:13px;">'+d.s+(d.d?' <span style=\"font-size:10px;color:var(--text3);\"> i</span>':'')+'</strong></td>'+
+      '<td data-desc="'+(d.d||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;')+'" class="rv-svc-td" style="cursor:'+(d.d?'help':'default')+'"><strong style="font-size:13px;">'+d.s+(d.d?' <span style=\"font-size:10px;color:var(--text3);\"> i</span>':'')+'</strong></td>'+
       '<td style="font-family:var(--mono);font-size:12px;">'+(d.m||'')+' <span style="color:var(--text3);">&#183;</span> '+(d.a||'')+'</td>'+
       '<td><span class="tag" style="background:var(--blue-l);color:var(--blue);">'+(d.c||'')+'</span></td>'+
       '<td style="font-family:var(--mono);font-size:12px;">'+(d.sd||'')+'</td>'+
@@ -1701,88 +1701,35 @@ function rvToggleMsItem(wrpId, val){
   renderRV();
 }
 function renderRV(){
-  var q = ((document.getElementById('rv-search')||{}).value||'').toLowerCase();
-  var uSel = getMsSel('rv-ms-user');
-  var cSel = getMsSel('rv-ms-card');
+  var q=((document.getElementById('rv-search')||{}).value||'').toLowerCase();
+  var uSel=getMsSel('rv-ms-user');
   updateMsTrigger('rv-ms-user');
-  updateMsTrigger('rv-ms-card');
-
-  var rows = DATA.filter(function(d){return d.status==='구독중';});
+  var rows=DATA.filter(function(d){return d.status==='구독중';});
   if(typeof _rvTab!=='undefined'&&_rvTab!=='all') rows=rows.filter(function(d){return d.c===_rvTab;});
   if(typeof _rvChips!=='undefined'&&_rvChips.length) rows=rows.filter(function(d){return _rvChips.indexOf(d.s)>=0;});
-  if(q) rows = rows.filter(function(d){
-    return (d.s||'').toLowerCase().includes(q)||(d.u||'').toLowerCase().includes(q)||(d.d||'').toLowerCase().includes(q);
+  if(q) rows=rows.filter(function(d){
+    return (d.s||'').toLowerCase().includes(q)||(d.u||'').toLowerCase().includes(q)||(d.d||'').toLowerCase().includes(q)||(d.m||'').toLowerCase().includes(q);
   });
-  if(uSel.length) rows = rows.filter(function(d){return d.u&&uSel.some(function(u){return d.u.includes(u);});});
-  if(cSel.length) rows = rows.filter(function(d){return cSel.includes(d.m);});
-
-  var cntEl = document.getElementById('rv-count');
-  if(cntEl) cntEl.textContent = '총 '+rows.length+'건';
-
-  var tbody = document.getElementById('rv-tbody');
+  if(uSel.length) rows=rows.filter(function(d){return d.u&&uSel.some(function(u){return d.u.includes(u);});});
+  var cntEl=document.getElementById('rv-count');
+  if(cntEl) cntEl.textContent='총 '+rows.length+'건';
+  var tbody=document.getElementById('rv-tbody');
   if(!tbody) return;
-  tbody.innerHTML = rows.map(function(d){
-    var next = calcNext(d);
-    var isSoon = next&&daysUntil(next)>=0&&daysUntil(next)<=7;
-    var userList = (d.u||'').split(',').map(function(u){return u.trim();}).filter(Boolean);
-    var userFirst = userList[0]||'';
-    var userMore = userList.length > 1 ? ' <span style="color:var(--blue);font-size:10px;font-weight:600;">+' + (userList.length-1) + '</span>' : '';
-    var userTitle = userList.join(', ');
-    return '<tr>' +
-      '<td data-desc="'+(d.d||'').replace(/"/g,'&quot;')+'" onmouseenter="rvShowDesc(event,this)" onmouseleave="hideTooltip()" style="cursor:'+(d.d?'help':'default')+'">'<strong style="font-size:13px;">'+d.s+(d.d?' <span style=\"font-size:10px;color:var(--text3);\">&nbsp;ℹ</span>':'')+'</strong></td>' +
-      '<td title="'+userTitle+'" style="white-space:nowrap;cursor:default;">'+userFirst+userMore+'</td>' +
-      '<td style="font-family:var(--mono);">'+(d.a||'')+'</td>' +
-      '<td style="font-family:var(--mono);font-size:12px;">'+(d.m||'')+'</td>' +
-      '<td><span class="tag" style="background:var(--blue-l);color:var(--blue);">'+(d.c||'')+'</span></td>' +
-      '<td style="font-family:var(--mono);font-size:12px;">'+(d.sd||'')+'</td>' +
-      '<td style="font-family:var(--mono);font-size:12px;color:'+(isSoon?'var(--red)':'var(--blue)')+';">'+next+'</td>' +
-      '<td style="font-size:12px;color:var(--text3);">'+(d.note||'')+'</td>' +
+  tbody.innerHTML=rows.map(function(d){
+    var next=calcNext(d);
+    var isSoon=next&&daysUntil(next)>=0&&daysUntil(next)<=7;
+    var uFirst='',uMore='',uTitle='';
+    if(d.u){var ul=d.u.split(',').map(function(u){return u.trim();}).filter(Boolean);uFirst=getUsersKo(ul[0]||'');uMore=ul.length>1?' <span style="color:var(--blue);font-size:10px;font-weight:600;">+' +(ul.length-1)+'</span>':'';uTitle=ul.map(function(u){return KO_MAP[u]||u;}).join(', ');}
+    var descAttr=d.d?(d.d.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')):'';
+    return '<tr>'+
+      '<td class="rv-svc-td"'+(d.d?' data-tooltip="'+descAttr+'"':'')+'><strong>'+d.s+(d.d?' <span style="font-size:10px;color:var(--text3);"> i</span>':'')+'</strong></td>'+
+      '<td title="'+uTitle+'" style="white-space:nowrap;cursor:default;">'+uFirst+uMore+'</td>'+
+      '<td style="font-family:var(--mono);font-size:12px;">'+(d.m||'')+' <span style="color:var(--text3);">&#183;</span> '+(d.a||'')+'</td>'+
+      '<td><span class="tag" style="background:var(--blue-l);color:var(--blue);">'+(d.c||'')+'</span></td>'+
+      '<td style="font-family:var(--mono);font-size:12px;">'+(d.sd||'')+'</td>'+
+      '<td style="font-family:var(--mono);font-size:12px;color:'+(isSoon?'var(--red)':'var(--blue)')+';">'+next+'</td>'+
+      '<td style="font-size:12px;color:var(--text3);">'+(d.note||'')+'</td>'+
     '</tr>';
   }).join('');
 }
 
-// ── 초기화 ───────────────────────────────────
-async function initApp(){
-  // 날짜 표시
-  var todayEl = document.getElementById('today-lbl');
-  if(todayEl) todayEl.textContent = TODAY.getFullYear()+'.'+(TODAY.getMonth()+1)+'.'+TODAY.getDate();
-
-  if(IS_DEPLOYED){
-    try {
-      var res = await fetch(_SB_URL+'/rest/v1/subscriptions?select=*&order=id.asc&limit=1000', {
-        headers:{'apikey':_SB_KEY,'Authorization':'Bearer '+_SB_KEY}
-      });
-      var list = await res.json();
-      if(Array.isArray(list) && list.length > 0){
-        DATA = list;
-        nextId = Math.max.apply(null, DATA.map(function(d){return d.id;})) + 1;
-      } else {
-        await serverSave();
-      }
-    } catch(e){console.warn('서버 연결 실패',e);}
-  }
-
-  initMsUser(); initMsCard();
-  renderDash();
-
-  // 자피어 웹훅 데이터 체크
-  if(IS_DEPLOYED){
-    try {
-      var zr = await fetch('/api/webhook');
-      var zj = await zr.json();
-      var zapItems = (zj.data||[]).filter(function(d){return d.source==='zapier';});
-      if(zapItems.length>0){
-        zapItems.forEach(function(zi){if(!DATA.find(function(d){return d.id===zi.id;}))DATA.push(zi);});
-        var dot = document.getElementById('zapier-dot');
-        if(dot) dot.classList.add('connected');
-        var navDot = document.getElementById('zapier-dot-nav');
-        if(navDot) navDot.style.color = 'var(--green)';
-      }
-    } catch(e){}
-  }
-}
-
-initApp();
-</script>
-</body>
-</html>
