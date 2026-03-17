@@ -1570,57 +1570,52 @@ function rvShowAll(){
   renderRV();
 }
 function rvLookup(){
-  var q = (document.getElementById('rv-name-input').value||'').trim();
-  if(!q){ return; }
-  var qLo = q.toLowerCase();
-  var isCardSearch = /^\d{4,}$/.test(q);
-  var rows;
-  if(isCardSearch){
-    rows = DATA.filter(function(d){
-      return d.status==='구독중' && d.m && d.m.toString().includes(q);
-    });
-  } else {
-    rows = DATA.filter(function(d){
+  var q=(document.getElementById('rv-name-input').value||'').trim();
+  if(!q) return;
+  var qLo=q.toLowerCase();
+  var isCard=/^\d{4,}$/.test(q);
+  var rows=isCard
+    ?DATA.filter(function(d){return d.status==='구독중'&&d.m&&d.m.toString().includes(q);})
+    :DATA.filter(function(d){
       if(d.status!=='구독중'||!d.u) return false;
-      var users = d.u.split(',').map(function(u){return u.trim();});
-      return users.some(function(u){
-        var ko = KO_MAP[u]||'';
+      return d.u.split(',').map(function(u){return u.trim();}).some(function(u){
+        var ko=KO_MAP[u]||'';
         return u.toLowerCase()===qLo||ko===q||ko.includes(q)||q.includes(ko)||u.toLowerCase().includes(qLo);
       });
     });
-  }
-  var matchNick='';
-  if(!isCardSearch){
-    DATA.some(function(d){
-      if(!d.u) return false;
-      return d.u.split(',').map(function(u){return u.trim();}).some(function(u){
-        var ko=KO_MAP[u]||'';
-        if(u.toLowerCase()===qLo||ko===q||ko.includes(q)||q.includes(ko)||u.toLowerCase().includes(qLo)){matchNick=u;return true;}
-      });
+  var nick='';
+  if(!isCard) DATA.some(function(d){
+    if(!d.u) return;
+    return d.u.split(',').map(function(u){return u.trim();}).some(function(u){
+      var ko=KO_MAP[u]||'';
+      if(u.toLowerCase()===qLo||ko===q||ko.includes(q)||q.includes(ko)||u.toLowerCase().includes(qLo)){nick=u;return true;}
     });
-  }
-  var koName=matchNick?(KO_MAP[matchNick]||matchNick):'';
-  var displayName=isCardSearch?'카드 '+q:matchNick+(koName&&koName!==matchNick?' ('+koName+')':'');
+  });
+  var ko2=nick?(KO_MAP[nick]||nick):'';
+  var dname=isCard?('카드 '+q):nick+(ko2&&ko2!==nick?' ('+ko2+')':'');
   document.getElementById('rv-screen-lookup').style.display='none';
   document.getElementById('rv-screen-result').style.display='block';
   document.getElementById('rv-screen-all').style.display='none';
-  document.getElementById('rv-result-title').textContent=displayName+'의 구독 내역';
-  document.getElementById('rv-result-cnt').textContent=rows.length+'건';
+  document.getElementById('rv-result-title').textContent=dname+'\uC758 \uAD6C\uB3C5 \uB0B4\uC5ED';
+  document.getElementById('rv-result-cnt').textContent=rows.length+'\uAC74';
   var tbody=document.getElementById('rv-result-tbody');
   tbody.innerHTML=rows.map(function(d){
     var next=calcNext(d);
-    var isSoon=next&&daysUntil(next)>=0&&daysUntil(next)<=7;
-    var usersKo=getUsersKo(d.u||'');
+    var soon=next&&daysUntil(next)>=0&&daysUntil(next)<=7;
     return '<tr>'+
-      '<td onmouseenter="showTooltip([{k:'내용',v:\''+((d.d||'').replace(/'/g,"\\'"))+'\'\'],event)" onmouseleave="hideTooltip()" style="cursor:'+(d.d?'help':'default')+'"><strong style="font-size:13px;">'+d.s+(d.d?' <span style=\"font-size:10px;color:var(--text3);\">&nbsp;&#9432;</span>':'')+'</strong></td>'+
-      '<td style="font-family:var(--mono);font-size:12px;">'+(d.m||'')+' <span style="color:var(--text3);">·</span> '+(d.a||'')+'</td>'+
+      '<td data-desc="'+(d.d||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;')+'" onmouseenter="rvShowDesc(event,this)" onmouseleave="hideTooltip()" style="cursor:'+(d.d?'help':'default')+'"><strong style="font-size:13px;">'+d.s+(d.d?' <span style=\"font-size:10px;color:var(--text3);\"> i</span>':'')+'</strong></td>'+
+      '<td style="font-family:var(--mono);font-size:12px;">'+(d.m||'')+' <span style="color:var(--text3);">&#183;</span> '+(d.a||'')+'</td>'+
       '<td><span class="tag" style="background:var(--blue-l);color:var(--blue);">'+(d.c||'')+'</span></td>'+
       '<td style="font-family:var(--mono);font-size:12px;">'+(d.sd||'')+'</td>'+
-      '<td style="font-family:var(--mono);font-size:12px;color:'+(isSoon?'var(--red)':'var(--blue)')+';">'+next+'</td>'+
+      '<td style="font-family:var(--mono);font-size:12px;color:'+(soon?'var(--red)':'var(--blue)')+';">'+next+'</td>'+
       '<td style="font-size:12px;color:var(--text3);">'+(d.note||'')+'</td>'+
     '</tr>';
   }).join('');
-  if(rows.length===0) tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text3);">구독 내역이 없어요</td></tr>';
+  if(!rows.length) tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text3);">\uAD6C\uB3C5 \uB0B4\uC5ED\uC774 \uC5C6\uC5B4\uC694</td></tr>';
+}
+function rvShowDesc(e,el){
+  var desc=el.getAttribute('data-desc');
+  if(desc) showTooltip([{k:'desc',v:desc}],e);
 }
 
 function toggleRVChipArea(){
@@ -1734,7 +1729,7 @@ function renderRV(){
     var userMore = userList.length > 1 ? ' <span style="color:var(--blue);font-size:10px;font-weight:600;">+' + (userList.length-1) + '</span>' : '';
     var userTitle = userList.join(', ');
     return '<tr>' +
-      '<td title="'+(d.d||'')+'" style="cursor:'+(d.d?'help':'default')+'"><strong style="font-size:13px;">'+d.s+(d.d?' <span style=\"font-size:10px;color:var(--text3);\">&nbsp;ℹ</span>':'')+'</strong></td>' +
+      '<td data-desc="'+(d.d||'').replace(/"/g,'&quot;')+'" onmouseenter="rvShowDesc(event,this)" onmouseleave="hideTooltip()" style="cursor:'+(d.d?'help':'default')+'">'<strong style="font-size:13px;">'+d.s+(d.d?' <span style=\"font-size:10px;color:var(--text3);\">&nbsp;ℹ</span>':'')+'</strong></td>' +
       '<td title="'+userTitle+'" style="white-space:nowrap;cursor:default;">'+userFirst+userMore+'</td>' +
       '<td style="font-family:var(--mono);">'+(d.a||'')+'</td>' +
       '<td style="font-family:var(--mono);font-size:12px;">'+(d.m||'')+'</td>' +
