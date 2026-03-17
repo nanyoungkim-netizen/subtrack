@@ -1733,3 +1733,47 @@ function renderRV(){
   }).join('');
 }
 
+async function initApp(){
+  // 날짜 표시
+  var todayEl = document.getElementById('today-lbl');
+  if(todayEl) todayEl.textContent = TODAY.getFullYear()+'.'+(TODAY.getMonth()+1)+'.'+TODAY.getDate();
+
+  if(IS_DEPLOYED){
+    try {
+      var res = await fetch(_SB_URL+'/rest/v1/subscriptions?select=*&order=id.asc&limit=1000', {
+        headers:{'apikey':_SB_KEY,'Authorization':'Bearer '+_SB_KEY}
+      });
+      var list = await res.json();
+      if(Array.isArray(list) && list.length > 0){
+        DATA = list;
+        nextId = Math.max.apply(null, DATA.map(function(d){return d.id;})) + 1;
+      } else {
+        await serverSave();
+      }
+    } catch(e){console.warn('서버 연결 실패',e);}
+  }
+
+  initMsUser(); initMsCard();
+  renderDash();
+
+  // 자피어 웹훅 데이터 체크
+  if(IS_DEPLOYED){
+    try {
+      var zr = await fetch('/api/webhook');
+      var zj = await zr.json();
+      var zapItems = (zj.data||[]).filter(function(d){return d.source==='zapier';});
+      if(zapItems.length>0){
+        zapItems.forEach(function(zi){if(!DATA.find(function(d){return d.id===zi.id;}))DATA.push(zi);});
+        var dot = document.getElementById('zapier-dot');
+        if(dot) dot.classList.add('connected');
+        var navDot = document.getElementById('zapier-dot-nav');
+        if(navDot) navDot.style.color = 'var(--green)';
+      }
+    } catch(e){}
+  }
+}
+
+initApp();
+
+initApp();
+
