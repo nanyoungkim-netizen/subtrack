@@ -1583,6 +1583,9 @@ function getUsersKo(uStr){
 
 // ── 리서처 뷰 화면 전환 ────────────────────────────
 function rvBackToLookup(){
+  // 검색 입력창 초기화
+  var inp = document.getElementById('rv-name-input');
+  if(inp) inp.value = '';
   document.getElementById('rv-screen-lookup').style.display='block';
   document.getElementById('rv-screen-result').style.display='none';
   document.getElementById('rv-screen-all').style.display='none';
