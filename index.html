@@ -198,7 +198,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 /* ── 호버 툴팁 ─────────────────────────────── */
 .tt-popup{
-  display:none;position:fixed;z-index:9999;
+  display:none;position:fixed;z-index:99999;
   background:var(--surface);color:var(--text);
   border:1px solid var(--border);border-radius:var(--radius);
   font-size:12px;font-family:var(--sans);line-height:1.6;
@@ -296,6 +296,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
   background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
   overflow:auto;max-height:58vh;box-shadow:var(--shadow);
 }
+.tbl-wrap table{table-layout:fixed;min-width:820px;}
+.tbl-wrap th,.tbl-wrap td{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 table{width:100%;border-collapse:collapse;font-size:12px;}
 th{
   padding:10px 12px;text-align:left;font-size:10px;font-weight:600;
@@ -628,12 +630,12 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
       </div>
       <div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:8px;" id="rv-count"></div>
     </div>
-    <div class="tbl-wrap" style="max-height:52vh;overflow-x:auto;">
+    <div class="tbl-wrap" style="max-height:52vh;overflow-x:auto;min-width:0;">
       <table>
         <thead><tr>
           <th style="width:150px;">서비스명</th><th style="width:80px;">사용자</th><th style="width:190px;">결제수단 · 금액</th><th>결제주기</th><th>구독시작</th><th>다음결제</th><th>비고</th>
         </tr></thead>
-        <tbody id="rv-tbody"></tbody>
+        </table><div style="display:none" id="_rv_ph"></div><table style="table-layout:fixed;width:100%;"><colgroup><col style="width:150px"/><col style="width:80px"/><col style="width:65px"/><col style="width:120px"/><col style="width:65px"/><col style="width:90px"/><col style="width:90px"/><col/></colgroup><tbody id="rv-tbody"></tbody>
       </table>
     </div>
   
@@ -1286,12 +1288,19 @@ function showTooltip(rows,e){
 }
 
 function moveTooltip(e){
-  var tt = getTooltipEl();
-  var x = e.clientX+16, y = e.clientY-10;
-  if(x+300>window.innerWidth) x = e.clientX-310;
-  if(y+250>window.innerHeight) y = e.clientY-220;
-  tt.style.left = x+'px'; tt.style.top = y+'px';
+  var el=getTooltipEl();
+  if(!el||el.style.display==='none') return;
+  var tw=el.offsetWidth||220,th2=el.offsetHeight||80;
+  var vw=window.innerWidth,vh=window.innerHeight;
+  var gap=14;
+  var left=(e.clientX+gap+tw<vw)?(e.clientX+gap):(e.clientX-tw-gap);
+  var top=e.clientY-10;
+  if(top+th2>vh) top=vh-th2-8;
+  if(top<8) top=8;
+  el.style.left=left+'px';
+  el.style.top=top+'px';
 }
+
 function hideTooltip(){
   var tt = getTooltipEl();
   tt.style.display = 'none';
