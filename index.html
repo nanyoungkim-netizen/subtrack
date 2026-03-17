@@ -199,14 +199,22 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 /* ── 호버 툴팁 ─────────────────────────────── */
 .tt-popup{
   display:none;position:fixed;z-index:9999;
-  background:#1A1F2E;color:#fff;padding:14px 16px;border-radius:var(--radius);
-  font-size:12px;font-family:var(--sans);line-height:1.8;
-  max-width:300px;pointer-events:none;
-  box-shadow:0 8px 28px rgba(0,0,0,.3);
+  background:var(--surface);color:var(--text);
+  border:1px solid var(--border);border-radius:var(--radius);
+  font-size:12px;font-family:var(--sans);line-height:1.6;
+  max-width:280px;pointer-events:none;
+  box-shadow:0 4px 20px rgba(0,0,0,.12);
+  overflow:hidden;
 }
-.tt-row{display:flex;gap:12px;align-items:flex-start;}
-.tt-key{color:#8B95A1;font-size:11px;min-width:52px;flex-shrink:0;}
-.tt-val{color:#F0F2F5;font-size:12px;word-break:break-word;}
+.tt-header{padding:10px 14px 0;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;}
+.tt-body{padding:8px 14px 12px;}
+.tt-row{display:flex;gap:8px;align-items:flex-start;margin-bottom:4px;}
+.tt-row:last-child{margin-bottom:0;}
+.tt-key{color:var(--text3);font-size:11px;min-width:44px;flex-shrink:0;line-height:1.5;}
+.tt-val{color:var(--text);font-size:11px;word-break:break-word;line-height:1.5;}
+.tt-tags{display:flex;gap:4px;flex-wrap:wrap;padding:8px 14px 12px;}
+.tt-tag{padding:2px 8px;border-radius:20px;font-size:10px;font-family:var(--mono);background:var(--surface2);color:var(--text2);border:1px solid var(--border);}
+.tt-tag.first{background:var(--blue-l);color:var(--blue);border-color:var(--blue-b);}
 
 /* ── 전체 목록 ─────────────────────────────── */
 .filter-bar{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;margin-bottom:12px;}
@@ -1256,20 +1264,27 @@ function getTooltipEl(){
   }
   return _ttEl;
 }
-function showTooltip(d, e){
-  var tt = getTooltipEl();
-  tt.innerHTML =
-    '<div class="tt-row"><span class="tt-key">서비스</span><span class="tt-val">'+(d.s||'-')+'</span></div>' +
-    '<div class="tt-row"><span class="tt-key">내용</span><span class="tt-val">'+(d.d||'-')+'</span></div>' +
-    '<div class="tt-row"><span class="tt-key">사용자</span><span class="tt-val">'+(d.u||'-')+'</span></div>' +
-    '<div class="tt-row"><span class="tt-key">금액</span><span class="tt-val">'+(d.a||'-')+'</span></div>' +
-    '<div class="tt-row"><span class="tt-key">결제수단</span><span class="tt-val">'+(d.m||'-')+'</span></div>' +
-    '<div class="tt-row"><span class="tt-key">결제주기</span><span class="tt-val">'+(d.c||'-')+'</span></div>' +
-    '<div class="tt-row"><span class="tt-key">시작일</span><span class="tt-val">'+(d.sd||'-')+'</span></div>' +
-    (d.note?'<div class="tt-row"><span class="tt-key">비고</span><span class="tt-val">'+d.note+'</span></div>':'');
-  tt.style.display = 'block';
+function showTooltip(rows,e){
+  var el=getTooltipEl();
+  if(!rows||!rows.length){el.style.display='none';return;}
+  // 사용자 목록이면 태그형으로
+  if(rows[0] && rows[0].type==='users'){
+    var names=rows[0].names||[];
+    el.innerHTML='<div class="tt-header">'+rows[0].label+'</div><div class="tt-tags">'+
+      names.map(function(n,i){return '<span class="tt-tag'+(i===0?' first':'')+'">' +n+'</span>';}).join('')+
+    '</div>';
+  } else {
+    el.innerHTML='<div class="tt-body">'+rows.map(function(r){
+      if(r.k==='desc'||r.k==='내용'||!r.k){
+        return '<div style="color:var(--text);font-size:11px;line-height:1.6;">'+r.v+'</div>';
+      }
+      return '<div class="tt-row"><span class="tt-key">'+r.k+'</span><span class="tt-val">'+r.v+'</span></div>';
+    }).join('')+'</div>';
+  }
+  el.style.display='block';
   moveTooltip(e);
 }
+
 function moveTooltip(e){
   var tt = getTooltipEl();
   var x = e.clientX+16, y = e.clientY-10;
@@ -1605,7 +1620,7 @@ function rvLookup(){
     var uList=d.u?d.u.split(",").map(function(u){return u.trim();}).filter(Boolean):[];
     var uFirst=uList.length?(KO_MAP[uList[0]]||uList[0]):"";
     var uNames=uList.map(function(u){return KO_MAP[u]||u;}).join(", ");
-    var uMore=uList.length>1?" +<span style=\"color:var(--blue);font-size:10px;font-weight:600;\" title=\""+uNames+"\"> "+(uList.length-1)+"</span>":"";
+    var uMore=uList.length>1?" <span style=\"color:var(--blue);font-size:10px;font-weight:600;cursor:pointer;\" onclick=\"showUserTooltip(event,this)\" onmouseleave=\"hideTooltip()\" data-users=\""+uNames+"\" data-first=\""+uFirst+"\">+"+(uList.length-1)+"</span>":"";
     var descAttr=d.d?(d.d.replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;")):"";
     return "<tr>"+
       "<td class=\"rv-svc-td\""+(d.d?" data-tooltip=\""+descAttr+"\"":"")+"><strong>"+d.s+(d.d?" <span style=\"font-size:10px;color:var(--text3);\"> i</span>":"")+"</strong></td>"+
@@ -1625,6 +1640,15 @@ function rvShowDesc(e,el){
   if(desc) showTooltip([{k:'desc',v:desc}],e);
 }
 
+
+function showUserTooltip(e,el){
+  var users=(el.getAttribute('data-users')||'').split(',').filter(Boolean);
+  var first=el.getAttribute('data-first')||'';
+  var label='전체 사용자 · '+(users.length+1)+'명';
+  var names=[first].concat(users);
+  showTooltip([{type:'users',label:label,names:names}],e);
+}
+var _rvChipOpen=false;
 var _rvChipOpen=false;
 function toggleRVChipArea(){
   _rvChipOpen=!_rvChipOpen;
@@ -1727,7 +1751,7 @@ function renderRV(){
     var next=calcNext(d);
     var isSoon=next&&daysUntil(next)>=0&&daysUntil(next)<=7;
     var uFirst='',uMore='',uTitle='';
-    if(d.u){var ul=d.u.split(',').map(function(u){return u.trim();}).filter(Boolean);uFirst=getUsersKo(ul[0]||'');uMore=ul.length>1?' <span style="color:var(--blue);font-size:10px;font-weight:600;" title="'+ul.map(function(u){return KO_MAP[u]||u;}).join(', ')+'">' +(ul.length-1)+'</span>':'';uTitle=ul.map(function(u){return KO_MAP[u]||u;}).join(', ');}
+    if(d.u){var ul=d.u.split(',').map(function(u){return u.trim();}).filter(Boolean);uFirst=getUsersKo(ul[0]||'');uMore=ul.length>1?' <span style="color:var(--blue);font-size:10px;font-weight:600;cursor:pointer;" onclick="showUserTooltip(event,this)" onmouseleave="hideTooltip()" data-users="'+ul.map(function(u){return KO_MAP[u]||u;}).join(',')+'" data-first="'+(KO_MAP[ul[0]]||ul[0])+'">+' +(ul.length-1)+'</span>':'' ;uTitle=ul.map(function(u){return KO_MAP[u]||u;}).join(', ');}
     var descAttr=d.d?(d.d.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')):'';
     return '<tr>'+
       '<td class="rv-svc-td"'+(d.d?' data-tooltip="'+descAttr+'"':'')+'><strong>'+d.s+(d.d?' <span style="font-size:10px;color:var(--text3);"> i</span>':'')+'</strong></td>'+
@@ -1781,6 +1805,14 @@ async function initApp(){
   }
 }
 document.addEventListener('mouseover',function(e){
+  var uCell=e.target.closest('td[data-users]');
+  if(uCell && e.target.tagName!=='SPAN'){
+    var users=(uCell.getAttribute('data-users')||'').split(',').filter(Boolean);
+    var first=uCell.getAttribute('data-first')||'';
+    var label='전체 사용자 · '+(users.length+1)+'명';
+    showTooltip([{type:'users',label:label,names:[first].concat(users)}],e);
+    return;
+  }
   var td=e.target.closest('.rv-svc-td');
   if(!td) return;
   var desc=td.getAttribute('data-tooltip')||td.getAttribute('data-desc');
