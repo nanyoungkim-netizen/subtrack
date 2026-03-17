@@ -1625,15 +1625,16 @@ function rvShowDesc(e,el){
   if(desc) showTooltip([{k:'desc',v:desc}],e);
 }
 
+var _rvChipOpen=false;
 function toggleRVChipArea(){
   _rvChipOpen=!_rvChipOpen;
   var area=document.getElementById('rv-chip-area');
   var btn=document.getElementById('rv-chip-toggle');
-  var rst=document.getElementById('rv-chip-reset');
   if(area) area.style.display=_rvChipOpen?'block':'none';
-  if(btn) btn.textContent=_rvChipOpen?'▼ 접기':'▶ 펼치기';
+  if(btn) btn.textContent=_rvChipOpen?'▼ 접기':'▶ 팡치기';
   updateRVChipResetBtn();
 }
+
 function resetRVChips(){
   _rvChips=[];
   document.querySelectorAll('.rv-chip-btn').forEach(function(b){
