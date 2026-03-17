@@ -296,8 +296,9 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
   background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
   overflow:auto;max-height:58vh;box-shadow:var(--shadow);
 }
-.tbl-wrap table{table-layout:fixed;min-width:820px;}
-.tbl-wrap th,.tbl-wrap td{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tbl-wrap table{width:100%;}
+.tbl-wrap th{white-space:nowrap;}
+.tbl-wrap td{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 table{width:100%;border-collapse:collapse;font-size:12px;}
 th{
   padding:10px 12px;text-align:left;font-size:10px;font-weight:600;
@@ -630,12 +631,12 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
       </div>
       <div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:8px;" id="rv-count"></div>
     </div>
-    <div class="tbl-wrap" style="max-height:52vh;overflow-x:auto;min-width:0;">
+    <div class="tbl-wrap" style="max-height:52vh;overflow-x:auto;">
       <table>
         <thead><tr>
           <th style="width:150px;">서비스명</th><th style="width:80px;">사용자</th><th style="width:190px;">결제수단 · 금액</th><th>결제주기</th><th>구독시작</th><th>다음결제</th><th>비고</th>
         </tr></thead>
-        </table><div style="display:none" id="_rv_ph"></div><table style="table-layout:fixed;width:100%;"><colgroup><col style="width:150px"/><col style="width:80px"/><col style="width:65px"/><col style="width:120px"/><col style="width:65px"/><col style="width:90px"/><col style="width:90px"/><col/></colgroup><tbody id="rv-tbody"></tbody>
+        </table><div style="display:none" id="_rv_ph"></div><table><tbody id="rv-tbody"></tbody>
       </table>
     </div>
   
@@ -1629,7 +1630,7 @@ function rvLookup(){
     var uList=d.u?d.u.split(",").map(function(u){return u.trim();}).filter(Boolean):[];
     var uFirst=uList.length?(KO_MAP[uList[0]]||uList[0]):"";
     var uNames=uList.map(function(u){return KO_MAP[u]||u;}).join(", ");
-    var uMore=uList.length>1?" <span style=\"color:var(--blue);font-size:10px;font-weight:600;cursor:pointer;\" onclick=\"showUserTooltip(event,this)\" onmouseleave=\"hideTooltip()\" data-users=\""+uNames+"\" data-first=\""+uFirst+"\">+"+(uList.length-1)+"</span>":"";
+    var uRest=uList.slice(1).map(function(u){return KO_MAP[u]||u;}).join(",");var uMore=uList.length>1?" <span style=\"color:var(--blue);font-size:10px;font-weight:600;cursor:pointer;\" onclick=\"showUserTooltip(event,this)\" onmouseleave=\"hideTooltip()\" data-users=\""+uRest+"\" data-first=\""+uFirst+"\">+"+(uList.length-1)+"</span>":"";
     var descAttr=d.d?(d.d.replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;")):"";
     return "<tr>"+
       "<td class=\"rv-svc-td\""+(d.d?" data-tooltip=\""+descAttr+"\"":"")+"><strong>"+d.s+(d.d?" <span style=\"font-size:10px;color:var(--text3);\"> i</span>":"")+"</strong></td>"+
@@ -1760,7 +1761,7 @@ function renderRV(){
     var next=calcNext(d);
     var isSoon=next&&daysUntil(next)>=0&&daysUntil(next)<=7;
     var uFirst='',uMore='',uTitle='';
-    if(d.u){var ul=d.u.split(',').map(function(u){return u.trim();}).filter(Boolean);uFirst=getUsersKo(ul[0]||'');uMore=ul.length>1?' <span style="color:var(--blue);font-size:10px;font-weight:600;cursor:pointer;" onclick="showUserTooltip(event,this)" onmouseleave="hideTooltip()" data-users="'+ul.map(function(u){return KO_MAP[u]||u;}).join(',')+'" data-first="'+(KO_MAP[ul[0]]||ul[0])+'">+' +(ul.length-1)+'</span>':'' ;uTitle=ul.map(function(u){return KO_MAP[u]||u;}).join(', ');}
+    if(d.u){var ul=d.u.split(',').map(function(u){return u.trim();}).filter(Boolean);uFirst=getUsersKo(ul[0]||'');uMore=ul.length>1?' <span style="color:var(--blue);font-size:10px;font-weight:600;cursor:pointer;" onclick="showUserTooltip(event,this)" onmouseleave="hideTooltip()" data-users="'+ul.slice(1).map(function(u){return KO_MAP[u]||u;}).join(',')+'" data-first="'+(KO_MAP[ul[0]]||ul[0])+'">+' +(ul.length-1)+'</span>':'' ;uTitle=ul.map(function(u){return KO_MAP[u]||u;}).join(', ');}
     var descAttr=d.d?(d.d.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')):'';
     return '<tr>'+
       '<td class="rv-svc-td"'+(d.d?' data-tooltip="'+descAttr+'"':'')+'><strong>'+d.s+(d.d?' <span style="font-size:10px;color:var(--text3);"> i</span>':'')+'</strong></td>'+
@@ -1816,10 +1817,11 @@ async function initApp(){
 document.addEventListener('mouseover',function(e){
   var uCell=e.target.closest('td[data-users]');
   if(uCell && e.target.tagName!=='SPAN'){
-    var users=(uCell.getAttribute('data-users')||'').split(',').filter(Boolean);
-    var first=uCell.getAttribute('data-first')||'';
-    var label='전체 사용자 · '+(users.length+1)+'명';
-    showTooltip([{type:'users',label:label,names:[first].concat(users)}],e);
+    var users2=(uCell.getAttribute('data-users')||'').split(',').filter(Boolean);
+    var first2=uCell.getAttribute('data-first')||'';
+    var allNames=first2?[first2].concat(users2):users2;
+    var label2='전체 사용자 · '+allNames.length+'명';
+    showTooltip([{type:'users',label:label2,names:allNames}],e);
     return;
   }
   var td=e.target.closest('.rv-svc-td');
