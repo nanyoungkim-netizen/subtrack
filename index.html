@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>SubTrack</title>
+<title>구독 관리</title>
 <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <style>
 :root{
@@ -499,7 +499,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
     <div class="login-logo">
       <div class="login-logo-mark">🛠️</div>
       <div>
-        <div class="login-logo-name">SubTrack</div>
+        <div class="login-logo-name">구독 관리</div>
         <div class="login-logo-sub">구독 결제 관리 시스템</div>
       </div>
     </div>
@@ -542,7 +542,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
     <div class="rv-header-left">
       <div class="rv-logo-mark">🛠️</div>
       <div>
-        <div class="rv-title">구독 현황</div>
+        <div class="rv-title">구독 관리</div>
       </div>
       <span class="rv-badge">리서처용</span>
     </div>
@@ -620,10 +620,10 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
       </div>
       <div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:8px;" id="rv-count"></div>
     </div>
-    <div class="tbl-wrap" style="max-height:52vh;">
+    <div class="tbl-wrap" style="max-height:52vh;overflow-x:auto;">
       <table>
         <thead><tr>
-          <th>서비스명</th><th>사용자</th><th>결제수단 · 금액</th><th>결제주기</th><th>구독시작</th><th>다음결제</th><th>비고</th>
+          <th style="width:150px;">서비스명</th><th style="width:80px;">사용자</th><th style="width:190px;">결제수단 · 금액</th><th>결제주기</th><th>구독시작</th><th>다음결제</th><th>비고</th>
         </tr></thead>
         <tbody id="rv-tbody"></tbody>
       </table>
@@ -642,7 +642,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
   <div class="sidebar-logo">
     <div class="sidebar-logo-mark">🛠️</div>
     <div class="sidebar-logo-info">
-      <div class="sidebar-logo-name">SubTrack</div>
+      <div class="sidebar-logo-name">구독 관리</div>
       <div class="sidebar-logo-date" id="today-lbl"></div>
     </div>
   </div>
@@ -1570,49 +1570,56 @@ function rvShowAll(){
   renderRV();
 }
 function rvLookup(){
-  var q=(document.getElementById('rv-name-input').value||'').trim();
+  var q=(document.getElementById("rv-name-input").value||"").trim();
   if(!q) return;
   var qLo=q.toLowerCase();
   var isCard=/^\d{4,}$/.test(q);
   var rows=isCard
-    ?DATA.filter(function(d){return d.status==='구독중'&&d.m&&d.m.toString().includes(q);})
+    ?DATA.filter(function(d){return d.status==="구독중"&&d.m&&d.m.toString().includes(q);})
     :DATA.filter(function(d){
-      if(d.status!=='구독중'||!d.u) return false;
-      return d.u.split(',').map(function(u){return u.trim();}).some(function(u){
-        var ko=KO_MAP[u]||'';
+      if(d.status!=="구독중"||!d.u) return false;
+      return d.u.split(",").map(function(u){return u.trim();}).some(function(u){
+        var ko=KO_MAP[u]||"";
         return u.toLowerCase()===qLo||ko===q||ko.includes(q)||q.includes(ko)||u.toLowerCase().includes(qLo);
       });
     });
-  var nick='';
+  var nick="";
   if(!isCard) DATA.some(function(d){
     if(!d.u) return;
-    return d.u.split(',').map(function(u){return u.trim();}).some(function(u){
-      var ko=KO_MAP[u]||'';
+    return d.u.split(",").map(function(u){return u.trim();}).some(function(u){
+      var ko=KO_MAP[u]||"";
       if(u.toLowerCase()===qLo||ko===q||ko.includes(q)||q.includes(ko)||u.toLowerCase().includes(qLo)){nick=u;return true;}
     });
   });
-  var ko2=nick?(KO_MAP[nick]||nick):'';
-  var dname=isCard?('카드 '+q):nick+(ko2&&ko2!==nick?' ('+ko2+')':'');
-  document.getElementById('rv-screen-lookup').style.display='none';
-  document.getElementById('rv-screen-result').style.display='block';
-  document.getElementById('rv-screen-all').style.display='none';
-  document.getElementById('rv-result-title').textContent=dname+'\uC758 \uAD6C\uB3C5 \uB0B4\uC5ED';
-  document.getElementById('rv-result-cnt').textContent=rows.length+'\uAC74';
-  var tbody=document.getElementById('rv-result-tbody');
+  var ko2=nick?(KO_MAP[nick]||nick):"";
+  var dname=isCard?("카드 "+q):nick+(ko2&&ko2!==nick?" ("+ko2+")":"");
+  document.getElementById("rv-screen-lookup").style.display="none";
+  document.getElementById("rv-screen-result").style.display="block";
+  document.getElementById("rv-screen-all").style.display="none";
+  document.getElementById("rv-result-title").textContent=dname+"의 구독 내역";
+  document.getElementById("rv-result-cnt").textContent=rows.length+"건";
+  var tbody=document.getElementById("rv-result-tbody");
   tbody.innerHTML=rows.map(function(d){
     var next=calcNext(d);
     var soon=next&&daysUntil(next)>=0&&daysUntil(next)<=7;
-    return '<tr>'+
-      '<td data-desc="'+(d.d||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;')+'" class="rv-svc-td" style="cursor:'+(d.d?'help':'default')+'"><strong style="font-size:13px;">'+d.s+(d.d?' <span style=\"font-size:10px;color:var(--text3);\"> i</span>':'')+'</strong></td>'+
-      '<td style="font-family:var(--mono);font-size:12px;">'+(d.m||'')+' <span style="color:var(--text3);">&#183;</span> '+(d.a||'')+'</td>'+
-      '<td><span class="tag" style="background:var(--blue-l);color:var(--blue);">'+(d.c||'')+'</span></td>'+
-      '<td style="font-family:var(--mono);font-size:12px;">'+(d.sd||'')+'</td>'+
-      '<td style="font-family:var(--mono);font-size:12px;color:'+(soon?'var(--red)':'var(--blue)')+';">'+next+'</td>'+
-      '<td style="font-size:12px;color:var(--text3);">'+(d.note||'')+'</td>'+
-    '</tr>';
-  }).join('');
-  if(!rows.length) tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text3);">\uAD6C\uB3C5 \uB0B4\uC5ED\uC774 \uC5C6\uC5B4\uC694</td></tr>';
+    var uList=d.u?d.u.split(",").map(function(u){return u.trim();}).filter(Boolean):[];
+    var uFirst=uList.length?(KO_MAP[uList[0]]||uList[0]):"";
+    var uNames=uList.map(function(u){return KO_MAP[u]||u;}).join(", ");
+    var uMore=uList.length>1?" +<span style=\"color:var(--blue);font-size:10px;font-weight:600;\" title=\""+uNames+"\"> "+(uList.length-1)+"</span>":"";
+    var descAttr=d.d?(d.d.replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;")):"";
+    return "<tr>"+
+      "<td class=\"rv-svc-td\""+(d.d?" data-tooltip=\""+descAttr+"\"":"")+"><strong>"+d.s+(d.d?" <span style=\"font-size:10px;color:var(--text3);\"> i</span>":"")+"</strong></td>"+
+      "<td style=\"font-size:11px;white-space:nowrap;\" title=\""+uNames+"\">"+uFirst+uMore+"</td>"+
+      "<td style=\"font-family:var(--mono);font-size:12px;\">"+((d.m)||"")+" <span style=\"color:var(--text3);\">&middot;</span> "+((d.a)||"")+"</td>"+
+      "<td><span class=\"tag\" style=\"background:var(--blue-l);color:var(--blue);\">"+((d.c)||"")+"</span></td>"+
+      "<td style=\"font-family:var(--mono);font-size:12px;\">"+((d.sd)||"")+"</td>"+
+      "<td style=\"font-family:var(--mono);font-size:12px;color:"+(soon?"var(--red)":"var(--blue)")+";\">"+(next||"")+"</td>"+
+      "<td style=\"font-size:12px;color:var(--text3);\">"+((d.note)||"")+"</td>"+
+    "</tr>";
+  }).join("");
+  if(!rows.length) tbody.innerHTML="<tr><td colspan=\"7\" style=\"text-align:center;padding:24px;color:var(--text3);\">구독 내역이 없어요</td></tr>";
 }
+
 function rvShowDesc(e,el){
   var desc=el.getAttribute('data-desc');
   if(desc) showTooltip([{k:'desc',v:desc}],e);
@@ -1719,7 +1726,7 @@ function renderRV(){
     var next=calcNext(d);
     var isSoon=next&&daysUntil(next)>=0&&daysUntil(next)<=7;
     var uFirst='',uMore='',uTitle='';
-    if(d.u){var ul=d.u.split(',').map(function(u){return u.trim();}).filter(Boolean);uFirst=getUsersKo(ul[0]||'');uMore=ul.length>1?' <span style="color:var(--blue);font-size:10px;font-weight:600;">+' +(ul.length-1)+'</span>':'';uTitle=ul.map(function(u){return KO_MAP[u]||u;}).join(', ');}
+    if(d.u){var ul=d.u.split(',').map(function(u){return u.trim();}).filter(Boolean);uFirst=getUsersKo(ul[0]||'');uMore=ul.length>1?' <span style="color:var(--blue);font-size:10px;font-weight:600;" title="'+ul.map(function(u){return KO_MAP[u]||u;}).join(', ')+'">' +(ul.length-1)+'</span>':'';uTitle=ul.map(function(u){return KO_MAP[u]||u;}).join(', ');}
     var descAttr=d.d?(d.d.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')):'';
     return '<tr>'+
       '<td class="rv-svc-td"'+(d.d?' data-tooltip="'+descAttr+'"':'')+'><strong>'+d.s+(d.d?' <span style="font-size:10px;color:var(--text3);"> i</span>':'')+'</strong></td>'+
@@ -1772,6 +1779,15 @@ async function initApp(){
     } catch(e){}
   }
 }
+document.addEventListener('mouseover',function(e){
+  var td=e.target.closest('.rv-svc-td');
+  if(!td) return;
+  var desc=td.getAttribute('data-tooltip')||td.getAttribute('data-desc');
+  if(desc && typeof showTooltip==='function') showTooltip([{k:'내용',v:desc}],e);
+});
+document.addEventListener('mouseout',function(e){
+  if(e.target.closest('.rv-svc-td') && typeof hideTooltip==='function') hideTooltip();
+});
 document.addEventListener('DOMContentLoaded',function(){initApp();});
 </script>
 </body>
