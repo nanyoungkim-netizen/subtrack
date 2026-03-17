@@ -1572,65 +1572,57 @@ function rvShowAll(){
 function rvLookup(){
   var q = (document.getElementById('rv-name-input').value||'').trim();
   if(!q){ return; }
-  // 닉네임 또는 한글로 검색
   var qLo = q.toLowerCase();
-  // 카드번호로 검색하는지 확인 (숫자 4자리 이상)
-  var isCardSearch = /^d{4,}$/.test(q);
-  var rows = DATA.filter(function(d){
-    if(d.status!=='구독중') return false;
-    // 카드번호 검색
-    if(isCardSearch) return d.m && d.m.toString().includes(q);
-    if(!d.u) return false;
-    var users = d.u.split(',').map(function(u){return u.trim();});
-    return users.some(function(u){
-      var ko = KO_MAP[u]||'';
-      return u.toLowerCase()===qLo || ko===q || ko.includes(q) || q.includes(ko) || u.toLowerCase().includes(qLo);
+  var isCardSearch = /^\d{4,}$/.test(q);
+  var rows;
+  if(isCardSearch){
+    rows = DATA.filter(function(d){
+      return d.status==='구독중' && d.m && d.m.toString().includes(q);
     });
-  });
-  // 표시할 닉네임 찾기
-  var matchNick = '';
-  DATA.some(function(d){
-    if(!d.u) return false;
-    var users = d.u.split(',').map(function(u){return u.trim();});
-    return users.some(function(u){
-      var ko = KO_MAP[u]||'';
-      if(u.toLowerCase()===qLo||ko===q||ko.includes(q)||q.includes(ko)||u.toLowerCase().includes(qLo)){
-        matchNick=u; return true;
-      }
+  } else {
+    rows = DATA.filter(function(d){
+      if(d.status!=='구독중'||!d.u) return false;
+      var users = d.u.split(',').map(function(u){return u.trim();});
+      return users.some(function(u){
+        var ko = KO_MAP[u]||'';
+        return u.toLowerCase()===qLo||ko===q||ko.includes(q)||q.includes(ko)||u.toLowerCase().includes(qLo);
+      });
     });
-  });
-  var koName = matchNick?(KO_MAP[matchNick]||matchNick):'';
-  var displayName = isCardSearch && !matchNick
-    ? '카드 ' + q
-    : matchNick + (koName&&koName!==matchNick?' ('+koName+')':'');
-  
+  }
+  var matchNick='';
+  if(!isCardSearch){
+    DATA.some(function(d){
+      if(!d.u) return false;
+      return d.u.split(',').map(function(u){return u.trim();}).some(function(u){
+        var ko=KO_MAP[u]||'';
+        if(u.toLowerCase()===qLo||ko===q||ko.includes(q)||q.includes(ko)||u.toLowerCase().includes(qLo)){matchNick=u;return true;}
+      });
+    });
+  }
+  var koName=matchNick?(KO_MAP[matchNick]||matchNick):'';
+  var displayName=isCardSearch?'카드 '+q:matchNick+(koName&&koName!==matchNick?' ('+koName+')':'');
   document.getElementById('rv-screen-lookup').style.display='none';
   document.getElementById('rv-screen-result').style.display='block';
   document.getElementById('rv-screen-all').style.display='none';
-  document.getElementById('rv-result-title').textContent = displayName + '의 구독 내역';
-  document.getElementById('rv-result-cnt').textContent = rows.length+'건';
-  
-  var tbody = document.getElementById('rv-result-tbody');
-  tbody.innerHTML = rows.map(function(d){
-    var next = calcNext(d);
-    var isSoon = next&&daysUntil(next)>=0&&daysUntil(next)<=7;
+  document.getElementById('rv-result-title').textContent=displayName+'의 구독 내역';
+  document.getElementById('rv-result-cnt').textContent=rows.length+'건';
+  var tbody=document.getElementById('rv-result-tbody');
+  tbody.innerHTML=rows.map(function(d){
+    var next=calcNext(d);
+    var isSoon=next&&daysUntil(next)>=0&&daysUntil(next)<=7;
+    var usersKo=getUsersKo(d.u||'');
     return '<tr>'+
-      '<td class="svc-desc-cell" data-desc="'+(d.d||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;')+'" onmouseenter="showDescTT(event,this)" onmouseleave="hideTT()" style="cursor:'+(d.d?'help':'default')+'"><strong style="font-size:13px;">'+d.s+(d.d?' <span style=\"font-size:10px;color:var(--text3);\">&nbsp;ℹ</span>':'')+'</strong></td>'+
-      '<td style="font-family:var(--mono);">'+(d.a||'')+'</td>'+
-      '<td style="font-family:var(--mono);font-size:12px;">'+(d.m||'')+'</td>'+
+      '<td onmouseenter="showTooltip([{k:'내용',v:\''+((d.d||'').replace(/'/g,"\\'"))+'\'\'],event)" onmouseleave="hideTooltip()" style="cursor:'+(d.d?'help':'default')+'"><strong style="font-size:13px;">'+d.s+(d.d?' <span style=\"font-size:10px;color:var(--text3);\">&nbsp;&#9432;</span>':'')+'</strong></td>'+
+      '<td style="font-family:var(--mono);font-size:12px;">'+(d.m||'')+' <span style="color:var(--text3);">·</span> '+(d.a||'')+'</td>'+
       '<td><span class="tag" style="background:var(--blue-l);color:var(--blue);">'+(d.c||'')+'</span></td>'+
       '<td style="font-family:var(--mono);font-size:12px;">'+(d.sd||'')+'</td>'+
       '<td style="font-family:var(--mono);font-size:12px;color:'+(isSoon?'var(--red)':'var(--blue)')+';">'+next+'</td>'+
       '<td style="font-size:12px;color:var(--text3);">'+(d.note||'')+'</td>'+
     '</tr>';
   }).join('');
-  if(rows.length===0) tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text3);">구독 내역이 없어요</td></tr>';
+  if(rows.length===0) tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text3);">구독 내역이 없어요</td></tr>';
 }
 
-// 엔터 키
-document.getElementById('rv-name-input')&&(document.getElementById('rv-name-input').onkeydown=function(e){if(e.key==='Enter')rvLookup();});
-
-var _rvChipOpen=false;
 function toggleRVChipArea(){
   _rvChipOpen=!_rvChipOpen;
   var area=document.getElementById('rv-chip-area');
