@@ -591,16 +591,14 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
     </div>
     <div style="padding:12px 14px 8px;">
       <!-- 결제주기 탭: 항상 표시 -->
-      <div style="display:flex;align-items:center;gap:5px;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:5px;margin-bottom:10px;flex-wrap:wrap;">
         <span style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-right:4px;">결제주기</span>
         <button id="rv-tab-all" onclick="setRVTab('all')" style="padding:5px 13px;border-radius:8px;border:1.5px solid var(--blue);background:var(--blue);color:#fff;font-size:12px;font-weight:600;font-family:var(--sans);cursor:pointer;">전체</button>
         <button id="rv-tab-monthly" onclick="setRVTab('월결제')" style="padding:5px 13px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-family:var(--sans);cursor:pointer;">월결제</button>
         <button id="rv-tab-yearly" onclick="setRVTab('연결제')" style="padding:5px 13px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-family:var(--sans);cursor:pointer;">연결제</button>
-      </div>
-      <!-- 툴 필터: 기본 접기 -->
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-        <span style="font-size:12px;font-weight:600;color:var(--text);">툴 필터</span>
-        <button id="rv-chip-toggle" onclick="toggleRVChipArea()" style="display:flex;align-items:center;gap:4px;padding:4px 9px;border-radius:7px;border:1.5px solid var(--border);background:transparent;color:var(--text3);font-size:11px;font-family:var(--mono);cursor:pointer;">▶ 툴 필터 펼치기</button>
+        <div style="width:1px;height:20px;background:var(--border);margin:0 4px;"></div>
+        <span style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-right:2px;">툴 필터</span>
+        <button id="rv-chip-toggle" onclick="toggleRVChipArea()" style="padding:5px 13px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-family:var(--sans);cursor:pointer;">▶ 펼치기</button>
       </div>
       <div id="rv-chip-area" style="display:none;margin-bottom:8px;">
         <div id="rv-chips" style="display:flex;gap:4px;flex-wrap:wrap;"></div>
@@ -1578,7 +1576,7 @@ function rvLookup(){
   var rows = DATA.filter(function(d){
     if(d.status!=='구독중') return false;
     // 카드번호 검색
-    if(isCardSearch && d.m && d.m.toString().includes(q)) return true;
+    if(isCardSearch) return d.m && d.m.toString().includes(q);
     if(!d.u) return false;
     var users = d.u.split(',').map(function(u){return u.trim();});
     return users.some(function(u){
