@@ -355,7 +355,24 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
 }
 
 /* ── 자피어 연동 ─────────────────────────────── */
-.zapier-page{max-width:680px;}
+.zapier-page{max-width:800px;}
+.zp-header{margin-bottom:20px;}
+.zp-header h2{font-size:16px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;}
+.zp-sub{font-size:12px;color:var(--text3);line-height:1.6;}
+.zp-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:10px;box-shadow:var(--shadow);display:flex;align-items:flex-start;gap:14px;}
+.zp-card:hover{border-color:var(--blue);box-shadow:0 2px 12px rgba(0,102,255,.08);}
+.zp-info{flex:1;min-width:0;}
+.zp-service{font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px;}
+.zp-meta{font-size:12px;color:var(--text2);display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:8px;}
+.zp-meta span{display:flex;align-items:center;gap:3px;}
+.zp-desc{font-size:12px;color:var(--text3);margin-bottom:0;}
+.zp-actions{display:flex;gap:8px;flex-shrink:0;}
+.zp-approve{background:var(--blue);color:#fff;border:none;border-radius:var(--radius);padding:7px 16px;font-size:12px;font-weight:600;cursor:pointer;}
+.zp-approve:hover{opacity:.85;}
+.zp-reject{background:none;color:var(--text3);border:1px solid var(--border);border-radius:var(--radius);padding:7px 14px;font-size:12px;cursor:pointer;}
+.zp-reject:hover{background:var(--surface2);}
+.zp-toast{position:fixed;bottom:24px;right:24px;background:#1a1a2e;color:#fff;padding:12px 20px;border-radius:12px;font-size:13px;font-weight:500;box-shadow:0 4px 20px rgba(0,0,0,.25);z-index:9999;display:none;animation:zpSlide .3s ease;}
+@keyframes zpSlide{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
 .z-card{
   background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
   padding:20px;margin-bottom:14px;box-shadow:var(--shadow);
@@ -760,43 +777,20 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
 <!-- 자피어 연동 -->
 <div id="tab-zapier" style="display:none">
   <div class="zapier-page">
-    <div class="pg-title">자피어 연동</div>
-    <div class="pg-sub" style="margin-bottom:20px;">슬랙 메시지로 구독 항목을 자동 등록해요</div>
-    <div class="z-card">
-      <h3><span class="zapier-dot" id="zapier-dot"></span> 연동 상태</h3>
-      <div id="zapier-status-box" class="status-indicator off">⚡ 자피어 웹훅 대기 중</div>
+    <div class="zp-header">
+      <h2>자피어 연동 <span id="zp-badge" style="display:none;background:var(--blue);color:#fff;border-radius:20px;padding:1px 8px;font-size:11px;font-weight:700;margin-left:4px;"></span></h2>
+      <div class="zp-sub">슬랙 #구매-요청 자동-결제 워크플로 제출 시 아래에 표시돼요.<br>확인 후 ✅ 승인하면 전체 목록에 반영돼요.</div>
     </div>
-    <div class="z-card">
-      <h3>🔗 웹훅 URL</h3>
-      <div class="z-step">
-        <div class="z-num">1</div>
-        <div class="z-content">자피어에서 <strong>Webhook by Zapier</strong>를 트리거로 선택하세요</div>
-      </div>
-      <div class="z-step">
-        <div class="z-num">2</div>
-        <div class="z-content">아래 URL을 복사해서 자피어 웹훅 URL에 붙여넣으세요</div>
-      </div>
-      <div class="url-box">
-        <span id="webhook-url-text"></span>
-        <button class="copy-btn" onclick="copyWebhook()">복사</button>
-      </div>
+    <div id="zp-empty" style="text-align:center;padding:60px 0;color:var(--text3);font-size:13px;">
+      <div style="font-size:32px;margin-bottom:12px;">📭</div>
+      대기 중인 항목이 없어요
     </div>
-    <div class="z-card">
-      <h3>📋 필드 매핑</h3>
-      <div class="field-map">
-        <table>
-          <thead><tr><th>자피어 필드</th><th>설명</th></tr></thead>
-          <tbody>
-            <tr><td>service</td><td>서비스명 (필수)</td></tr>
-            <tr><td>description</td><td>내용 설명</td></tr>
-            <tr><td>user</td><td>사용자</td></tr>
-            <tr><td>amount</td><td>금액</td></tr>
-            <tr><td>payment</td><td>결제수단</td></tr>
-            <tr><td>cycle</td><td>결제주기 (월결제/연결제)</td></tr>
-            <tr><td>start_date</td><td>구독 시작일 (YYYY-MM-DD)</td></tr>
-            <tr><td>note</td><td>비고</td></tr>
-          </tbody>
-        </table>
+    <div id="zp-list"></div>
+    <div style="margin-top:24px;border-top:1px solid var(--border);padding-top:16px;">
+      <div style="font-size:11px;color:var(--text3);display:flex;align-items:center;gap:6px;">
+        <span>🔗 웹훅 URL</span>
+        <code style="background:var(--surface2);padding:2px 8px;border-radius:4px;font-size:11px;color:var(--blue);">https://subtrack-sage.vercel.app/api/webhook</code>
+        <button class="copy-btn" onclick="copyWebhook()" style="padding:2px 8px;font-size:11px;">복사</button>
       </div>
     </div>
   </div>
@@ -983,6 +977,7 @@ function showTab(id, btn){
   if(id==='annual') renderAnnual();
   if(id==='zapier') checkZapier();
 }
+  if(t==='zapier') loadZapierPending();
 
 // ── 날짜 계산 ─────────────────────────────────
 
@@ -1835,7 +1830,126 @@ document.addEventListener('mouseover',function(e){
 document.addEventListener('mouseout',function(e){
   if(e.target.closest('.rv-svc-td') && typeof hideTooltip==='function') hideTooltip();
 });
-document.addEventListener('DOMContentLoaded',function(){initApp();});
+document.addEventListener('DOMContentLoaded',function(){initApp()
+  startZpPolling();;});
+
+// ── 자피어 탭 ────────────────────────────
+var _zpPrevCount = 0;
+var _zpPolling = null;
+
+function zpFmt(v){ return v||'-'; }
+
+async function loadZapierPending(){
+  const SB_U='https://hwppttcigebpvpvzidex.supabase.co', SB_K='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cHB0dGNpZ2VicHZwdnppZGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MzE4NTUsImV4cCI6MjA4OTIwNzg1NX0.oNe50eIvP2guEugRk9x8GVlqvHUmYG6jPDWabukk3M8';
+  const h={'apikey':SB_K,'Authorization':'Bearer '+SB_K};
+  const res = await fetch(SB_U+'/rest/v1/subscriptions?status=eq.pending&source=eq.zapier&order=id.desc', {headers:h});
+  const items = await res.json();
+  if(!Array.isArray(items)) return;
+
+  const count = items.length;
+  const badge = document.getElementById('zp-badge');
+  const navDot = document.getElementById('zapier-dot-nav');
+  const empty = document.getElementById('zp-empty');
+  const list = document.getElementById('zp-list');
+
+  // 뱃지 업데이트
+  if(badge){
+    badge.textContent = count > 0 ? count : '';
+    badge.style.display = count > 0 ? 'inline-block' : 'none';
+  }
+  if(navDot){
+    navDot.textContent = count > 0 ? '🔴' : '●';
+    navDot.style.color = count > 0 ? '' : '';
+  }
+
+  // 새 항목 알림
+  if(count > _zpPrevCount && _zpPrevCount !== null){
+    const newCnt = count - _zpPrevCount;
+    if(_zpPrevCount > 0 || document.getElementById('tab-zapier')?.style.display === 'none'){
+      showZpToast('새 결제 요청 '+newCnt+'건이 들어왔어요! 🔔');
+    }
+  }
+  _zpPrevCount = count;
+
+  if(!list) return;
+  if(count === 0){
+    if(empty) empty.style.display='block';
+    list.innerHTML='';
+    return;
+  }
+  if(empty) empty.style.display='none';
+
+  list.innerHTML = items.map(item => {
+    const user = item.u || '-';
+    const cycle = item.c === '연결제' ? '🔵 연결제' : '🟢 월결제';
+    const date = item.sd ? item.sd.slice(0,10) : '-';
+    return `<div class="zp-card" id="zp-item-${item.id}">
+      <div class="zp-info">
+        <div class="zp-service">${item.s}</div>
+        <div class="zp-meta">
+          <span>👤 ${user}</span>
+          <span>💰 ${item.a||'-'}</span>
+          <span>💳 ${item.m||'-'}</span>
+          <span>${cycle}</span>
+          <span>📅 ${date}</span>
+        </div>
+        ${item.d ? '<div class="zp-desc">'+item.d+'</div>' : ''}
+      </div>
+      <div class="zp-actions">
+        <button class="zp-approve" onclick="zpApprove(${item.id})">✅ 승인</button>
+        <button class="zp-reject" onclick="zpReject(${item.id})">❌ 거절</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function zpApprove(id){
+  const SB_U='https://hwppttcigebpvpvzidex.supabase.co', SB_K='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cHB0dGNpZ2VicHZwdnppZGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MzE4NTUsImV4cCI6MjA4OTIwNzg1NX0.oNe50eIvP2guEugRk9x8GVlqvHUmYG6jPDWabukk3M8';
+  const h={'apikey':SB_K,'Authorization':'Bearer '+SB_K,'Content-Type':'application/json','Prefer':'return=minimal'};
+  const res = await fetch(SB_U+'/rest/v1/subscriptions?id=eq.'+id, {
+    method:'PATCH', headers:h,
+    body: JSON.stringify({status:'구독중'})
+  });
+  if(res.ok || res.status===204){
+    const el = document.getElementById('zp-item-'+id);
+    if(el){ el.style.opacity='0'; el.style.transition='.3s'; setTimeout(()=>el.remove(),300); }
+    _zpPrevCount = Math.max(0, _zpPrevCount - 1);
+    showZpToast('✅ 승인됐어요! 전체 목록에 반영됐어요.');
+    setTimeout(loadZapierPending, 400);
+    // 관리자 목록도 새로고침
+    if(typeof renderList === 'function') setTimeout(renderList, 600);
+  }
+}
+
+async function zpReject(id){
+  if(!confirm('이 항목을 삭제할까요?')) return;
+  const SB_U='https://hwppttcigebpvpvzidex.supabase.co', SB_K='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cHB0dGNpZ2VicHZwdnppZGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MzE4NTUsImV4cCI6MjA4OTIwNzg1NX0.oNe50eIvP2guEugRk9x8GVlqvHUmYG6jPDWabukk3M8';
+  const h={'apikey':SB_K,'Authorization':'Bearer '+SB_K,'Prefer':'return=minimal'};
+  const res = await fetch(SB_U+'/rest/v1/subscriptions?id=eq.'+id, {method:'DELETE', headers:h});
+  if(res.ok || res.status===204){
+    const el = document.getElementById('zp-item-'+id);
+    if(el){ el.style.opacity='0'; el.style.transition='.3s'; setTimeout(()=>el.remove(),300); }
+    _zpPrevCount = Math.max(0, _zpPrevCount - 1);
+    showZpToast('🗑️ 삭제됐어요.');
+    setTimeout(loadZapierPending, 400);
+  }
+}
+
+function showZpToast(msg){
+  let t = document.getElementById('zp-toast');
+  if(!t){ t=document.createElement('div'); t.id='zp-toast'; t.className='zp-toast'; document.body.appendChild(t); }
+  t.textContent = msg;
+  t.style.display='block';
+  clearTimeout(window._zpToastTimer);
+  window._zpToastTimer = setTimeout(()=>{ t.style.display='none'; }, 3500);
+}
+
+function startZpPolling(){
+  if(_zpPolling) clearInterval(_zpPolling);
+  loadZapierPending();
+  _zpPolling = setInterval(loadZapierPending, 30000);
+}
+
 </script>
 </body>
 </html>
