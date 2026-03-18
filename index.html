@@ -989,7 +989,7 @@ function logoutToLogin(){
 // ── 탭 ───────────────────────────────────────
 function showTab(t, btn) {
   // 모든 탭 숨기기
-  document.querySelectorAll('.tab-pane').forEach(function(p){ p.style.display='none'; });
+  document.querySelectorAll('[id^="tab-"]').forEach(function(p){ p.style.display='none'; });
   var target = document.getElementById('tab-'+t);
   if(target) target.style.display='block';
   // 네비 버튼 active 처리
