@@ -987,22 +987,20 @@ function logoutToLogin(){
 }
 
 // ── 탭 ───────────────────────────────────────
-function showTab(id, btn){
-  var tabs = ['dash','list','annual','zapier'];
-  tabs.forEach(function(t){
-    var el = document.getElementById('tab-'+t);
-    if(el) el.style.display = t===id?'block':'none';
-  });
-  document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('active');});
+function showTab(t, btn) {
+  // 모든 탭 숨기기
+  document.querySelectorAll('.tab-pane').forEach(function(p){ p.style.display='none'; });
+  var target = document.getElementById('tab-'+t);
+  if(target) target.style.display='block';
+  // 네비 버튼 active 처리
+  document.querySelectorAll('.nav-btn').forEach(function(b){ b.classList.remove('active'); });
   if(btn) btn.classList.add('active');
-  if(id==='list'){document.getElementById('cat-chips').innerHTML='';renderList();}
-  if(id==='annual') renderAnnual();
-  if(id==='zapier') checkZapier();
-}
+  // 탭별 렌더링
+  if(t==='list'){ document.getElementById('cat-chips').innerHTML=''; renderList(); }
+  if(t==='annual') renderAnnual();
   if(t==='zapier') loadZapierPending();
   if(t==='dash') renderDash();
-
-// ── 날짜 계산 ─────────────────────────────────
+}
 
 function getPrevNext(d){
   if(!d.sd) return null;
@@ -1824,9 +1822,6 @@ async function initApp(){
 
   initMsUser(); initMsCard();
   renderDash();
-  // 탭 전환 후 dash가 활성화됐으면 재렌더
-  var _at=document.querySelector('.nav-btn.active')?.id?.replace('nav-',''); if(_at==='dash') renderDash();
-
   // 자피어 웹훅 데이터 체크
   if(IS_DEPLOYED){
     try {
