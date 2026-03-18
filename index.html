@@ -1962,12 +1962,14 @@ function zpOpenEdit(id) {
       const item = data[0];
       if(!item) return;
       window._zpApproveId = id;
-      openModal(item);
+      // openModal은 id를 받아 DATA에서 찾으므로 임시로 DATA에 추가
+      if(!DATA.find(function(x){return x.id===item.id;})) DATA.push(item);
+      openModal(item.id);
       // 모달 열린 후 상태를 구독중으로 자동 설정
       setTimeout(()=>{
         const btn = document.getElementById('st-on');
         if(btn) btn.click();
-      }, 200);
+      }, 300);
     });
 }
 
