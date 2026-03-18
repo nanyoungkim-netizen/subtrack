@@ -1059,6 +1059,7 @@ function calcStats(){
 
 // ── 대시보드 렌더 ─────────────────────────────
 function renderDash(){
+  if(!window.DATA||!DATA||DATA.length===0){ setTimeout(renderDash,500); return; }
   var st = calcStats();
   var sg = document.getElementById('stat-grid');
   if(sg){
