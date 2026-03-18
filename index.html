@@ -356,7 +356,16 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
 
 /* ── 자피어 연동 ─────────────────────────────── */
 .zapier-page{max-width:800px;}
-.zp-header{margin-bottom:20px;}
+.zp-header{margin-bottom:14px;}
+.zp-tabs{display:flex;gap:8px;margin-bottom:16px;}
+.zp-tabn{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text2);}
+.zp-tabn.active{background:var(--blue);color:#fff;border-color:var(--blue);}
+.zp-done-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;opacity:.8;}
+.zp-done-service{font-size:13px;font-weight:600;flex:1;}
+.zp-done-meta{font-size:11px;color:var(--text3);display:flex;gap:10px;flex-wrap:wrap;margin-top:3px;}
+.zp-done-badge{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600;flex-shrink:0;}
+.zp-done-badge.ok{background:#e8f5e9;color:#2e7d32;}
+.zp-done-badge.rej{background:#fce4ec;color:#c62828;}
 .zp-header h2{font-size:16px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;}
 .zp-sub{font-size:12px;color:var(--text3);line-height:1.6;}
 .zp-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:10px;box-shadow:var(--shadow);display:flex;align-items:flex-start;gap:14px;}
@@ -779,17 +788,30 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
   <div class="zapier-page">
     <div class="zp-header">
       <h2>자피어 연동 <span id="zp-badge" style="display:none;background:var(--blue);color:#fff;border-radius:20px;padding:1px 8px;font-size:11px;font-weight:700;margin-left:4px;"></span></h2>
-      <div class="zp-sub">슬랙 #구매-요청 자동-결제 워크플로 제출 시 아래에 표시돼요.<br>확인 후 ✅ 승인하면 전체 목록에 반영돼요.</div>
+      <div class="zp-sub">슬랙 #구매-요청 자동-결제 워크플로 제출 시 아래에 표시돼요.<br>✅ 승인 클릭 시 내용 확인 후 전체 목록에 반영돼요.</div>
     </div>
-    <div id="zp-empty" style="text-align:center;padding:60px 0;color:var(--text3);font-size:13px;">
-      <div style="font-size:32px;margin-bottom:12px;">📭</div>
-      대기 중인 항목이 없어요
+    <div class="zp-tabs">
+      <button id="zp-tab-pending" class="zp-tabn active" onclick="switchZpTab('pending')">⏳ 대기 중 <span id="zp-pend-cnt" style="margin-left:2px;"></span></button>
+      <button id="zp-tab-done" class="zp-tabn" onclick="switchZpTab('done')">✅ 처리 완료</button>
     </div>
-    <div id="zp-list"></div>
-    <div style="margin-top:24px;border-top:1px solid var(--border);padding-top:16px;">
+    <div id="zp-section-pending">
+      <div id="zp-empty" style="text-align:center;padding:60px 0;color:var(--text3);font-size:13px;">
+        <div style="font-size:32px;margin-bottom:12px;">📭</div>
+        대기 중인 항목이 없어요
+      </div>
+      <div id="zp-list"></div>
+    </div>
+    <div id="zp-section-done" style="display:none;">
+      <div id="zp-done-empty" style="text-align:center;padding:60px 0;color:var(--text3);font-size:13px;">
+        <div style="font-size:32px;margin-bottom:12px;">📋</div>
+        처리된 항목이 없어요
+      </div>
+      <div id="zp-done-list"></div>
+    </div>
+    <div style="margin-top:24px;border-top:1px solid var(--border);padding-top:14px;">
       <div style="font-size:11px;color:var(--text3);display:flex;align-items:center;gap:6px;">
         <span>🔗 웹훅 URL</span>
-        <code style="background:var(--surface2);padding:2px 8px;border-radius:4px;font-size:11px;color:var(--blue);">https://subtrack-sage.vercel.app/api/webhook</code>
+        <code style="background:var(--surface2);padding:2px 8px;border-radius:4px;font-size:11px;color:var(--blue);" id="webhook-url-text">https://subtrack-sage.vercel.app/api/webhook</code>
         <button class="copy-btn" onclick="copyWebhook()" style="padding:2px 8px;font-size:11px;">복사</button>
       </div>
     </div>
@@ -978,6 +1000,7 @@ function showTab(id, btn){
   if(id==='zapier') checkZapier();
 }
   if(t==='zapier') loadZapierPending();
+  if(t==='dash') renderDash();
 
 // ── 날짜 계산 ─────────────────────────────────
 
@@ -1498,6 +1521,12 @@ function saveModal(){
   document.getElementById('cat-chips').innerHTML='';
   renderDash(); renderList();
   serverSave();
+  if(window._zpApproveId){ 
+    const zid = window._zpApproveId;
+    window._zpApproveId = null;
+    setTimeout(()=>{ loadZapierPending(); showZpToast('✅ 승인됐어요! 전체 목록에 반영됐어요.'); }, 600);
+    showTab('zapier', document.getElementById('nav-zapier'));
+  }
 }
 function delItem(){
   var d = DATA.find(function(x){return x.id===editId;});
@@ -1833,121 +1862,144 @@ document.addEventListener('mouseout',function(e){
 document.addEventListener('DOMContentLoaded',function(){initApp()
   startZpPolling();;});
 
+
 // ── 자피어 탭 ────────────────────────────
 var _zpPrevCount = 0;
 var _zpPolling = null;
+var _zpCurrentTab = 'pending';
 
-function zpFmt(v){ return v||'-'; }
+function switchZpTab(t) {
+  _zpCurrentTab = t;
+  document.getElementById('zp-tab-pending').className = 'zp-tabn' + (t==='pending' ? ' active' : '');
+  document.getElementById('zp-tab-done').className = 'zp-tabn' + (t==='done' ? ' active' : '');
+  document.getElementById('zp-section-pending').style.display = t==='pending' ? '' : 'none';
+  document.getElementById('zp-section-done').style.display = t==='done' ? '' : 'none';
+  if(t==='done') loadZpDone();
+}
 
-async function loadZapierPending(){
+async function loadZapierPending() {
   const SB_U='https://hwppttcigebpvpvzidex.supabase.co', SB_K='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cHB0dGNpZ2VicHZwdnppZGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MzE4NTUsImV4cCI6MjA4OTIwNzg1NX0.oNe50eIvP2guEugRk9x8GVlqvHUmYG6jPDWabukk3M8';
   const h={'apikey':SB_K,'Authorization':'Bearer '+SB_K};
   const res = await fetch(SB_U+'/rest/v1/subscriptions?status=eq.pending&source=eq.zapier&order=id.desc', {headers:h});
   const items = await res.json();
   if(!Array.isArray(items)) return;
-
   const count = items.length;
   const badge = document.getElementById('zp-badge');
   const navDot = document.getElementById('zapier-dot-nav');
-  const empty = document.getElementById('zp-empty');
-  const list = document.getElementById('zp-list');
-
-  // 뱃지 업데이트
-  if(badge){
-    badge.textContent = count > 0 ? count : '';
-    badge.style.display = count > 0 ? 'inline-block' : 'none';
-  }
-  if(navDot){
-    navDot.textContent = count > 0 ? '🔴' : '●';
-    navDot.style.color = count > 0 ? '' : '';
-  }
-
-  // 새 항목 알림
-  if(count > _zpPrevCount && _zpPrevCount !== null){
-    const newCnt = count - _zpPrevCount;
-    if(_zpPrevCount > 0 || document.getElementById('tab-zapier')?.style.display === 'none'){
-      showZpToast('새 결제 요청 '+newCnt+'건이 들어왔어요! 🔔');
+  const cntEl = document.getElementById('zp-pend-cnt');
+  if(badge){ badge.textContent=count>0?count:''; badge.style.display=count>0?'inline-block':'none'; }
+  if(navDot){ navDot.textContent=count>0?'🔴':'●'; }
+  if(cntEl){ cntEl.textContent=count>0?'('+count+')':''; }
+  if(count>_zpPrevCount&&_zpPrevCount!==null){
+    const n=count-_zpPrevCount;
+    if(_zpPrevCount>0||document.getElementById('tab-zapier')?.style.display==='none'){
+      showZpToast('새 결제 요청 '+n+'건이 들어왔어요! 🔔');
     }
   }
-  _zpPrevCount = count;
-
+  _zpPrevCount=count;
+  const list=document.getElementById('zp-list');
+  const empty=document.getElementById('zp-empty');
   if(!list) return;
-  if(count === 0){
-    if(empty) empty.style.display='block';
-    list.innerHTML='';
-    return;
-  }
-  if(empty) empty.style.display='none';
-
-  list.innerHTML = items.map(item => {
-    const user = item.u || '-';
-    const cycle = item.c === '연결제' ? '🔵 연결제' : '🟢 월결제';
-    const date = item.sd ? item.sd.slice(0,10) : '-';
+  if(count===0){if(empty)empty.style.display='block';list.innerHTML='';return;}
+  if(empty)empty.style.display='none';
+  list.innerHTML=items.map(item=>{
+    const cycle=item.c==='연결제'?'🔵 연결제':'🟢 월결제';
+    const date=item.sd?item.sd.slice(0,10):'-';
     return `<div class="zp-card" id="zp-item-${item.id}">
       <div class="zp-info">
         <div class="zp-service">${item.s}</div>
         <div class="zp-meta">
-          <span>👤 ${user}</span>
+          <span>👤 ${item.u||'-'}</span>
           <span>💰 ${item.a||'-'}</span>
           <span>💳 ${item.m||'-'}</span>
           <span>${cycle}</span>
           <span>📅 ${date}</span>
         </div>
-        ${item.d ? '<div class="zp-desc">'+item.d+'</div>' : ''}
+        ${item.d?'<div class="zp-desc">'+item.d+'</div>':''}
       </div>
       <div class="zp-actions">
-        <button class="zp-approve" onclick="zpApprove(${item.id})">✅ 승인</button>
+        <button class="zp-approve" onclick="zpOpenEdit(${item.id})">✅ 승인</button>
         <button class="zp-reject" onclick="zpReject(${item.id})">❌ 거절</button>
       </div>
     </div>`;
   }).join('');
 }
 
-async function zpApprove(id){
+async function loadZpDone() {
   const SB_U='https://hwppttcigebpvpvzidex.supabase.co', SB_K='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cHB0dGNpZ2VicHZwdnppZGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MzE4NTUsImV4cCI6MjA4OTIwNzg1NX0.oNe50eIvP2guEugRk9x8GVlqvHUmYG6jPDWabukk3M8';
-  const h={'apikey':SB_K,'Authorization':'Bearer '+SB_K,'Content-Type':'application/json','Prefer':'return=minimal'};
-  const res = await fetch(SB_U+'/rest/v1/subscriptions?id=eq.'+id, {
-    method:'PATCH', headers:h,
-    body: JSON.stringify({status:'구독중'})
-  });
-  if(res.ok || res.status===204){
-    const el = document.getElementById('zp-item-'+id);
-    if(el){ el.style.opacity='0'; el.style.transition='.3s'; setTimeout(()=>el.remove(),300); }
-    _zpPrevCount = Math.max(0, _zpPrevCount - 1);
-    showZpToast('✅ 승인됐어요! 전체 목록에 반영됐어요.');
-    setTimeout(loadZapierPending, 400);
-    // 관리자 목록도 새로고침
-    if(typeof renderList === 'function') setTimeout(renderList, 600);
+  const h={'apikey':SB_K,'Authorization':'Bearer '+SB_K};
+  // 처리된 항목: zapier source이면서 pending이 아닌 것
+  const res = await fetch(SB_U+'/rest/v1/subscriptions?source=eq.zapier&status=neq.pending&order=id.desc&limit=50', {headers:h});
+  const items = await res.json();
+  const list = document.getElementById('zp-done-list');
+  const empty = document.getElementById('zp-done-empty');
+  if(!Array.isArray(items)||items.length===0){
+    if(empty)empty.style.display='block';
+    if(list)list.innerHTML='';
+    return;
   }
+  if(empty)empty.style.display='none';
+  list.innerHTML = items.map(item=>{
+    const badgeClass = item.status==='구독중'?'ok':'rej';
+    const badgeTxt = item.status==='구독중'?'승인됨':item.status;
+    const date = item.sd?item.sd.slice(0,10):'-';
+    return `<div class="zp-done-card">
+      <div style="flex:1">
+        <div class="zp-done-service">${item.s} <span class="zp-done-badge ${badgeClass}">${badgeTxt}</span></div>
+        <div class="zp-done-meta">
+          <span>👤 ${item.u||'-'}</span>
+          <span>💰 ${item.a||'-'}</span>
+          <span>💳 ${item.m||'-'}</span>
+          <span>📅 ${date}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
-async function zpReject(id){
+function zpOpenEdit(id) {
+  const SB_U='https://hwppttcigebpvpvzidex.supabase.co', SB_K='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cHB0dGNpZ2VicHZwdnppZGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MzE4NTUsImV4cCI6MjA4OTIwNzg1NX0.oNe50eIvP2guEugRk9x8GVlqvHUmYG6jPDWabukk3M8';
+  fetch(SB_U+'/rest/v1/subscriptions?id=eq.'+id, {headers:{'apikey':SB_K,'Authorization':'Bearer '+SB_K}})
+    .then(r=>r.json())
+    .then(data=>{
+      const item = data[0];
+      if(!item) return;
+      window._zpApproveId = id;
+      openModal(item);
+      // 모달 열린 후 상태를 구독중으로 자동 설정
+      setTimeout(()=>{
+        const btn = document.getElementById('st-on');
+        if(btn) btn.click();
+      }, 200);
+    });
+}
+
+async function zpReject(id) {
   if(!confirm('이 항목을 삭제할까요?')) return;
   const SB_U='https://hwppttcigebpvpvzidex.supabase.co', SB_K='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cHB0dGNpZ2VicHZwdnppZGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MzE4NTUsImV4cCI6MjA4OTIwNzg1NX0.oNe50eIvP2guEugRk9x8GVlqvHUmYG6jPDWabukk3M8';
   const h={'apikey':SB_K,'Authorization':'Bearer '+SB_K,'Prefer':'return=minimal'};
-  const res = await fetch(SB_U+'/rest/v1/subscriptions?id=eq.'+id, {method:'DELETE', headers:h});
-  if(res.ok || res.status===204){
-    const el = document.getElementById('zp-item-'+id);
-    if(el){ el.style.opacity='0'; el.style.transition='.3s'; setTimeout(()=>el.remove(),300); }
-    _zpPrevCount = Math.max(0, _zpPrevCount - 1);
+  const res = await fetch(SB_U+'/rest/v1/subscriptions?id=eq.'+id, {method:'DELETE',headers:h});
+  if(res.ok||res.status===204){
+    const el=document.getElementById('zp-item-'+id);
+    if(el){el.style.opacity='0';el.style.transition='.3s';setTimeout(()=>el.remove(),300);}
+    _zpPrevCount=Math.max(0,_zpPrevCount-1);
     showZpToast('🗑️ 삭제됐어요.');
-    setTimeout(loadZapierPending, 400);
+    setTimeout(loadZapierPending,400);
   }
 }
 
 function showZpToast(msg){
-  let t = document.getElementById('zp-toast');
-  if(!t){ t=document.createElement('div'); t.id='zp-toast'; t.className='zp-toast'; document.body.appendChild(t); }
-  t.textContent = msg;
-  t.style.display='block';
+  let t=document.getElementById('zp-toast');
+  if(!t){t=document.createElement('div');t.id='zp-toast';t.className='zp-toast';document.body.appendChild(t);}
+  t.textContent=msg;t.style.display='block';
   clearTimeout(window._zpToastTimer);
-  window._zpToastTimer = setTimeout(()=>{ t.style.display='none'; }, 3500);
+  window._zpToastTimer=setTimeout(()=>{t.style.display='none';},3500);
 }
 
 function startZpPolling(){
-  if(_zpPolling) clearInterval(_zpPolling);
+  if(_zpPolling)clearInterval(_zpPolling);
   loadZapierPending();
-  _zpPolling = setInterval(loadZapierPending, 30000);
+  _zpPolling=setInterval(loadZapierPending,30000);
 }
 
 </script>
