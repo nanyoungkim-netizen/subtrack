@@ -1000,7 +1000,7 @@ function showTab(id, btn){
   if(id==='zapier') checkZapier();
 }
   if(t==='zapier') loadZapierPending();
-  if(t==='dash'){ if(typeof DATA!=='undefined'&&DATA&&DATA.length>0) renderDash(); else setTimeout(renderDash,600); }
+  if(t==='dash') { var _dashTry=0; var _dashFn=function(){ if(typeof DATA!=='undefined'&&DATA&&DATA.length>0){ renderDash(); } else if(_dashTry++<20){ setTimeout(_dashFn,300); } }; _dashFn(); }
 
 // ── 날짜 계산 ─────────────────────────────────
 
@@ -1059,7 +1059,6 @@ function calcStats(){
 
 // ── 대시보드 렌더 ─────────────────────────────
 function renderDash(){
-  if(typeof DATA==='undefined'||!DATA||DATA.length===0){ setTimeout(renderDash,500); return; }
   var st = calcStats();
   var sg = document.getElementById('stat-grid');
   if(sg){
@@ -1825,6 +1824,8 @@ async function initApp(){
 
   initMsUser(); initMsCard();
   renderDash();
+  // 탭 전환 후 dash가 활성화됐으면 재렌더
+  var _at=document.querySelector('.nav-btn.active')?.id?.replace('nav-',''); if(_at==='dash') renderDash();
 
   // 자피어 웹훅 데이터 체크
   if(IS_DEPLOYED){
