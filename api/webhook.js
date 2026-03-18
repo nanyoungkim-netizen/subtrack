@@ -6,6 +6,26 @@ export default async function handler(req, res) {
     let amount=body.amount, payment=body.payment, cycle=body.cycle;
     let start_date=body.start_date, note=body.note;
 
+    // 슬랙 유저 ID → 닉네임 매핑
+    const SLACK_MAP = {"U03JQ5FHP5Z":"Merci","U05DQHV6XAT":"Beaver","U02D6CDKQ3W":"Stone","U0A3JQ8SGHG":"Lime","U0645BVMJES":"Peach","U04TN658A84":"Junta","U02FUHFGLGN":"Sante"};
+
+    function resolveUser(raw) {
+      if (!raw) return raw;
+      // <@U03JQ5FHP5Z|머시> 형식 저리
+      const matchFull = raw.match(/^<@([A-Z0-9]+)\|([^>]+)>$/);
+      if (matchFull) {
+        const id = matchFull[1];
+        return SLACK_MAP[id] || matchFull[2];
+      }
+      // <@U03JQ5FHP5Z> 형식 저리
+      const matchId = raw.match(/^<@([A-Z0-9]+)>$/);
+      if (matchId) {
+        const id = matchId[1];
+        return SLACK_MAP[id] || id;
+      }
+      return raw.replace(/^@/, '');
+    }
+
     const text = body.text || '';
     if (text && !service) {
       const lines = text.split('\n');
@@ -16,14 +36,16 @@ export default async function handler(req, res) {
         const key = clean.slice(0, colonIdx).trim();
         const val = clean.slice(colonIdx + 1).trim();
         if (!val) continue;
-        if (key === '서비스명') service = val;
-        else if (key === '사용자') user = val.replace(/^<@[^|]+\|/,'').replace(/>$/,'').replace(/^@/,'');
-        else if (key === '내용') description = val;
-        else if (key === '결제금액') amount = val;
-        else if (key === '결제카드') payment = val;
-        else if (key === '결제일') start_date = val.replace(/\./g,'-');
-        else if (key === '결제방식') cycle = val.includes('연') ? '연결제' : '월결제';
+        if (key === '\uc11c\ube44\uc2a4\uba85') service = val;
+        else if (key === '\uc0ac\uc6a9\uc790') user = resolveUser(val);
+        else if (key === '\ub0b4\uc6a9') description = val;
+        else if (key === '\uacb0\uc81c\uae08\uc561') amount = val;
+        else if (key === '\uacb0\uc81c\uce74\ub4dc') payment = val;
+        else if (key === '\uacb0\uc81c\uc77c') start_date = val.replace(/\./g,'-');
+        else if (key === '\uacb0\uc81c\ubc29\uc2dd') cycle = val.includes('\uc5f0') ? '\uc5f0\uACB0\uc81c' : '\uc6d4\uACB0\uc81c';
       }
+    } else if (user) {
+      user = resolveUser(user);
     }
 
     if (!service) return res.status(400).json({ error: 'service is required', body });
@@ -38,7 +60,13 @@ export default async function handler(req, res) {
 
     const insertRes = await fetch(SUPABASE_URL+'/rest/v1/subscriptions', {
       method: 'POST', headers,
-      body: JSON.stringify({ id: newId, s: service, d: description||null, u: user||null, a: amount||null, m: payment||null, c: cycle||'월결제', sd: start_date||null, note: note||null, status: '구독중', source: 'zapier' })
+      body: JSON.stringify({
+        id: newId, s: service, d: description||null, u: user||null,
+        a: amount||null, m: payment||null, c: cycle||'\uc6d4\uACB0\uc81c',
+        sd: start_date||null, note: note||null,
+        status: 'pending',
+        source: 'zapier'
+      })
     });
     const result = await insertRes.json();
     return res.status(200).json({ success: true, id: newId, data: result });
