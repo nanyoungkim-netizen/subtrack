@@ -1000,7 +1000,7 @@ function showTab(id, btn){
   if(id==='zapier') checkZapier();
 }
   if(t==='zapier') loadZapierPending();
-  if(t==='dash') setTimeout(function(){ if(typeof DATA!=='undefined'&&DATA&&DATA.length>0){renderDash();}else{setTimeout(renderDash,800);} },50);
+  if(t==='dash') renderDash();
 
 // ── 날짜 계산 ─────────────────────────────────
 
