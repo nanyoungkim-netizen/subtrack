@@ -1522,7 +1522,16 @@ function saveModal(){
   if(window._zpApproveId){ 
     const zid = window._zpApproveId;
     window._zpApproveId = null;
-    setTimeout(()=>{ loadZapierPending(); showZpToast('✅ 승인됐어요! 전체 목록에 반영됐어요.'); }, 600);
+    // pending → 구독중 직접 PATCH
+    const SB_U='https://hwppttcigebpvpvzidex.supabase.co';
+    const SB_K='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cHB0dGNpZ2VicHZwdnppZGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MzE4NTUsImV4cCI6MjA4OTIwNzg1NX0.oNe50eIvP2guEugRk9x8GVlqvHUmYG6jPDWabukk3M8';
+    fetch(SB_U+'/rest/v1/subscriptions?id=eq.'+zid,{
+      method:'PATCH',
+      headers:{'apikey':SB_K,'Authorization':'Bearer '+SB_K,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({status:'\uAD6C\uB3C5\uC911'})
+    }).then(function(){
+      setTimeout(function(){ loadZapierPending(); showZpToast('✅ 승인됐어요! 전체 목록에 반영됐어요.'); }, 300);
+    });
     showTab('zapier', document.getElementById('nav-zapier'));
   }
 }
