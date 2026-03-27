@@ -1518,6 +1518,33 @@ function saveModal(){
   initMsUser(); initMsCard();
   document.getElementById('cat-chips').innerHTML='';
   renderDash(); renderList();
+  // 수정된 항목을 Supabase에 직접 PATCH (note, status 등 모든 필드 포함)
+  if(typeof editId !== 'undefined' && editId) {
+    var patchItem = DATA.find(function(x){return x.id===editId;});
+    if(patchItem) {
+      fetch('https://hwppttcigebpvpvzidex.supabase.co/rest/v1/subscriptions?id=eq.'+editId, {
+        method: 'PATCH',
+        headers: {
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cHB0dGNpZ2VicHZwdnppZGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MzE4NTUsImV4cCI6MjA4OTIwNzg1NX0.oNe50eIvP2guEugRk9x8GVlqvHUmYG6jPDWabukk3M8',
+          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cHB0dGNpZ2VicHZwdnppZGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MzE4NTUsImV4cCI6MjA4OTIwNzg1NX0.oNe50eIvP2guEugRk9x8GVlqvHUmYG6jPDWabukk3M8',
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({
+          s: patchItem.s,
+          d: patchItem.d,
+          u: patchItem.u,
+          status: patchItem.status,
+          a: patchItem.a,
+          m: patchItem.m,
+          c: patchItem.c,
+          sd: patchItem.sd,
+          ed: patchItem.ed||null,
+          note: patchItem.note||null
+        })
+      }).catch(function(e){console.warn('PATCH error:', e);});
+    }
+  }
   serverSave();
   if(window._zpApproveId){ 
     const zid = window._zpApproveId;
