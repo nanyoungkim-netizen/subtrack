@@ -721,7 +721,10 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
       <div class="pg-title">전체 목록</div>
       <div class="pg-sub" style="margin-bottom:0;">항목 클릭 → 수정 · 삭제</div>
     </div>
-    <button class="add-main-btn" style="width:auto;padding:8px 16px;font-size:13px;" onclick="openModal(null)">+ 구독 추가</button>
+    <div style="display:flex;gap:8px;">
+      <button class="add-main-btn" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);" onclick="exportExcel()">📥 엑셀 추출</button>
+      <button class="add-main-btn" onclick="openModal(null)">+ 구독 추가</button>
+    </div>
   </div>
   <div class="filter-bar">
     <input class="srch" id="g-search" placeholder="🔍 서비스 · 사용자 · 결제수단 검색" oninput="applyAll()"/>
@@ -2037,6 +2040,63 @@ function startZpPolling(){
   _zpPolling=setInterval(loadZapierPending,30000);
 }
 
+
+async function exportExcel() {
+  try {
+    // SheetJS 로드
+    if(!window.XLSX) {
+      await new Promise((res,rej)=>{
+        const s=document.createElement('script');
+        s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        s.onload=res; s.onerror=rej;
+        document.head.appendChild(s);
+      });
+    }
+    // Supabase에서 최신 데이터 가져오기 (pending 제외)
+    const res = await fetch('https://hwppttcigebpvpvzidex.supabase.co/rest/v1/subscriptions?status=neq.pending&order=id.asc&limit=500',{
+      headers:{'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cHB0dGNpZ2VicHZwdnppZGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MzE4NTUsImV4cCI6MjA4OTIwNzg1NX0.oNe50eIvP2guEugRk9x8GVlqvHUmYG6jPDWabukk3M8','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cHB0dGNpZ2VicHZwdnppZGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MzE4NTUsImV4cCI6MjA4OTIwNzg1NX0.oNe50eIvP2guEugRk9x8GVlqvHUmYG6jPDWabukk3M8'}
+    });
+    const data = await res.json();
+    if(!Array.isArray(data)||data.length===0){ alert('데이터가 없어요.'); return; }
+
+    // 엑셀 데이터 변환
+    const rows = data.map(function(d){
+      return {
+        'ID': d.id,
+        '서비스명': d.s||'',
+        '내용': d.d||'',
+        '사용자': d.u||'',
+        '상태': d.status||'',
+        '금액': d.a||'',
+        '결제수단(카드)': d.m||'',
+        '결제주기': d.c||'',
+        '구독시작일': d.sd||'',
+        '구독종료일': d.ed||'',
+        '비고': d.note||''
+      };
+    });
+
+    // 워크북 생성
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(rows);
+
+    // 컬럼 너비 설정
+    ws['!cols'] = [
+      {wch:6},{wch:20},{wch:30},{wch:20},{wch:8},
+      {wch:15},{wch:12},{wch:8},{wch:12},{wch:12},{wch:30}
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, '구독목록');
+
+    // 오늘 날짜로 파일명
+    const today = new Date().toISOString().slice(0,10);
+    XLSX.writeFile(wb, 'SubTrack_구독목록_'+today+'.xlsx');
+    showZpToast('📊 엑셀 파일이 다운로드되었어요!');
+  } catch(e) {
+    console.error('exportExcel error:', e);
+    alert('엑셀 추출 중 오류가 발생했어요: '+e.message);
+  }
+}
 </script>
 </body>
 </html>
