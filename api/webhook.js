@@ -27,13 +27,13 @@ export default async function handler(req, res) {
         const key = clean.slice(0, ci).trim();
         const val = clean.slice(ci + 1).trim();
         if (!val) continue;
-        if (key==='서비스명') service=val;
-        else if (key==='사용자') user=resolveUser(val);
-        else if (key==='내용') description=val;
-        else if (key==='결제금액') amount=val;
-        else if (key==='결제카드') payment=val;
-        else if (key==='결제일') start_date=val.replace(/\./g,'-');
-        else if (key==='결제방식') cycle=val.includes('연')?'연결제':'월결제';
+        if (key==='ìë¹ì¤ëª') service=val;
+        else if (key==='ì¬ì©ì') user=resolveUser(val);
+        else if (key==='ë´ì©') description=val;
+        else if (key==='ê²°ì ê¸ì¡') amount=val;
+        else if (key==='ê²°ì ì¹´ë') payment=val;
+        else if (key==='ê²°ì ì¼') start_date=val.replace(/\./g,'-');
+        else if (key==='ê²°ì ë°©ì') cycle=val.includes('ì°')?'ì°ê²°ì ':'ìê²°ì ';
       }
     } else if (user) {
       user = resolveUser(user);
@@ -53,7 +53,7 @@ export default async function handler(req, res) {
       method:'POST', headers,
       body: JSON.stringify({
         id:newId, s:service, d:description||null, u:user||null,
-        a:amount||null, m:payment||null, c:cycle||'월결제',
+        a:amount||null, m:payment||null, c:cycle||'ìê²°ì ',
         sd:start_date||null, note:note||null, status:'pending', source:'zapier'
       })
     });
