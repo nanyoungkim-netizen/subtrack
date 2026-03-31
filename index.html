@@ -1252,7 +1252,8 @@ function renderList(){
 
   var rows = DATA.slice();
   if(q) rows = rows.filter(function(d){
-    return (d.s||'').toLowerCase().includes(q)||(d.u||'').toLowerCase().includes(q)||(d.m||'').toLowerCase().includes(q)||(d.d||'').toLowerCase().includes(q);
+    var uKo=(d.u||'').split(',').map(function(u){var n=u.trim();return KO_MAP[n]||n;}).join(',').toLowerCase();
+    return (d.s||'').toLowerCase().includes(q)||(d.u||'').toLowerCase().includes(q)||uKo.includes(q)||(d.m||'').toLowerCase().includes(q)||(d.d||'').toLowerCase().includes(q);
   });
   if(stSel.length) rows = rows.filter(function(d){return stSel.includes(d.status);});
   if(uSel.length) rows = rows.filter(function(d){return d.u&&uSel.some(function(u){return d.u.includes(u);});});
