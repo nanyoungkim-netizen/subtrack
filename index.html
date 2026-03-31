@@ -1239,7 +1239,7 @@ function renderList(){
     return '<tr class="'+trCls+' list-row" data-id="'+d.id+'" style="cursor:pointer;">' +
       '<td><strong>'+d.s+'</strong>'+(d.source==='zapier'?'<span class="new-badge">NEW</span>':'')+'</td>' +
       '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;color:var(--text3);">'+(d.d||'')+'</td>' +
-      '<td>'+(d.u||'')+'</td>' +
+      '<td>'+displayUsers(d.u)+'</td>' +
       '<td style="font-family:var(--mono);">'+(d.a||'')+'</td>' +
       '<td><span class="tag" style="background:'+(d.status==='구독중'?'var(--green-l)':'var(--surface2)')+';color:'+(d.status==='구독중'?'var(--green)':'var(--text3)')+';">'+(d.status||'')+'</span></td>' +
       '<td><span class="tag" style="background:var(--blue-l);color:var(--blue);">'+(d.c||'')+'</span></td>' +
@@ -2097,6 +2097,15 @@ async function exportExcel() {
     alert('엑셀 추출 중 오류가 발생했어요: '+e.message);
   }
 }
+
+function displayUsers(uStr) {
+  if(!uStr) return '';
+  return uStr.split(',').map(function(u){
+    var name = u.trim();
+    return KO_MAP[name] ? KO_MAP[name]+'('+name+')' : name;
+  }).join(', ');
+}
+
 </script>
 </body>
 </html>
