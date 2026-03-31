@@ -1707,6 +1707,8 @@ function rvLookup(){
   var rows=isCard
     ?DATA.filter(function(d){return d.status==="구독중"&&d.m&&d.m.toString().includes(q);})
     :DATA.filter(function(d){
+      // 서비스명 검색 추가
+      if(d.s && d.s.toLowerCase().includes(qLo)) return true;
       if(d.status!=="구독중"||!d.u) return false;
       return d.u.split(",").map(function(u){return u.trim();}).some(function(u){
         var ko=KO_MAP[u]||"";
@@ -2156,7 +2158,7 @@ function displayUsers(uStr) {
 
 
 // ── 닉네임 관리 ────────────────────────────
-var SLACK_ID_MAP = {"Q":"UGNKU8WLD","IRON":"UGP8ENQ3V","Yello":"UGPBD81HA","Cus":"UGP9X2D3L","MacGook":"UJD690FCM","Minu":"UGNL59LJC","Sante":"U0180UXLD2Q","Rilla":"U01SLNUA155","HODOO":"U0261145X18","Lark":"U027F6SG8AC","Sian":"U027WL6H93N","Rokoon":"U0288AXGGCW","Stone":"U02D6CDKQ3W","Chovy":"U02CX5SQNSZ","Pucca":"U02K890UPK3","Zerry":"U033U995K53","Mush":"U03JQ5FHP5Z","dDubi":"U03QQ53099N","DDao":"U03TC2CQEVD","Burns":"U04ATHK9S84","SALT":"U04GTSZ93T7","Rooney":"U04NX77SNJ1","Hero":"U04SUG1K22D","Moomin":"U04T8FN2ZCZ","Rami":"U04SYARM2MS","Junta":"U04TN658A84","Woz":"U054RK2GKK8","Peach":"U0645BVMJES","Aqoo":"U066F6AA6KD","Hook":"U069A4EC72S","Teddy":"U069GP8MWDQ","Pire":"U06CFJYUGQZ","MewTwo":"U070M3N25LP","Endo":"U071QDWFQNL","YAMUCHI":"U072B0P4R6Y","Beaver":"U05DQHV6XAT","Turkey":"U05EUR1CCN4","Pepe":"U05DQHVDS5D","Jeongnam":"D07LNQ9GMHV","Aki":"U07S5FBLPK7","Kikr":"U08990X2ZNH","Lime":"","Funky":""};
+var SLACK_ID_MAP = {"Q":"UGNKU8WLD","IRON":"UGP8ENQ3V","Yello":"UGPBD81HA","Cus":"UGP9X2D3L","MacGook":"UJD690FCM","Minu":"UGNL59LJC","Sante":"U0180UXLD2Q","Rilla":"U01SLNUA155","HODOO":"U0261145X18","Lark":"U027F6SG8AC","Sian":"U027WL6H93N","Rokoon":"U0288AXGGCW","Stone":"U02D6CDKQ3W","Chovy":"U02CX5SQNSZ","Pucca":"U02K890UPK3","Zerry":"U033U995K53","Mush":"U03JQ5FHP5Z","dDubi":"U03QQ53099N","DDao":"U03TC2CQEVD","Burns":"U04ATHK9S84","SALT":"U04GTSZ93T7","Rooney":"U04NX77SNJ1","Hero":"U04SUG1K22D","Moomin":"U04T8FN2ZCZ","Rami":"U04SYARM2MS","Junta":"U04TN658A84","Woz":"U054RK2GKK8","Peach":"U0645BVMJES","Aqoo":"U066F6AA6KD","Hook":"U069A4EC72S","Teddy":"U069GP8MWDQ","Pire":"U06CFJYUGQZ","MewTwo":"U070M3N25LP","Endo":"U071QDWFQNL","YAMUCHI":"U072B0P4R6Y","Beaver":"U05DQHV6XAT","Turkey":"U05EUR1CCN4","Pepe":"U05DQHVDS5D","Jeongnam":"D07LNQ9GMHV","Aki":"U07S5FBLPK7","Kikr":"U08990X2ZNH","Lime":"U0A3JQ8SGHG","Funky":"U08RUG330D9","Newjin":"U0A07QF0URW"};
 
 function showTab_nickname() {
   renderNicknameList();
