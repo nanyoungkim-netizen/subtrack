@@ -696,6 +696,9 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
     <button class="nav-btn" id="nav-zapier" onclick="showTab('zapier',this)">
       <span class="nav-icon" id="zapier-dot-nav">●</span> 자피어 연동
     </button>
+    <button class="nav-btn" id="nav-nickname" onclick="showTab('nickname',this)">
+      <span class="nav-icon">👤</span> 닉네임 관리
+    </button>
   </nav>
   <div class="sidebar-foot">
     <button class="add-main-btn" onclick="openModal(null)">+ 구독 추가</button>
@@ -819,6 +822,29 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
       </div>
     </div>
   </div>
+
+<div id="tab-nickname" style="display:none;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+    <div>
+      <div class="pg-title">닉네임 관리</div>
+      <div class="pg-sub" style="margin-bottom:0;">영어 닉네임 ↔ 한글 닉네임 매핑을 관리해요</div>
+    </div>
+    <button class="add-main-btn" onclick="openNicknameAdd()">+ 닉네임 추가</button>
+  </div>
+  <div id="nickname-add-form" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-bottom:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+    <input id="nn-eng" placeholder="영어 닉네임 (예: Lime)" style="flex:1;min-width:140px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface2);">
+    <input id="nn-kor" placeholder="한글 닉네임 (예: 라임)" style="flex:1;min-width:140px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface2);">
+    <button class="add-main-btn" onclick="saveNickname()">저장</button>
+    <button style="background:none;border:1px solid var(--border);border-radius:var(--radius);padding:8px 14px;font-size:12px;cursor:pointer;" onclick="document.getElementById('nickname-add-form').style.display='none'">취소</button>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>영어 닉네임</th><th>한글 닉네임</th><th>슬랙 ID</th><th>삭제</th></tr></thead>
+      <tbody id="nickname-body"></tbody>
+    </table>
+  </div>
+</div>
+
 </div>
 </div><!-- /main -->
 </div><!-- /app -->
@@ -1002,6 +1028,7 @@ function showTab(t, btn) {
   if(t==='list'){ document.getElementById('cat-chips').innerHTML=''; renderList(); }
   if(t==='annual') renderAnnual();
   if(t==='zapier') loadZapierPending();
+  if(t==='nickname') renderNicknameList();
   if(t==='dash') renderDash();
 }
 
@@ -2105,6 +2132,63 @@ function displayUsers(uStr) {
     return KO_MAP[name] ? KO_MAP[name]+'('+name+')' : name;
   }).join(', ');
 }
+
+
+// ── 닉네임 관리 ────────────────────────────
+var SLACK_ID_MAP = {"Q":"UGNKU8WLD","IRON":"UGP8ENQ3V","Yello":"UGPBD81HA","Cus":"UGP9X2D3L","MacGook":"UJD690FCM","Minu":"UGNL59LJC","Sante":"U0180UXLD2Q","Rilla":"U01SLNUA155","HODOO":"U0261145X18","Lark":"U027F6SG8AC","Sian":"U027WL6H93N","Rokoon":"U0288AXGGCW","Stone":"U02D6CDKQ3W","Chovy":"U02CX5SQNSZ","Pucca":"U02K890UPK3","Zerry":"U033U995K53","Mush":"U03JQ5FHP5Z","dDubi":"U03QQ53099N","DDao":"U03TC2CQEVD","Burns":"U04ATHK9S84","SALT":"U04GTSZ93T7","Rooney":"U04NX77SNJ1","Hero":"U04SUG1K22D","Moomin":"U04T8FN2ZCZ","Rami":"U04SYARM2MS","Junta":"U04TN658A84","Woz":"U054RK2GKK8","Peach":"U0645BVMJES","Aqoo":"U066F6AA6KD","Hook":"U069A4EC72S","Teddy":"U069GP8MWDQ","Pire":"U06CFJYUGQZ","MewTwo":"U070M3N25LP","Endo":"U071QDWFQNL","YAMUCHI":"U072B0P4R6Y","Beaver":"U05DQHV6XAT","Turkey":"U05EUR1CCN4","Pepe":"U05DQHVDS5D","Jeongnam":"D07LNQ9GMHV","Aki":"U07S5FBLPK7","Kikr":"U08990X2ZNH","Lime":"","Funky":""};
+
+function showTab_nickname() {
+  renderNicknameList();
+}
+
+function renderNicknameList() {
+  var tbody = document.getElementById('nickname-body');
+  if(!tbody) return;
+  var entries = Object.entries(KO_MAP).sort(function(a,b){return a[0].localeCompare(b[0]);});
+  tbody.innerHTML = entries.map(function(e){
+    var eng = e[0], kor = e[1];
+    var slackId = SLACK_ID_MAP[eng] || '';
+    return '<tr>' +
+      '<td style="font-weight:600;">'+eng+'</td>' +
+      '<td>'+kor+'</td>' +
+      '<td style="font-size:11px;color:var(--text3);">'+slackId+'</td>' +
+      '<td><button onclick="deleteNickname(\''+eng+'\')" style="background:none;border:none;color:var(--red,#e53e3e);cursor:pointer;font-size:12px;">삭제</button></td>' +
+    '</tr>';
+  }).join('');
+}
+
+function openNicknameAdd() {
+  var f = document.getElementById('nickname-add-form');
+  f.style.display = 'flex';
+  document.getElementById('nn-eng').focus();
+}
+
+function saveNickname() {
+  var eng = document.getElementById('nn-eng').value.trim();
+  var kor = document.getElementById('nn-kor').value.trim();
+  if(!eng || !kor) { alert('영어 닉네임과 한글 닉네임을 모두 입력해주세요.'); return; }
+  if(KO_MAP[eng]) { if(!confirm(eng+' 는 이미 '+KO_MAP[eng]+'로 등록돼있어요. 덮어쓸까요?')) return; }
+  KO_MAP[eng] = kor;
+  document.getElementById('nn-eng').value = '';
+  document.getElementById('nn-kor').value = '';
+  document.getElementById('nickname-add-form').style.display = 'none';
+  renderNicknameList();
+  showZpToast('✅ '+eng+' → '+kor+' 등록됐어요!');
+  // GitHub에 KO_MAP 변경사항 저장 안내
+  _pendingKoMapSave = true;
+  renderList();
+}
+
+function deleteNickname(eng) {
+  if(!confirm(eng+' ('+KO_MAP[eng]+') 를 삭제할까요?')) return;
+  delete KO_MAP[eng];
+  renderNicknameList();
+  showZpToast('🗑️ '+eng+' 삭제됐어요.');
+  _pendingKoMapSave = true;
+  renderList();
+}
+
+var _pendingKoMapSave = false;
 
 </script>
 </body>
