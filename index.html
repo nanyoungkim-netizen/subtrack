@@ -356,6 +356,15 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
 
 /* ── 자피어 연동 ─────────────────────────────── */
 .zapier-page{max-width:800px;}
+.user-select-wrap{position:relative;border:1px solid var(--border);border-radius:var(--radius);padding:6px 10px;display:flex;flex-wrap:wrap;gap:4px;align-items:center;background:var(--surface);min-height:38px;cursor:text;}
+.user-select-wrap:focus-within{border-color:var(--blue);}
+.user-chip{display:flex;align-items:center;gap:4px;background:var(--blue-l,#e8f0ff);color:var(--blue);border-radius:12px;padding:2px 8px;font-size:12px;font-weight:500;}
+.user-chip button{background:none;border:none;color:var(--blue);cursor:pointer;font-size:14px;line-height:1;padding:0;}
+.user-dropdown{position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:999;max-height:220px;overflow-y:auto;margin-top:4px;}
+.user-opt{padding:8px 12px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;}
+.user-opt:hover,.user-opt.selected{background:var(--surface2);}
+.user-opt .opt-ko{font-weight:600;color:var(--text);}
+.user-opt .opt-en{font-size:11px;color:var(--text3);}
 .zp-header{margin-bottom:14px;}
 .zp-tabs{display:flex;gap:8px;margin-bottom:16px;}
 .zp-tabn{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text2);}
@@ -857,7 +866,14 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
     <div class="field"><label>서비스명</label><input id="f-svc" placeholder="예: ChatGPT"/></div>
     <div class="field"><label>내용 설명</label><textarea id="f-desc" placeholder="서비스 설명"></textarea></div>
     <div class="row2">
-      <div class="field"><label>사용자</label><input id="f-users" placeholder="예: Peach, Burns"/></div>
+      <div class="field"><label>사용자</label>
+        <div class="user-select-wrap" id="user-select-wrap">
+          <div class="user-chips" id="user-chips" onclick="toggleUserDropdown()"></div>
+          <input id="user-search" placeholder="이름 검색..." oninput="filterUserOptions()" onfocus="showUserDropdown()" autocomplete="off" style="border:none;outline:none;flex:1;min-width:80px;font-size:13px;background:transparent;">
+          <div class="user-dropdown" id="user-dropdown" style="display:none;"></div>
+        </div>
+        <input type="hidden" id="f-users">
+      </div>
       <div class="field"><label>금액</label><input id="f-amt" placeholder="예: 22달러"/></div>
     </div>
     <div class="row2">
@@ -1491,6 +1507,7 @@ function openModal(id){
   document.getElementById('f-svc').value = d?d.s:'';
   document.getElementById('f-desc').value = d?d.d:'';
   document.getElementById('f-users').value = d?d.u:'';
+  initUserDropdown(d?d.u:'');
   document.getElementById('f-amt').value = d?d.a:'';
   document.getElementById('f-method').value = d?d.m:'';
   document.getElementById('f-sd').value = d?d.sd:'';
@@ -1638,16 +1655,15 @@ function toggleRVFilter(){
   if(label){ label.textContent = _rvFilterOpen ? '필터 접기' : '필터 펼치기'; }
 }
 var KO_MAP = {
-  'IRON':'아이언','Q':'큐','Yello':'옐로','Cus':'쿠스','MacGook':'맥국','Lime':'라임','Funky':'펑키',
-  'Minu':'미누','Sante':'상떼','Rilla':'릴라','HODOO':'호두','Lark':'라크',
-  'Sian':'시안','Rokoon':'로쿤','Stone':'스톤','Chovy':'쵸비','Pucca':'뿌까',
-  'Zerry':'제리','Mush':'머시','dDubi':'뚜비','DDao':'따오','Burns':'번즈',
-  'SALT':'솔트','Rooney':'루니','Hero':'히로','Moomin':'무민','Rami':'라미',
-  'Junta':'준타','Woz':'워즈','Peach':'피치','Aqoo':'아쿠','Hook':'후크',
-  'Teddy':'테디','Pire':'피르','Turkey':'터키','Pepe':'페페','Beaver':'비버',
-  'endo':'엔도','MewTwo':'뮤츠','YA-MU-CHI':'야무치','Jeongnam':'정남',
-  'Aki':'아키','Kikr':'키커','Funky':'펑키','new_jean':'뉴진','LIME':'라임',
-  'IRON':'아이언','Chovy':'쵸비','Aki':'아키','Kikr':'키커'
+  'IRON':'아이언','Q':'큐','Yello':'옐로','Cus':'쿠스','MacGook':'맥국',
+  'Lime':'라임','Funky':'펑키','Minu':'미누','Sante':'상떼','Rilla':'릴라',
+  'HODOO':'호두','Lark':'라크','Sian':'시안','Rokoon':'로쿤','Stone':'스톤',
+  'Chovy':'쵸비','Pucca':'뿌까','Zerry':'제리','Mush':'머시','dDubi':'뚜비',
+  'DDao':'따오','Burns':'번즈','SALT':'솔트','Rooney':'루니','Hero':'히로',
+  'Moomin':'무민','Rami':'라미','Junta':'준타','Woz':'워즈','Peach':'피치',
+  'Aqoo':'아쿠','Hook':'후크','Teddy':'테디','Pire':'피르','MewTwo':'뮤츠',
+  'Endo':'엔도','YAMUCHI':'야무치','Beaver':'비버','Turkey':'터키','Pepe':'페페',
+  'Jeongnam':'정남','Aki':'아키','Kikr':'키커','Newjin':'뉴진'
 };
 var KO_REVERSE = {};
 Object.keys(KO_MAP).forEach(function(k){ KO_REVERSE[KO_MAP[k]] = k; });
@@ -2127,7 +2143,14 @@ function displayUsers(uStr) {
   if(!uStr) return '';
   return uStr.split(',').map(function(u){
     var name = u.trim();
-    return KO_MAP[name] ? KO_MAP[name]+'('+name+')' : name;
+    // 정확히 일치하는 키 먼저, 없으면 대소문자 무관 검색
+    var kor = KO_MAP[name];
+    if(!kor) {
+      var lower = name.toLowerCase();
+      var found = Object.keys(KO_MAP).find(function(k){ return k.toLowerCase()===lower; });
+      if(found) kor = KO_MAP[found];
+    }
+    return kor ? kor+'('+name+')' : name;
   }).join(', ');
 }
 
@@ -2187,6 +2210,97 @@ function deleteNickname(eng) {
 }
 
 var _pendingKoMapSave = false;
+
+
+// ── 사용자 드롭다운 ────────────────────────────
+var _selectedUsers = [];
+
+function initUserDropdown(existingValue) {
+  _selectedUsers = existingValue ? existingValue.split(',').map(function(u){return u.trim();}).filter(Boolean) : [];
+  renderUserChips();
+  document.getElementById('user-search').value = '';
+  buildUserDropdown('');
+}
+
+function buildUserDropdown(q) {
+  var dd = document.getElementById('user-dropdown');
+  if(!dd) return;
+  var lower = (q||'').toLowerCase();
+  var opts = Object.entries(KO_MAP).filter(function(e){
+    return !_selectedUsers.includes(e[0]) && (
+      e[0].toLowerCase().includes(lower) ||
+      e[1].toLowerCase().includes(lower)
+    );
+  });
+  dd.innerHTML = opts.length === 0 ? '<div class="user-opt" style="color:var(--text3);">검색 결과 없음</div>' :
+    opts.map(function(e){
+      return '<div class="user-opt" onclick="selectUser(\''+e[0]+'\')">' +
+        '<span class="opt-ko">'+e[1]+'</span><span class="opt-en">'+e[0]+'</span></div>';
+    }).join('');
+}
+
+function filterUserOptions() {
+  var q = document.getElementById('user-search')?.value || '';
+  buildUserDropdown(q);
+  showUserDropdown();
+}
+
+function showUserDropdown() {
+  var dd = document.getElementById('user-dropdown');
+  if(dd) dd.style.display = 'block';
+  buildUserDropdown(document.getElementById('user-search')?.value || '');
+}
+
+function hideUserDropdown() {
+  setTimeout(function(){ 
+    var dd = document.getElementById('user-dropdown');
+    if(dd) dd.style.display = 'none';
+  }, 200);
+}
+
+function toggleUserDropdown() {
+  var dd = document.getElementById('user-dropdown');
+  if(!dd) return;
+  if(dd.style.display === 'none') showUserDropdown();
+  else dd.style.display = 'none';
+}
+
+function selectUser(eng) {
+  if(!_selectedUsers.includes(eng)) {
+    _selectedUsers.push(eng);
+    renderUserChips();
+    syncUserField();
+    document.getElementById('user-search').value = '';
+    buildUserDropdown('');
+  }
+}
+
+function removeUser(eng) {
+  _selectedUsers = _selectedUsers.filter(function(u){ return u !== eng; });
+  renderUserChips();
+  syncUserField();
+}
+
+function renderUserChips() {
+  var chips = document.getElementById('user-chips');
+  if(!chips) return;
+  chips.innerHTML = _selectedUsers.map(function(eng){
+    var kor = KO_MAP[eng] || eng;
+    return '<span class="user-chip">'+kor+'('+eng+')'+
+      '<button type="button" onclick="removeUser(\''+eng+'\')">×</button></span>';
+  }).join('');
+}
+
+function syncUserField() {
+  var hidden = document.getElementById('f-users');
+  if(hidden) hidden.value = _selectedUsers.join(',');
+}
+
+// 모달 외부 클릭 시 드롭다운 닫기
+document.addEventListener('click', function(e){
+  var wrap = document.getElementById('user-select-wrap');
+  if(wrap && !wrap.contains(e.target)) hideUserDropdown();
+});
 
 </script>
 </body>
