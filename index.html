@@ -1244,7 +1244,7 @@ function initMsCard(){
   }).join('');
 }
 function renderList(){
-  var q = (document.getElementById('g-search')||{value:''}).value.toLowerCase();
+  var q = ((document.getElementById('rv-search')&&document.getElementById('rv-search').offsetParent?document.getElementById('rv-search').value:'')||(document.getElementById('g-search')||{value:''}).value).toLowerCase();
   var stSel = getMsSel('ms-status');
   var uSel = getMsSel('ms-user');
   var cSel = getMsSel('ms-card');
