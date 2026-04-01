@@ -654,7 +654,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
       </div>
       <!-- 검색 -->
       <div style="display:flex;gap:6px;margin-bottom:6px;">
-        <input class="srch" id="rv-search" style="flex:1;" placeholder="🔍 서비스명 · 사용자 · 결제수단 검색"/>
+        <input class="srch" id="rv-search" style="flex:1;" placeholder="🔍 서비스명 · 사용자 · 결제수단 검색" oninput="applyRvSearch()"/>
         <div class="ms-wrap" id="rv-ms-user">
           <div class="ms-trigger" id="rv-ms-user-trigger"><span id="rv-ms-user-lbl">사용자</span><span class="arrow">▾</span></div>
           <div class="ms-dropdown" id="rv-ms-user-dd">
@@ -2304,6 +2304,14 @@ document.addEventListener('click', function(e){
   var wrap = document.getElementById('user-select-wrap');
   if(wrap && !wrap.contains(e.target)) hideUserDropdown();
 });
+
+
+function applyRvSearch() {
+  var val = (document.getElementById('rv-search')||{value:''}).value;
+  var gs = document.getElementById('g-search');
+  if(gs) gs.value = val;
+  renderList();
+}
 
 </script>
 </body>
