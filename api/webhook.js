@@ -10,38 +10,33 @@ export default async function handler(req, res) {
 
     function resolveUser(raw) {
       if (!raw) return '';
-      return raw.replace(/<@([A-Z0-9]+)(?:\|[^>]+)?>/g, (m, uid) => SLACK_MAP[uid] || uid).trim();
+      return raw.replace(/<@([A-Z0-9]+)(?:[|][^>]+)?>/g, function(m, uid){ return SLACK_MAP[uid] || uid; }).trim();
     }
 
-    function getField(text, ...keys) {
-      for (const key of keys) {
-        const re = new RegExp('[*]?' + key + '[*]?\\s*:\\s*([^\\n*]+)', 'i');
-        const m = text.match(re);
-        if (m && m[1].trim()) return m[1].trim();
-      }
-      return '';
-    }
-
+    // text 필드 파싱 - 키를 유니코드 이스케이프로 비교 (인코딩 무관)
     const text = body.text || '';
     if (text) {
-      if (!service)     service     = getField(text, '서비스명', '서비스');
-      if (!user)        user        = resolveUser(getField(text, '사용자'));
-      if (!description) description = getField(text, '내용');
-      if (!amount)      amount      = getField(text, '결제금액', '금액');
-      if (!payment) {
-        const raw = getField(text, '결제카드', '카드번호', '카드');
-        const m = raw.match(/\d{4}/);
-        if (m) payment = m[0];
-      }
-      if (!cycle) {
-        const v = getField(text, '결제방식', '결제주기');
-        if (v) cycle = v.includes('연') ? '연결제' : '월결제';
-      }
-      if (!start_date) {
-        const v = getField(text, '결제일', '결제일자');
-        if (v) {
-          const dm = v.match(/(\d{4})[-./](\d{2})[-./](\d{2})/);
-          if (dm) start_date = dm[1]+'-'+dm[2]+'-'+dm[3];
+      const lines = text.split('\n');
+      for (const line of lines) {
+        const clean = line.replace(/[*]/g, '').trim();
+        const ci = clean.indexOf(':');
+        if (ci < 0) continue;
+        const key = clean.slice(0, ci).trim();
+        const val = clean.slice(ci + 1).trim();
+        if (!val) continue;
+        // 유니코드 이스케이프로 한글 키 비교
+        if (key === '\uC11C\uBE44\uC2A4\uBA85') { if(!service) service = val; }
+        else if (key === '\uC0AC\uC6A9\uC790') { if(!user) user = resolveUser(val); }
+        else if (key === '\uB0B4\uC6A9') { if(!description) description = val; }
+        else if (key === '\uACB0\uC81C\uAE08\uC561') { if(!amount) amount = val; }
+        else if (key === '\uACB0\uC81C\uCE74\uB4DC') {
+          if(!payment) { const m = val.match(/\d{4}/); if(m) payment = m[0]; }
+        }
+        else if (key === '\uACB0\uC81C\uBC29\uC2DD') {
+          if(!cycle) cycle = val.includes('\uC5F0') ? '\uC5F0\uACB0\uC81C' : '\uC6D4\uACB0\uC81C';
+        }
+        else if (key === '\uACB0\uC81C\uC77C') {
+          if(!start_date) { const m = val.match(/(\d{4})[-./](\d{2})[-./](\d{2})/); if(m) start_date = m[1]+'-'+m[2]+'-'+m[3]; }
         }
       }
     }
@@ -50,24 +45,20 @@ export default async function handler(req, res) {
 
     const SB_URL = 'https://hwppttcigebpvpvzidex.supabase.co';
     const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cHB0dGNpZ2VicHZwdnppZGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MzE4NTUsImV4cCI6MjA4OTIwNzg1NX0.oNe50eIvP2guEugRk9x8GVlqvHUmYG6jPDWabukk3M8';
+    const hdrs = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
 
-    const existing = await fetch(SB_URL+'/rest/v1/subscriptions?s=eq.'+encodeURIComponent(service)+'&status=eq.pending',{
-      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
-    }).then(r=>r.json());
+    const existing = await fetch(SB_URL+'/rest/v1/subscriptions?s=eq.'+encodeURIComponent(service)+'&status=eq.pending',{headers:hdrs}).then(r=>r.json());
     if (existing && existing.length > 0) return res.status(200).json({ok:true, duplicate:true});
 
-    const maxRes = await fetch(SB_URL+'/rest/v1/subscriptions?select=id&order=id.desc&limit=1',{
-      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
-    });
-    const maxData = await maxRes.json();
+    const maxData = await fetch(SB_URL+'/rest/v1/subscriptions?select=id&order=id.desc&limit=1',{headers:hdrs}).then(r=>r.json());
     const newId = (maxData[0]?.id || 0) + 1;
 
-    const saveRes = await fetch(SB_URL+'/rest/v1/subscriptions',{
+    const saveRes = await fetch(SB_URL+'/rest/v1/subscriptions', {
       method:'POST',
-      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+      headers:{...hdrs,'Content-Type':'application/json','Prefer':'return=minimal'},
       body: JSON.stringify({
         id:newId, s:service, u:user||'', d:description||'',
-        a:amount||'', m:payment||'', c:cycle||'월결제',
+        a:amount||'', m:payment||'', c:cycle||'\uC6D4\uACB0\uC81C',
         sd:start_date||new Date().toISOString().slice(0,10),
         status:'pending', source:'zapier', note:note||''
       })
