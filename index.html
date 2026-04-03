@@ -890,6 +890,13 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
       <div class="field"><label>구독 시작일</label><input type="date" id="f-sd"/></div>
       <div class="field"><label>구독 종료일</label><input type="date" id="f-ed"/></div>
     </div>
+    <div class="row2" style="margin-bottom:0;">
+      <div class="field">
+        <label>결제일 <span style="font-size:11px;color:var(--text3);font-weight:400;">(기본: 시작일 일자, 수정 가능)</span></label>
+        <input type="number" id="f-pd" min="1" max="31" placeholder="예: 18 (매월 18일)">
+      </div>
+      <div class="field"></div>
+    </div>
     <div class="field"><label>구독상태</label>
       <div class="cy-row">
         <button class="cy-btn sel" id="st-on" onclick="setSt('구독중')">구독중</button>
@@ -1512,6 +1519,9 @@ function openModal(id){
   document.getElementById('f-amt').value = d?d.a:'';
   document.getElementById('f-method').value = d?d.m:'';
   document.getElementById('f-sd').value = d?d.sd:'';
+  // 결제일: 저장된 값 있으면 사용, 없으면 구독시작일의 '일' 추출
+  var pdVal = d&&d.pd ? d.pd : (d&&d.sd ? parseInt(d.sd.split('-')[2])||'' : '');
+  document.getElementById('f-pd').value = pdVal;
   document.getElementById('f-ed').value = d?d.ed:'';
   document.getElementById('f-note').value = d?d.note:'';
   setCycle(d?d.c:'월결제');
@@ -1551,7 +1561,8 @@ function saveModal(){
     c: CY_M,
     sd: document.getElementById('f-sd').value,
     ed: document.getElementById('f-ed').value,
-    note: document.getElementById('f-note').value.trim()
+    note: document.getElementById('f-note').value.trim(),
+    pd: document.getElementById('f-pd').value ? parseInt(document.getElementById('f-pd').value) : null
   };
   if(editId){
     DATA[DATA.findIndex(function(x){return x.id===editId;})]=item;
@@ -1564,34 +1575,32 @@ function saveModal(){
   initMsUser(); initMsCard();
   document.getElementById('cat-chips').innerHTML='';
   renderDash(); renderList();
-  // 수정된 항목을 Supabase에 직접 PATCH (note, status 등 모든 필드 포함)
-  if(typeof editId !== 'undefined' && editId) {
-    var patchItem = DATA.find(function(x){return x.id===editId;});
-    if(patchItem) {
-      fetch('https://hwppttcigebpvpvzidex.supabase.co/rest/v1/subscriptions?id=eq.'+editId, {
-        method: 'PATCH',
-        headers: {
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cHB0dGNpZ2VicHZwdnppZGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MzE4NTUsImV4cCI6MjA4OTIwNzg1NX0.oNe50eIvP2guEugRk9x8GVlqvHUmYG6jPDWabukk3M8',
-          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cHB0dGNpZ2VicHZwdnppZGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MzE4NTUsImV4cCI6MjA4OTIwNzg1NX0.oNe50eIvP2guEugRk9x8GVlqvHUmYG6jPDWabukk3M8',
-          'Content-Type': 'application/json',
-          'Prefer': 'return=minimal'
-        },
-        body: JSON.stringify({
-          s: patchItem.s,
-          d: patchItem.d,
-          u: patchItem.u,
-          status: patchItem.status,
-          a: patchItem.a,
-          m: patchItem.m,
-          c: patchItem.c,
-          sd: patchItem.sd,
-          ed: patchItem.ed||null,
-          note: patchItem.note||null
-        })
-      }).catch(function(e){console.warn('PATCH error:', e);});
-    }
-  }
-  serverSave();
+  // 신규/수정 항목 Supabase 직접 저장
+  (function() {
+    var savedItem = DATA.find(function(x){return x.id===(editId||0);});
+    if(!savedItem) return;
+    var isNew = !editId;
+    var body = {
+      s: savedItem.s, d: savedItem.d||'', u: savedItem.u||'',
+      status: savedItem.status, a: savedItem.a||'', m: savedItem.m||'',
+      c: savedItem.c||'월결제', sd: savedItem.sd||'', ed: savedItem.ed||null,
+      pd: savedItem.pd||null, note: savedItem.note||null
+    };
+    if(isNew) body.id = savedItem.id;
+    fetch('https://hwppttcigebpvpvzidex.supabase.co/rest/v1/subscriptions'+(isNew?'':'?id=eq.'+editId), {
+      method: isNew ? 'POST' : 'PATCH',
+      headers: {
+        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cHB0dGNpZ2VicHZwdnppZGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MzE4NTUsImV4cCI6MjA4OTIwNzg1NX0.oNe50eIvP2guEugRk9x8GVlqvHUmYG6jPDWabukk3M8',
+        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cHB0dGNpZ2VicHZwdnppZGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MzE4NTUsImV4cCI6MjA4OTIwNzg1NX0.oNe50eIvP2guEugRk9x8GVlqvHUmYG6jPDWabukk3M8',
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify(body)
+    }).then(function(r){
+      if(!r.ok) r.text().then(function(t){console.warn('저장오류:',t);});
+      else console.log(isNew?'신규저장OK':'수정저장OK', savedItem.id);
+    }).catch(function(e){console.warn('저장실패:',e);});
+  })();
   if(window._zpApproveId){ 
     const zid = window._zpApproveId;
     window._zpApproveId = null;
