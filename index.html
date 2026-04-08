@@ -622,7 +622,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
     <div class="tbl-wrap">
       <table>
         <thead><tr>
-          <th>서비스명</th><th>결제수단 · 금액</th><th>결제주기</th><th>구독시작</th><th>다음결제</th><th>비고</th>
+          <th>서비스명</th><th>사용자</th><th>결제수단</th><th>금액</th><th>결제주기</th><th>구독시작</th>
         </tr></thead>
         <tbody id="rv-result-tbody"></tbody>
       </table>
@@ -669,7 +669,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
     <div class="tbl-wrap" style="max-height:52vh;overflow-x:auto;">
       <table>
         <thead><tr>
-          <th style="width:150px;">서비스명</th><th style="width:80px;">사용자</th><th style="width:190px;">결제수단 · 금액</th><th>결제주기</th><th>구독시작</th><th>다음결제</th><th>비고</th>
+          <th style="width:150px;">서비스명</th><th style="width:80px;">사용자</th><th>결제수단</th><th>금액</th><th>결제주기</th><th>구독시작</th>
         </tr></thead>
         </table><div style="display:none" id="_rv_ph"></div><table><tbody id="rv-tbody"></tbody>
       </table>
@@ -1752,14 +1752,13 @@ function rvLookup(){
     return "<tr>"+
       "<td class=\"rv-svc-td\""+(d.d?" data-tooltip=\""+descAttr+"\"":"")+"><strong>"+d.s+(d.d?" <span style=\"font-size:10px;color:var(--text3);\"> i</span>":"")+"</strong></td>"+
       "<td style=\"font-size:11px;white-space:nowrap;\" title=\""+uNames+"\">"+uFirst+uMore+"</td>"+
-      "<td style=\"font-family:var(--mono);font-size:12px;\">"+((d.m)||"")+" <span style=\"color:var(--text3);\">&middot;</span> "+((d.a)||"")+"</td>"+
+      "<td style=\"font-family:var(--mono);font-size:12px;\">"+((d.m)||"")+"</td>"+
+      "<td style=\"font-family:var(--mono);font-size:12px;\">"+((d.a)||"")+"</td>"+
       "<td><span class=\"tag\" style=\"background:var(--blue-l);color:var(--blue);\">"+((d.c)||"")+"</span></td>"+
       "<td style=\"font-family:var(--mono);font-size:12px;\">"+((d.sd)||"")+"</td>"+
-      "<td style=\"font-family:var(--mono);font-size:12px;color:"+(soon?"var(--red)":"var(--blue)")+";\">"+(next||"")+"</td>"+
-      "<td style=\"font-size:12px;color:var(--text3);\">"+((d.note)||"")+"</td>"+
     "</tr>";
   }).join("");
-  if(!rows.length) tbody.innerHTML="<tr><td colspan=\"7\" style=\"text-align:center;padding:24px;color:var(--text3);\">구독 내역이 없어요</td></tr>";
+  if(!rows.length) tbody.innerHTML="<tr><td colspan=\"6\" style=\"text-align:center;padding:24px;color:var(--text3);\">구독 내역이 없어요</td></tr>";
 }
 
 function rvShowDesc(e,el){
@@ -1884,11 +1883,10 @@ function renderRV(){
     return '<tr>'+
       '<td class="rv-svc-td"'+(d.d?' data-tooltip="'+descAttr+'"':'')+'><strong>'+d.s+(d.d?' <span style="font-size:10px;color:var(--text3);"> i</span>':'')+'</strong></td>'+
       '<td title="'+uTitle+'" style="white-space:nowrap;cursor:default;">'+uFirst+uMore+'</td>'+
-      '<td style="font-family:var(--mono);font-size:12px;">'+(d.m||'')+' <span style="color:var(--text3);">&#183;</span> '+(d.a||'')+'</td>'+
+      '<td style="font-family:var(--mono);font-size:12px;">'+(d.m||'')+'</td>'+
+      '<td style="font-family:var(--mono);font-size:12px;">'+(d.a||'')+'</td>'+
       '<td><span class="tag" style="background:var(--blue-l);color:var(--blue);">'+(d.c||'')+'</span></td>'+
       '<td style="font-family:var(--mono);font-size:12px;">'+(d.sd||'')+'</td>'+
-      '<td style="font-family:var(--mono);font-size:12px;color:'+(isSoon?'var(--red)':'var(--blue)')+';">'+next+'</td>'+
-      '<td style="font-size:12px;color:var(--text3);">'+(d.note||'')+'</td>'+
     '</tr>';
   }).join('');
 }
