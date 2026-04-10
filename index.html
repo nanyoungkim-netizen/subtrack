@@ -946,16 +946,54 @@ var editId = null;
 
 // ── 저장 ─────────────────────────────────────
 async function serverSave(){
-  if(!IS_DEPLOYED) return;
+  if(!IS_DEPLOYED) return true;
   try {
-    await fetch(_SB_URL+'/rest/v1/subscriptions', {
+    const res = await fetch(_SB_URL+'/rest/v1/subscriptions', {
       method:'POST', headers:_SB_HDR, body:JSON.stringify(DATA)
     });
+    if(!res.ok){ const e=await res.text(); console.error('초기저장 실패:',res.status,e); return false; }
     var ids = DATA.map(function(d){return d.id;}).join(',');
-    await fetch(_SB_URL+'/rest/v1/subscriptions?id=not.in.('+ids+')', {
+    if(ids){
+      await fetch(_SB_URL+'/rest/v1/subscriptions?id=not.in.('+ids+')', {
+        method:'DELETE', headers:_SB_HDR
+      });
+    }
+    return true;
+  } catch(e){console.warn('저장실패',e); return false;}
+}
+async function serverPatch(item){
+  if(!IS_DEPLOYED) return true;
+  try {
+    var body = Object.assign({}, item);
+    delete body.created_at; delete body.updated_at;
+    const res = await fetch(_SB_URL+'/rest/v1/subscriptions?id=eq.'+item.id, {
+      method:'PATCH', headers:_SB_HDR, body:JSON.stringify(body)
+    });
+    if(!res.ok){ const e=await res.text(); console.error('수정 저장 실패:',res.status,e); showToast('⚠ 저장 실패 — 다시 시도해주세요'); return false; }
+    return true;
+  } catch(e){ console.warn('PATCH 실패',e); showToast('⚠ 저장 실패 (네트워크 오류)'); return false; }
+}
+async function serverInsert(item){
+  if(!IS_DEPLOYED) return true;
+  try {
+    var body = Object.assign({}, item);
+    delete body.created_at; delete body.updated_at;
+    const res = await fetch(_SB_URL+'/rest/v1/subscriptions', {
+      method:'POST', headers:{..._SB_HDR,'Prefer':'return=minimal'}, body:JSON.stringify(body)
+    });
+    if(!res.ok){ const e=await res.text(); console.error('추가 저장 실패:',res.status,e); showToast('⚠ 저장 실패 — 다시 시도해주세요'); return false; }
+    return true;
+  } catch(e){ console.warn('INSERT 실패',e); showToast('⚠ 저장 실패 (네트워크 오류)'); return false; }
+}
+async function serverDeleteItem(id){
+  if(!IS_DEPLOYED) return true;
+  try {
+    const res = await fetch(_SB_URL+'/rest/v1/subscriptions?id=eq.'+id, {
       method:'DELETE', headers:_SB_HDR
     });
-  } catch(e){console.warn('저장실패',e);}
+    if(!res.ok){ const e=await res.text(); console.error('삭제 실패:',res.status,e); showToast('⚠ 삭제 실패 — 다시 시도해주세요'); return false; }
+    return true;
+  } catch(e){ console.warn('DELETE 실패',e); showToast('⚠ 삭제 실패 (네트워크 오류)'); return false; }
 }
 
 // ── 로그인 ───────────────────────────────────
@@ -1057,15 +1095,18 @@ function getPrevNext(d){
   if(!d.sd) return null;
   var start = new Date(d.sd);
   if(isNaN(start)) return null;
-  var prev = new Date(start);
   if(d.c==='연결제'){
+    var prev = new Date(start);
     while(prev <= TODAY) prev.setFullYear(prev.getFullYear()+1);
     prev.setFullYear(prev.getFullYear()-1);
+    return prev.getFullYear()+'-'+_p(prev.getMonth()+1)+'-'+_p(prev.getDate());
   } else {
-    while(prev <= TODAY) prev.setMonth(prev.getMonth()+1);
-    prev.setMonth(prev.getMonth()-1);
+    var billingDay = d.pd || start.getDate();
+    var y = TODAY.getFullYear(), mo = TODAY.getMonth();
+    var thisMonth = new Date(y, mo, billingDay);
+    var prev = thisMonth <= TODAY ? thisMonth : new Date(y, mo-1, billingDay);
+    return prev.getFullYear()+'-'+_p(prev.getMonth()+1)+'-'+_p(prev.getDate());
   }
-  return prev.getFullYear()+'-'+_p(prev.getMonth()+1)+'-'+_p(prev.getDate());
 }
 function calcNext(d){
   if(d.status==='구독종료') return d.ed||'';
@@ -1073,13 +1114,17 @@ function calcNext(d){
   var start = new Date(d.sd);
   if(isNaN(start)) return '';
   if(d.c==='1회성') return d.sd;
-  var next = new Date(start);
   if(d.c==='연결제'){
+    var next = new Date(start);
     while(next <= TODAY) next.setFullYear(next.getFullYear()+1);
+    return next.getFullYear()+'-'+_p(next.getMonth()+1)+'-'+_p(next.getDate());
   } else {
-    while(next <= TODAY) next.setMonth(next.getMonth()+1);
+    var billingDay = d.pd || start.getDate();
+    var y = TODAY.getFullYear(), mo = TODAY.getMonth();
+    var next = new Date(y, mo, billingDay);
+    if(next <= TODAY) next = new Date(y, mo+1, billingDay);
+    return next.getFullYear()+'-'+_p(next.getMonth()+1)+'-'+_p(next.getDate());
   }
-  return next.getFullYear()+'-'+_p(next.getMonth()+1)+'-'+_p(next.getDate());
 }
 function daysUntil(dateStr){
   if(!dateStr) return 9999;
@@ -1550,7 +1595,8 @@ function setSt(s){
   if(off) off.classList.toggle('sel', s==='구독종료');
 }
 function saveModal(){
-  var item = {
+  var original = editId ? (DATA.find(function(x){return x.id===editId;}) || {}) : {};
+  var item = Object.assign({}, original, {
     id: editId||nextId++,
     s: document.getElementById('f-svc').value.trim(),
     d: document.getElementById('f-desc').value.trim(),
@@ -1563,44 +1609,20 @@ function saveModal(){
     ed: document.getElementById('f-ed').value,
     note: document.getElementById('f-note').value.trim(),
     pd: document.getElementById('f-pd').value ? parseInt(document.getElementById('f-pd').value) : null
-  };
+  });
   if(editId){
     DATA[DATA.findIndex(function(x){return x.id===editId;})]=item;
     showToast('✓ '+item.s+' 수정 완료');
+    serverPatch(item);
   } else {
     DATA.push(item);
     showToast('✓ '+item.s+' 추가 완료');
+    serverInsert(item);
   }
   closeModal();
   initMsUser(); initMsCard();
   document.getElementById('cat-chips').innerHTML='';
   renderDash(); renderList();
-  // 신규/수정 항목 Supabase 직접 저장
-  (function() {
-    var savedItem = DATA.find(function(x){return x.id===(editId||0);});
-    if(!savedItem) return;
-    var isNew = !editId;
-    var body = {
-      s: savedItem.s, d: savedItem.d||'', u: savedItem.u||'',
-      status: savedItem.status, a: savedItem.a||'', m: savedItem.m||'',
-      c: savedItem.c||'월결제', sd: savedItem.sd||'', ed: savedItem.ed||null,
-      pd: savedItem.pd||null, note: savedItem.note||null
-    };
-    if(isNew) body.id = savedItem.id;
-    fetch('https://hwppttcigebpvpvzidex.supabase.co/rest/v1/subscriptions'+(isNew?'':'?id=eq.'+editId), {
-      method: isNew ? 'POST' : 'PATCH',
-      headers: {
-        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cHB0dGNpZ2VicHZwdnppZGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MzE4NTUsImV4cCI6MjA4OTIwNzg1NX0.oNe50eIvP2guEugRk9x8GVlqvHUmYG6jPDWabukk3M8',
-        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cHB0dGNpZ2VicHZwdnppZGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MzE4NTUsImV4cCI6MjA4OTIwNzg1NX0.oNe50eIvP2guEugRk9x8GVlqvHUmYG6jPDWabukk3M8',
-        'Content-Type': 'application/json',
-        'Prefer': 'return=minimal'
-      },
-      body: JSON.stringify(body)
-    }).then(function(r){
-      if(!r.ok) r.text().then(function(t){console.warn('저장오류:',t);});
-      else console.log(isNew?'신규저장OK':'수정저장OK', savedItem.id);
-    }).catch(function(e){console.warn('저장실패:',e);});
-  })();
   if(window._zpApproveId){ 
     const zid = window._zpApproveId;
     window._zpApproveId = null;
@@ -1620,13 +1642,14 @@ function saveModal(){
 function delItem(){
   var d = DATA.find(function(x){return x.id===editId;});
   if(!d||!confirm('"'+d.s+'" 삭제할까요?')) return;
+  var idToDel = editId;
   DATA = DATA.filter(function(x){return x.id!==editId;});
   closeModal();
   initMsUser(); initMsCard();
   document.getElementById('cat-chips').innerHTML='';
   showToast('🗑 '+d.s+' 삭제됨');
   renderDash(); renderList();
-  serverSave();
+  serverDeleteItem(idToDel);
 }
 function toggleStatus(id){
   var d = DATA.find(function(x){return x.id===id;});
@@ -1642,7 +1665,7 @@ function toggleStatus(id){
   }
   initMsUser(); initMsCard();
   applyAll(); renderDash();
-  serverSave();
+  serverPatch(d);
 }
 
 // ── 토스트 ───────────────────────────────────
