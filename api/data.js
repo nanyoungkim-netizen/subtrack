@@ -25,7 +25,7 @@ export default async function handler(req, res) {
       } else {
         rows = await sql`SELECT * FROM subscriptions ORDER BY id ASC`;
       }
-      return res.status(200).json({ ok: true, data: rows });
+      return res.status(200).json({ ok: true, data: rows, initialized: rows.length > 0 });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e.message });
     }
@@ -67,4 +67,4 @@ export default async function handler(req, res) {
   }
 
   return res.status(405).json({ error: 'Method not allowed' });
-}
+  }
