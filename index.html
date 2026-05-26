@@ -1293,7 +1293,7 @@ function renderList(){
   var cSel = getMsSel('ms-card');
   var chips = [...document.querySelectorAll('#cat-chips .chip.sel')].map(function(c){return c.dataset.val;});
 
-  var rows = DATA.slice();
+  var rows = DATA.filter(function(d){ return d.status !== 'pending'; });
   if(q) rows = rows.filter(function(d){
     var uKo=(d.u||'').split(',').map(function(u){var n=u.trim();return KO_MAP[n]||n;}).join(',').toLowerCase();
     return (d.s||'').toLowerCase().includes(q)||(d.u||'').toLowerCase().includes(q)||uKo.includes(q)||(d.m||'').toLowerCase().includes(q)||(d.d||'').toLowerCase().includes(q);
@@ -1733,19 +1733,19 @@ function rvLookup(){
     ?DATA.filter(function(d){return d.status==="구독중"&&d.m&&d.m.toString().includes(q);})
     :DATA.filter(function(d){
       // 서비스명 검색 추가
-      if(d.s && d.s.toLowerCase().includes(qLo)) return true;
+      if(d.s && d.s.toLowerCase().includes(qLo) && d.status==="구독중") return true;
       if(d.status!=="구독중"||!d.u) return false;
       return d.u.split(",").map(function(u){return u.trim();}).some(function(u){
         var ko=KO_MAP[u]||"";
-        return u.toLowerCase()===qLo||ko===q||ko.includes(q)||q.includes(ko)||u.toLowerCase().includes(qLo);
+        return u.toLowerCase()===qLo||ko===q||ko.includes(q)||(ko&&q.includes(ko))||u.toLowerCase().includes(qLo);
       });
     });
   var nick="";
   if(!isCard) DATA.some(function(d){
-    if(!d.u) return;
+    if(!d.u||d.status!=="구독중") return;
     return d.u.split(",").map(function(u){return u.trim();}).some(function(u){
       var ko=KO_MAP[u]||"";
-      if(u.toLowerCase()===qLo||ko===q||ko.includes(q)||q.includes(ko)||u.toLowerCase().includes(qLo)){nick=u;return true;}
+      if(u.toLowerCase()===qLo||ko===q||ko.includes(q)||(ko&&q.includes(ko))||u.toLowerCase().includes(qLo)){nick=u;return true;}
     });
   });
   var ko2=nick?(KO_MAP[nick]||nick):"";
