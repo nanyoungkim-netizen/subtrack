@@ -1295,8 +1295,8 @@ function renderList(){
 
   var rows = DATA.filter(function(d){ return d.status !== 'pending'; });
   if(q) rows = rows.filter(function(d){
-    var uKo=(d.u||'').split(',').map(function(u){var n=u.trim();return KO_MAP[n]||n;}).join(',').toLowerCase();
-    return (d.s||'').toLowerCase().includes(q)||(d.u||'').toLowerCase().includes(q)||uKo.includes(q)||(d.m||'').toLowerCase().includes(q)||(d.d||'').toLowerCase().includes(q);
+    var uMatch=(d.u||'').split(',').some(function(u){return nickMatch(u,q);});
+    return (d.s||'').toLowerCase().includes(q)||uMatch||(d.m||'').toLowerCase().includes(q)||(d.d||'').toLowerCase().includes(q);
   });
   if(stSel.length) rows = rows.filter(function(d){return stSel.includes(d.status);});
   if(uSel.length) rows = rows.filter(function(d){return d.u&&uSel.some(function(u){return d.u.includes(u);});});
@@ -1692,20 +1692,49 @@ var KO_MAP = {
 };
 var KO_REVERSE = {};
 Object.keys(KO_MAP).forEach(function(k){ KO_REVERSE[KO_MAP[k]] = k; });
-function getKoName(nick){ return KO_MAP[nick]||nick; }
+
+// ── 닉네임 표기 표준화 계층 ──────────────────────────────────────────
+// 저장된 닉네임은 대소문자/하이픈/언더스코어/한글 등 표기가 제각각이다
+// (예: 'endo','YA-MU-CHI','new_jean','라임'). 아래 계층으로 어떤 표기든
+// 하나의 표준 영문 닉네임으로 해석해, 한글·영문(대소문자 무시) 양쪽으로 검색되게 한다.
+function normKey(s){ return (''+(s==null?'':s)).toLowerCase().replace(/[\s\-_.]/g,''); }
+// 정규화로도 안 잡히는 표기 변형(철자가 다른 별칭). 필요 시 여기에 추가.
+var NICK_EXTRA_ALIAS = [['new_jean','Newjin']];
+// 정규화 표기 → 표준 영문 닉네임 인덱스 (영문키 + 한글값 모두 등록)
+var NICK_ALIAS = {};
+function rebuildNickAlias(){
+  NICK_ALIAS = {};
+  Object.keys(KO_MAP).forEach(function(k){
+    NICK_ALIAS[normKey(k)] = k;
+    NICK_ALIAS[normKey(KO_MAP[k])] = k;
+  });
+  NICK_EXTRA_ALIAS.forEach(function(p){ NICK_ALIAS[normKey(p[0])] = p[1]; });
+}
+rebuildNickAlias();
+
+// 저장 토큰/검색어 → 표준 영문 닉네임 (매핑 없으면 원문 trim)
+function canonNick(tok){ var t=(''+(tok==null?'':tok)).trim(); return NICK_ALIAS[normKey(t)] || t; }
+// 닉네임 → 표시용 한글 (대소문자/표기 무시, 매핑 없으면 원문)
+function koName(nick){ if(nick==null) return nick; var c=canonNick(nick); return KO_MAP[c] || (''+nick).trim(); }
+function getKoName(nick){ return koName(nick); }
+// 검색어 q 가 저장 토큰 tok 과 같은 사람인지(부분일치 포함) 판정 — 한글/영문 양방향
+function nickMatch(tok, q){
+  var qn=normKey(q); if(!qn) return false;
+  var c=canonNick(tok);
+  var forms=[normKey(c), normKey(KO_MAP[c]||''), normKey(tok)];
+  return forms.some(function(f){ return f && (f===qn || f.indexOf(qn)>=0); });
+}
+// 검색어(한글/영문) → 표준 영문 닉네임 (없으면 null)
 function getNickFromKo(q){
-  var lo = q.toLowerCase();
-  // 한글로 닉네임 찾기
-  var found = Object.keys(KO_REVERSE).find(function(ko){ return ko.includes(q)||q.includes(ko); });
-  if(found) return KO_REVERSE[found];
-  // 영문 닉네임 직접 매치
-  var nick = Object.keys(KO_MAP).find(function(k){ return k.toLowerCase()===lo; });
-  return nick||null;
+  var qn=normKey(q); if(!qn) return null;
+  if(NICK_ALIAS[qn]) return NICK_ALIAS[qn];
+  var hit=Object.keys(NICK_ALIAS).find(function(f){ return f.indexOf(qn)>=0||qn.indexOf(f)>=0; });
+  return hit?NICK_ALIAS[hit]:null;
 }
 function getUsersKo(uStr){
   if(!uStr) return '-';
   var users = uStr.split(',').map(function(u){return u.trim();}).filter(Boolean);
-  return users.map(function(u){ return KO_MAP[u]||u; }).join(', ');
+  return users.map(function(u){ return koName(u); }).join(', ');
 }
 
 // ── 리서처 뷰 화면 전환 ────────────────────────────
@@ -1735,21 +1764,18 @@ function rvLookup(){
       // 서비스명 검색 추가
       if(d.s && d.s.toLowerCase().includes(qLo) && d.status==="구독중") return true;
       if(d.status!=="구독중"||!d.u) return false;
-      return d.u.split(",").map(function(u){return u.trim();}).some(function(u){
-        var ko=KO_MAP[u]||"";
-        return u.toLowerCase()===qLo||ko===q||ko.includes(q)||(ko&&q.includes(ko))||u.toLowerCase().includes(qLo);
-      });
+      return d.u.split(",").some(function(u){return nickMatch(u,q);});
     });
   var nick="";
   if(!isCard) DATA.some(function(d){
     if(!d.u||d.status!=="구독중") return;
     return d.u.split(",").map(function(u){return u.trim();}).some(function(u){
-      var ko=KO_MAP[u]||"";
-      if(u.toLowerCase()===qLo||ko===q||ko.includes(q)||(ko&&q.includes(ko))||u.toLowerCase().includes(qLo)){nick=u;return true;}
+      if(nickMatch(u,q)){nick=u;return true;}
     });
   });
-  var ko2=nick?(KO_MAP[nick]||nick):"";
-  var dname=isCard?("카드 "+q):nick+(ko2&&ko2!==nick?" ("+ko2+")":"");
+  var eng=nick?canonNick(nick):"";
+  var ko2=nick?koName(nick):"";
+  var dname=isCard?("카드 "+q):(ko2&&ko2!==eng?ko2+" ("+eng+")":eng);
   document.getElementById("rv-screen-lookup").style.display="none";
   document.getElementById("rv-screen-result").style.display="block";
   document.getElementById("rv-screen-all").style.display="none";
@@ -1760,9 +1786,9 @@ function rvLookup(){
     var next=calcNext(d);
     var soon=next&&daysUntil(next)>=0&&daysUntil(next)<=7;
     var uList=d.u?d.u.split(",").map(function(u){return u.trim();}).filter(Boolean):[];
-    var uFirst=uList.length?(KO_MAP[uList[0]]||uList[0]):"";
-    var uNames=uList.map(function(u){return KO_MAP[u]||u;}).join(", ");
-    var uRest=uList.slice(1).map(function(u){return KO_MAP[u]||u;}).join(",");var uMore=uList.length>1?" <span style=\"color:var(--blue);font-size:10px;font-weight:600;cursor:pointer;\" onclick=\"showUserTooltip(event,this)\" onmouseleave=\"hideTooltip()\" data-users=\""+uRest+"\" data-first=\""+uFirst+"\">+"+(uList.length-1)+"</span>":"";
+    var uFirst=uList.length?koName(uList[0]):"";
+    var uNames=uList.map(function(u){return koName(u);}).join(", ");
+    var uRest=uList.slice(1).map(function(u){return koName(u);}).join(",");var uMore=uList.length>1?" <span style=\"color:var(--blue);font-size:10px;font-weight:600;cursor:pointer;\" onclick=\"showUserTooltip(event,this)\" onmouseleave=\"hideTooltip()\" data-users=\""+uRest+"\" data-first=\""+uFirst+"\">+"+(uList.length-1)+"</span>":"";
     var descAttr=d.d?(d.d.replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;")):"";
     return "<tr>"+
       "<td class=\"rv-svc-td\""+(d.d?" data-tooltip=\""+descAttr+"\"":"")+"><strong>"+d.s+(d.d?" <span style=\"font-size:10px;color:var(--text3);\"> i</span>":"")+"</strong></td>"+
@@ -1881,8 +1907,8 @@ function renderRV(){
   if(typeof _rvTab!=='undefined'&&_rvTab!=='all') rows=rows.filter(function(d){return d.c===_rvTab;});
   if(typeof _rvChips!=='undefined'&&_rvChips.length) rows=rows.filter(function(d){return _rvChips.indexOf(d.s)>=0;});
   if(q) rows=rows.filter(function(d){
-    var uKo=(d.u||'').split(',').map(function(u){var n=u.trim();return KO_MAP[n]||n;}).join(',').toLowerCase();
-    return (d.s||'').toLowerCase().includes(q)||(d.u||'').toLowerCase().includes(q)||uKo.includes(q)||(d.d||'').toLowerCase().includes(q)||(d.m||'').toLowerCase().includes(q);
+    var uMatch=(d.u||'').split(',').some(function(u){return nickMatch(u,q);});
+    return (d.s||'').toLowerCase().includes(q)||uMatch||(d.d||'').toLowerCase().includes(q)||(d.m||'').toLowerCase().includes(q);
   });
   if(uSel.length) rows=rows.filter(function(d){return d.u&&uSel.some(function(u){return d.u.includes(u);});});
   var cntEl=document.getElementById('rv-count');
@@ -1893,7 +1919,7 @@ function renderRV(){
     var next=calcNext(d);
     var isSoon=next&&daysUntil(next)>=0&&daysUntil(next)<=7;
     var uFirst='',uMore='',uTitle='';
-    if(d.u){var ul=d.u.split(',').map(function(u){return u.trim();}).filter(Boolean);uFirst=getUsersKo(ul[0]||'');uMore=ul.length>1?' <span style="color:var(--blue);font-size:10px;font-weight:600;cursor:pointer;" onclick="showUserTooltip(event,this)" onmouseleave="hideTooltip()" data-users="'+ul.slice(1).map(function(u){return KO_MAP[u]||u;}).join(',')+'" data-first="'+(KO_MAP[ul[0]]||ul[0])+'">+' +(ul.length-1)+'</span>':'' ;uTitle=ul.map(function(u){return KO_MAP[u]||u;}).join(', ');}
+    if(d.u){var ul=d.u.split(',').map(function(u){return u.trim();}).filter(Boolean);uFirst=getUsersKo(ul[0]||'');uMore=ul.length>1?' <span style="color:var(--blue);font-size:10px;font-weight:600;cursor:pointer;" onclick="showUserTooltip(event,this)" onmouseleave="hideTooltip()" data-users="'+ul.slice(1).map(function(u){return koName(u);}).join(',')+'" data-first="'+koName(ul[0])+'">+' +(ul.length-1)+'</span>':'' ;uTitle=ul.map(function(u){return koName(u);}).join(', ');}
     var descAttr=d.d?(d.d.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')):'';
     return '<tr>'+
       '<td class="rv-svc-td"'+(d.d?' data-tooltip="'+descAttr+'"':'')+'><strong>'+d.s+(d.d?' <span style="font-size:10px;color:var(--text3);"> i</span>':'')+'</strong></td>'+
@@ -2212,6 +2238,7 @@ function saveNickname() {
   if(!eng || !kor) { alert('영어 닉네임과 한글 닉네임을 모두 입력해주세요.'); return; }
   if(KO_MAP[eng]) { if(!confirm(eng+' 는 이미 '+KO_MAP[eng]+'로 등록돼있어요. 덮어쓸까요?')) return; }
   KO_MAP[eng] = kor;
+  rebuildNickAlias();
   document.getElementById('nn-eng').value = '';
   document.getElementById('nn-kor').value = '';
   document.getElementById('nickname-add-form').style.display = 'none';
@@ -2225,6 +2252,7 @@ function saveNickname() {
 function deleteNickname(eng) {
   if(!confirm(eng+' ('+KO_MAP[eng]+') 를 삭제할까요?')) return;
   delete KO_MAP[eng];
+  rebuildNickAlias();
   renderNicknameList();
   showZpToast('🗑️ '+eng+' 삭제됐어요.');
   _pendingKoMapSave = true;
