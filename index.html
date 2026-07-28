@@ -707,7 +707,6 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
     </button>
     <button class="nav-btn" id="nav-nickname" onclick="showTab('nickname',this)">
       <span class="nav-icon">👤</span> 닉네임 관리
-      <span id="nav-nickname-badge" style="display:none;margin-left:6px;background:var(--blue);color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700;"></span>
     </button>
   </nav>
   <div class="sidebar-foot">
@@ -841,9 +840,6 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
     </div>
     <button class="add-main-btn" onclick="openNicknameAdd()">+ 닉네임 추가</button>
   </div>
-  <div id="unnamed-alert" style="display:none;align-items:center;gap:10px;background:var(--blue-l);border:1px solid var(--blue);border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--text);">
-    <span>🆕</span><span>한글 이름이 아직 입력되지 않은 멤버가 <b class="ua-cnt">0</b>명 있어요. 아래 파란 행에서 이름을 입력해주세요.</span>
-  </div>
   <div id="nickname-add-form" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-bottom:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
     <input id="nn-eng" placeholder="영어 닉네임 (예: Lime)" style="flex:1;min-width:140px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface2);">
     <input id="nn-kor" placeholder="한글 닉네임 (예: 라임)" style="flex:1;min-width:140px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface2);">
@@ -912,6 +908,22 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
       <button class="btn-danger" id="del-btn" onclick="delItem()">삭제</button>
       <button class="btn-cancel" onclick="closeModal()">취소</button>
       <button class="btn-ok" id="save-btn" onclick="saveModal()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 승인 시 미등록 멤버 등록 -->
+<div class="overlay" id="member-reg-overlay">
+  <div class="modal">
+    <div class="modal-title">
+      <span>리서처(멤버)를 등록해주세요</span>
+      <button class="close-x" onclick="skipMemberRegister()">×</button>
+    </div>
+    <div style="font-size:13px;color:var(--text3);margin-bottom:16px;">승인하려는 내역에 닉네임 매핑표에 없는 멤버가 있어요. 영어·한글 이름을 입력하면 등록 후 승인됩니다.</div>
+    <div id="member-reg-rows"></div>
+    <div class="mfooter">
+      <button class="btn-cancel" onclick="skipMemberRegister()">등록 없이 승인</button>
+      <button class="btn-ok" onclick="submitMemberRegister()">등록하고 승인</button>
     </div>
   </div>
 </div>
@@ -1647,18 +1659,27 @@ function saveModal(){
   if(window._zpApproveId){
     const zid = window._zpApproveId;
     window._zpApproveId = null;
-    // pending → 구독중: /api/data PATCH
     const zpItem = DATA.find(function(x){return x.id===zid;});
-    if(zpItem){
-      fetch('/api/data',{
-        method:'PATCH',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify(Object.assign({},zpItem,{status:'구독중',source:'zapier'}))
-      }).then(function(){
-        setTimeout(function(){ loadZapierPending(); showZpToast('✅ 승인됐어요! 전체 목록에 반영됐어요.'); }, 300);
-      });
+    // pending → 구독중 확정 처리
+    var finalizeApprove = function(){
+      if(zpItem){
+        fetch('/api/data',{
+          method:'PATCH',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify(Object.assign({},zpItem,{status:'구독중',source:'zapier'}))
+        }).then(function(){
+          setTimeout(function(){ loadZapierPending(); showZpToast('✅ 승인됐어요! 전체 목록에 반영됐어요.'); }, 300);
+        });
+      }
+      showTab('zapier', document.getElementById('nav-zapier'));
+    };
+    // 매핑표에 없는 멤버가 있으면 등록 창부터 → 등록 후 승인 확정
+    var unknown = zpItem ? unknownMembersOf(zpItem.u) : [];
+    if(unknown.length){
+      openMemberRegister(unknown, finalizeApprove);
+    } else {
+      finalizeApprove();
     }
-    showTab('zapier', document.getElementById('nav-zapier'));
   }
 }
 function delItem(){
@@ -2000,13 +2021,6 @@ async function initApp(){
       }
     } catch(e){}
   }
-
-  // 매핑표에 없는 멤버(노션/자피어 유입 포함) 자동 등록 → 이름 입력 유도
-  var newMembers = await autoRegisterUnknownMembers();
-  if(newMembers.length){
-    showZpToast('🆕 새 멤버 '+newMembers.length+'명 자동 등록됨 — 닉네임 관리에서 한글 이름을 입력해주세요');
-  }
-  updateUnnamedAlert();
 }
 document.addEventListener('mouseover',function(e){
   var uCell=e.target.closest('td[data-users]');
@@ -2051,10 +2065,6 @@ async function loadZapierPending() {
   const items = (json.data||[]).slice().reverse();
   if(!Array.isArray(items)) return;
   const count = items.length;
-  // 새로 유입된 pending 건의 미등록 멤버 자동 등록 + 이름 입력 유도
-  autoRegisterUnknownMembers(items).then(function(nm){
-    if(nm && nm.length) showZpToast('🆕 새 멤버 '+nm.length+'명 자동 등록됨 — 닉네임 관리에서 한글 이름을 입력해주세요');
-  });
   const badge = document.getElementById('zp-badge');
   const navDot = document.getElementById('zapier-dot-nav');
   const cntEl = document.getElementById('zp-pend-cnt');
@@ -2253,82 +2263,80 @@ function showTab_nickname() {
   renderNicknameList();
 }
 
-// 자동등록된(=이름 미입력) 항목 판정: 한글값이 영문키와 같으면 아직 이름 안 넣은 상태
-function nickNeedsName(eng, kor){ return !kor || kor===eng; }
-
 function renderNicknameList() {
   var tbody = document.getElementById('nickname-body');
   if(!tbody) return;
-  var entries = Object.entries(KO_MAP).sort(function(a,b){
-    var na=nickNeedsName(a[0],a[1])?0:1, nb=nickNeedsName(b[0],b[1])?0:1; // 미입력 항목 상단
-    if(na!==nb) return na-nb;
-    return a[0].localeCompare(b[0]);
-  });
-  tbody.innerHTML = entries.map(function(e,i){
+  var entries = Object.entries(KO_MAP).sort(function(a,b){return a[0].localeCompare(b[0]);});
+  tbody.innerHTML = entries.map(function(e){
     var eng = e[0], kor = e[1];
     var slackId = SLACK_ID_MAP[eng] || '';
-    var needs = nickNeedsName(eng, kor);
     var engEsc = eng.replace(/'/g,"\\'");
-    var korCell = needs
-      ? '<div style="display:flex;gap:6px;align-items:center;">' +
-          '<input id="nnk-'+i+'" placeholder="한글 이름 입력" onkeydown="if(event.key===\'Enter\')setNicknameKor(\''+engEsc+'\','+i+')" style="width:120px;padding:5px 8px;border:1.5px solid var(--blue);border-radius:var(--radius);font-size:12px;background:var(--surface2);color:var(--text);outline:none;">' +
-          '<button class="add-main-btn" style="padding:5px 10px;font-size:11px;" onclick="setNicknameKor(\''+engEsc+'\','+i+')">저장</button>' +
-        '</div>'
-      : kor;
-    return '<tr'+(needs?' style="background:var(--blue-l);"':'')+'>' +
-      '<td style="font-weight:600;">'+eng+(needs?' <span style="font-size:10px;color:var(--blue);font-weight:700;">🆕 이름 입력 필요</span>':'')+'</td>' +
-      '<td>'+korCell+'</td>' +
+    return '<tr>' +
+      '<td style="font-weight:600;">'+eng+'</td>' +
+      '<td>'+kor+'</td>' +
       '<td style="font-size:11px;color:var(--text3);">'+slackId+'</td>' +
       '<td><button onclick="deleteNickname(\''+engEsc+'\')" style="background:none;border:none;color:var(--red,#e53e3e);cursor:pointer;font-size:12px;">삭제</button></td>' +
     '</tr>';
   }).join('');
-  updateUnnamedAlert();
 }
 
-// 이름 미입력 멤버 수 → 배너/뱃지 갱신
-function updateUnnamedAlert(){
-  var cnt = Object.entries(KO_MAP).filter(function(e){return nickNeedsName(e[0],e[1]);}).length;
-  var el = document.getElementById('unnamed-alert');
-  if(el){
-    el.style.display = cnt>0 ? 'flex' : 'none';
-    var c = el.querySelector('.ua-cnt'); if(c) c.textContent = cnt;
-  }
-  var badge = document.getElementById('nav-nickname-badge');
-  if(badge){ badge.style.display = cnt>0 ? 'inline-flex' : 'none'; badge.textContent = cnt; }
-}
-
-// 자동등록된 멤버의 한글 이름 입력 → 저장
-async function setNicknameKor(eng, idx){
-  var inp = document.getElementById('nnk-'+idx);
-  var kor = (inp && inp.value || '').trim();
-  if(!kor){ alert('한글 이름을 입력해주세요.'); return; }
-  KO_MAP[eng] = kor;
-  rebuildNickAlias();
-  renderNicknameList();
-  renderList();
-  var ok = await saveKoMap();
-  showZpToast(ok ? ('✅ '+eng+' → '+kor+' 저장됐어요!') : ('⚠️ 저장 실패 — 다시 시도해주세요.'));
-}
-
-// DATA 안의 닉네임 중 매핑표에 없는 멤버를 자동 등록(자리표시자)하고 서버에 저장.
-// 반환: 이번에 새로 등록된 닉네임 목록
-async function autoRegisterUnknownMembers(rows){
+// 사용자 문자열(u) 안에서 매핑표에 없는 멤버 토큰만 추려 반환 (빈값·카드번호 제외)
+function unknownMembersOf(uStr){
   var seen = {}, unknown = [];
-  (rows || DATA).forEach(function(d){
-    (d.u||'').split(',').forEach(function(tok){
-      var t = tok.trim();
-      if(!t || /^\d{4,}$/.test(t)) return;          // 빈값·카드번호 제외
-      var lo = t.toLowerCase();
-      if(seen[lo]) return; seen[lo] = 1;
-      if(!(canonNick(t) in KO_MAP)) unknown.push(t); // 매핑표에 없는 멤버
-    });
+  (uStr||'').split(',').forEach(function(tok){
+    var t = tok.trim();
+    if(!t || /^\d{4,}$/.test(t)) return;
+    var lo = t.toLowerCase();
+    if(seen[lo]) return; seen[lo] = 1;
+    if(!(canonNick(t) in KO_MAP)) unknown.push(t);
   });
-  if(!unknown.length) return [];
-  unknown.forEach(function(t){ KO_MAP[t] = t; });    // 영문=한글 자리표시자로 자동 등록
-  rebuildNickAlias();
-  await saveKoMap();
-  updateUnnamedAlert();
   return unknown;
+}
+
+// ── 승인 시 미등록 멤버 등록 창 ────────────────────────────
+var _memberRegDone = null;   // 등록 완료 후 실행할 콜백(승인 확정)
+function openMemberRegister(list, onComplete){
+  _memberRegDone = onComplete || null;
+  var wrap = document.getElementById('member-reg-rows');
+  wrap.innerHTML = list.map(function(t, i){
+    return '<div class="field" style="margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:12px;">' +
+      '<label>멤버 '+(i+1)+' <span style="font-size:11px;color:var(--text3);font-weight:400;">(요청에 들어온 값: '+t+')</span></label>' +
+      '<div class="row2" style="margin-bottom:0;">' +
+        '<div class="field" style="margin-bottom:0;"><label style="font-size:11px;">영어 이름</label><input id="mr-eng-'+i+'" value="'+t.replace(/"/g,'&quot;')+'" placeholder="예: Lime"></div>' +
+        '<div class="field" style="margin-bottom:0;"><label style="font-size:11px;">한글 이름</label><input id="mr-kor-'+i+'" placeholder="예: 라임"></div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+  wrap.dataset.count = list.length;
+  document.getElementById('member-reg-overlay').classList.add('open');
+  setTimeout(function(){ var f=document.getElementById('mr-kor-0'); if(f) f.focus(); }, 100);
+}
+function closeMemberRegister(){
+  document.getElementById('member-reg-overlay').classList.remove('open');
+}
+async function submitMemberRegister(){
+  var n = parseInt(document.getElementById('member-reg-rows').dataset.count||'0');
+  var pending = [];
+  for(var i=0;i<n;i++){
+    var eng = (document.getElementById('mr-eng-'+i).value||'').trim();
+    var kor = (document.getElementById('mr-kor-'+i).value||'').trim();
+    if(!eng || !kor){ alert('모든 멤버의 영어/한글 이름을 입력해주세요.'); return; }
+    pending.push([eng, kor]);
+  }
+  pending.forEach(function(p){ KO_MAP[p[0]] = p[1]; });
+  rebuildNickAlias();
+  var ok = await saveKoMap();
+  showZpToast(ok ? ('✅ 멤버 '+pending.length+'명 등록됐어요!') : ('⚠️ 등록 저장에 실패했어요. 다시 시도해주세요.'));
+  closeMemberRegister();
+  renderList();
+  var done = _memberRegDone; _memberRegDone = null;
+  if(done) done();   // 승인 확정 이어서 진행
+}
+// 등록 없이 승인만 진행(이름은 나중에 닉네임 관리에서)
+function skipMemberRegister(){
+  closeMemberRegister();
+  var done = _memberRegDone; _memberRegDone = null;
+  if(done) done();
 }
 
 function openNicknameAdd() {
