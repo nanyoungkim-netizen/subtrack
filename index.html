@@ -857,6 +857,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
   <div id="nickname-add-form" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-bottom:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
     <input id="nn-eng" placeholder="영어 닉네임 (예: Lime)" style="flex:1;min-width:140px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface2);">
     <input id="nn-kor" placeholder="한글 닉네임 (예: 라임)" style="flex:1;min-width:140px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface2);">
+    <input id="nn-slack" placeholder="슬랙 ID (선택, 예: U0…)" style="flex:1;min-width:140px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface2);">
     <button class="add-main-btn" onclick="saveNickname()">저장</button>
     <button style="background:none;border:1px solid var(--border);border-radius:var(--radius);padding:8px 14px;font-size:12px;cursor:pointer;" onclick="document.getElementById('nickname-add-form').style.display='none'">취소</button>
   </div>
@@ -2092,6 +2093,7 @@ async function initApp(){
   await loadKoMap();
   await loadCardManagers();
   await loadRetired();
+  await loadSlackIds();
 
   initMsUser(); initMsCard();
   renderDash();
@@ -2352,13 +2354,39 @@ function displayUsers(uStr) {
   if(!uStr) return '';
   var list = uStr.split(',').map(function(u){return u.trim();}).filter(Boolean);
   if(!list.length) return '';
-  var names = list.map(function(u){ return koName(u); }).join(', ');
-  return (list.length>1 ? userCountBadge(list.length) : '') + names;
+  var names = list.map(function(u){ return koName(u); });
+  if(list.length===1) return names[0];
+  // 리서처 뷰와 동일: [인원수 배지] 첫사람 +N (호버 시 전체 표시)
+  var more = ' <span style="color:var(--blue);font-size:10px;font-weight:600;cursor:pointer;" onclick="showUserTooltip(event,this)" onmouseleave="hideTooltip()" data-users="'+names.slice(1).join(',').replace(/"/g,'&quot;')+'" data-first="'+names[0].replace(/"/g,'&quot;')+'">+'+(list.length-1)+'</span>';
+  return '<span title="'+names.join(', ').replace(/"/g,'&quot;')+'">'+userCountBadge(list.length)+names[0]+more+'</span>';
 }
 
 
 // ── 닉네임 관리 ────────────────────────────
 var SLACK_ID_MAP = {"Q":"UGNKU8WLD","IRON":"UGP8ENQ3V","Yello":"UGPBD81HA","Cus":"UGP9X2D3L","MacGook":"UJD690FCM","Minu":"UGNL59LJC","Sante":"U0180UXLD2Q","Rilla":"U01SLNUA155","HODOO":"U0261145X18","Lark":"U027F6SG8AC","Sian":"U027WL6H93N","Rokoon":"U0288AXGGCW","Stone":"U02D6CDKQ3W","Chovy":"U02CX5SQNSZ","Pucca":"U02K890UPK3","Zerry":"U033U995K53","Mush":"U03JQ5FHP5Z","dDubi":"U03QQ53099N","DDao":"U03TC2CQEVD","Burns":"U04ATHK9S84","SALT":"U04GTSZ93T7","Rooney":"U04NX77SNJ1","Hero":"U04SUG1K22D","Moomin":"U04T8FN2ZCZ","Rami":"U04SYARM2MS","Junta":"U04TN658A84","Woz":"U054RK2GKK8","Peach":"U0645BVMJES","Aqoo":"U066F6AA6KD","Hook":"U069A4EC72S","Teddy":"U069GP8MWDQ","Pire":"U06CFJYUGQZ","MewTwo":"U070M3N25LP","Endo":"U071QDWFQNL","YAMUCHI":"U072B0P4R6Y","Beaver":"U05DQHV6XAT","Turkey":"U05EUR1CCN4","Pepe":"U05DQHVDS5D","Jeongnam":"D07LNQ9GMHV","Aki":"U07S5FBLPK7","Kikr":"U08990X2ZNH","Lime":"U0A3JQ8SGHG","Funky":"U08RUG330D9","Newjin":"U0A07QF0URW"};
+
+// 슬랙 ID 편집/영속: 하드코딩 기본값 + 사용자가 수정한 오버라이드(app_settings)
+var SLACK_ID_OVERRIDE = {};
+function slackIdOf(eng){ if(!eng) return ''; return SLACK_ID_OVERRIDE[eng] || SLACK_ID_MAP[eng] || ''; }
+async function loadSlackIds(){
+  if(!IS_DEPLOYED) return;
+  try {
+    const res = await fetch('/api/settings?key=slack_ids');
+    const j = await res.json();
+    if(j.ok && j.value && typeof j.value==='object' && !Array.isArray(j.value)) SLACK_ID_OVERRIDE = j.value;
+  } catch(e){ console.warn('슬랙ID 로드 실패', e); }
+}
+async function saveSlackIds(){
+  if(!IS_DEPLOYED) return true;
+  try {
+    const res = await fetch('/api/settings', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({key:'slack_ids', value:SLACK_ID_OVERRIDE})
+    });
+    const j = await res.json();
+    return !!j.ok;
+  } catch(e){ console.warn('슬랙ID 저장 실패', e); return false; }
+}
 
 function showTab_nickname() {
   renderNicknameList();
@@ -2408,7 +2436,7 @@ function renderManagers(){
     var svcArr=Object.keys(cards[m].svcs);
     var svcNames=svcArr.slice(0,4).join(', ')+(svcArr.length>4?' 외 '+(svcArr.length-4):'');
     var cur=CARD_MANAGERS[m]||'';
-    var hasSlack=cur && SLACK_ID_MAP[cur];
+    var hasSlack=cur && slackIdOf(cur);
     var tagCell = cur
       ? (hasSlack ? '<span style="color:var(--green);font-size:12px;">✓ 태그 가능</span>'
                   : '<span style="color:var(--amber);font-size:11px;">슬랙 ID 없음</span>')
@@ -2420,7 +2448,7 @@ function renderManagers(){
       '<td>'+tagCell+'</td>'+
     '</tr>';
   }).join('');
-  var missing=cardList.filter(function(m){var c=CARD_MANAGERS[m];return c&&!SLACK_ID_MAP[c];});
+  var missing=cardList.filter(function(m){var c=CARD_MANAGERS[m];return c&&!slackIdOf(c);});
   var st=document.getElementById('managers-slack-status');
   if(st){
     if(missing.length){ st.style.display='block'; st.innerHTML='⚠️ 슬랙 ID가 없는 담당자('+missing.length+'명)가 있어요. 닉네임 관리 표에 슬랙 ID가 있는 멤버만 자동 태그됩니다.'; }
@@ -2478,8 +2506,22 @@ function setNickFilter(f){
   });
   renderNicknameList();
 }
+// 이 사람(영문닉)이 사용자로 들어간 구독중 항목 목록
+function activeSubsOf(eng){
+  return DATA.filter(function(d){
+    if(d.status!=='구독중' || !d.u) return false;
+    return d.u.split(',').some(function(u){ return canonNick(u)===eng; });
+  });
+}
 async function retireNickname(eng){
-  if(!confirm(eng+' ('+KO_MAP[eng]+') 님을 퇴사 처리할까요?\n매핑은 유지되어 과거 이력은 그대로 보여요.')) return;
+  var active = activeSubsOf(eng);
+  if(active.length){
+    var list = active.map(function(d){return '· '+d.s;}).slice(0,15).join('\n');
+    var more = active.length>15 ? '\n… 외 '+(active.length-15)+'건' : '';
+    alert((KO_MAP[eng]||eng)+' 님은 아직 구독중인 항목이 '+active.length+'건 있어요.\n모두 구독종료 처리한 뒤 퇴사 처리할 수 있어요.\n\n'+list+more);
+    return;
+  }
+  if(!confirm((KO_MAP[eng]||eng)+' ('+eng+') 님을 퇴사 처리할까요?\n매핑은 유지되어 과거 이력은 그대로 보여요.')) return;
   if(!isRetired(eng)) RETIRED.push(eng);
   rebuildNickAlias();
   renderNicknameList();
@@ -2521,14 +2563,14 @@ function renderNicknameList() {
   }
   tbody.innerHTML = entries.map(function(e){
     var eng = e[0], kor = e[1];
-    var slackId = SLACK_ID_MAP[eng] || '';
+    var slackId = slackIdOf(eng);
     var engEsc = eng.replace(/'/g,"\\'");
     var ret = isRetired(eng);
     if(_editingNick === eng){
       return '<tr style="background:var(--blue-l);">' +
         '<td><input id="ne-eng" value="'+eng.replace(/"/g,'&quot;')+'" style="'+_niStyle+'"></td>' +
         '<td><input id="ne-kor" value="'+kor.replace(/"/g,'&quot;')+'" onkeydown="if(event.key===\'Enter\')saveNicknameEdit(\''+engEsc+'\')" style="'+_niStyle+'"></td>' +
-        '<td style="font-size:11px;color:var(--text3);">'+slackId+'</td>' +
+        '<td><input id="ne-slack" value="'+slackId.replace(/"/g,'&quot;')+'" placeholder="슬랙 ID (예: U0…)" onkeydown="if(event.key===\'Enter\')saveNicknameEdit(\''+engEsc+'\')" style="'+_niStyle+'width:140px;"></td>' +
         '<td style="white-space:nowrap;"><button class="add-main-btn" style="padding:4px 10px;font-size:11px;" onclick="saveNicknameEdit(\''+engEsc+'\')">저장</button> ' +
           '<button onclick="cancelNicknameEdit()" style="background:none;border:1px solid var(--border);border-radius:var(--radius);padding:4px 8px;font-size:11px;cursor:pointer;">취소</button></td>' +
       '</tr>';
@@ -2558,14 +2600,25 @@ async function saveNicknameEdit(oldEng){
   if(neweng !== oldEng && KO_MAP[neweng]){
     if(!confirm(neweng+' 는 이미 '+KO_MAP[neweng]+'로 등록돼있어요. 덮어쓸까요?')) return;
   }
-  if(neweng !== oldEng) delete KO_MAP[oldEng];   // 영어 이름 변경 시 기존 키 제거
+  var newslack = ((document.getElementById('ne-slack')||{}).value||'').trim();
+  if(neweng !== oldEng){
+    delete KO_MAP[oldEng];                         // 영어 이름 변경 시 기존 키 제거
+    if(SLACK_ID_OVERRIDE[oldEng]) delete SLACK_ID_OVERRIDE[oldEng];
+    if(isRetired(oldEng)){ RETIRED = RETIRED.map(function(x){return x===oldEng?neweng:x;}); }
+  }
   KO_MAP[neweng] = newkor;
+  // 슬랙 ID: 입력값이 기본 하드코딩값과 다르면 오버라이드로 저장(같거나 비면 오버라이드 제거)
+  var slackChanged = (newslack !== (SLACK_ID_MAP[neweng]||''));
+  if(newslack && slackChanged) SLACK_ID_OVERRIDE[neweng] = newslack;
+  else if(SLACK_ID_OVERRIDE[neweng] && !slackChanged) delete SLACK_ID_OVERRIDE[neweng];
+  else if(!newslack) delete SLACK_ID_OVERRIDE[neweng];
   _editingNick = null;
   rebuildNickAlias();
   renderNicknameList();
   renderList();
   var ok = await saveKoMap();
-  showZpToast(ok ? ('✅ '+neweng+' → '+newkor+' 수정됐어요!') : ('⚠️ 저장 실패 — 다시 시도해주세요.'));
+  var ok2 = slackChanged ? await saveSlackIds() : true;
+  showZpToast((ok&&ok2) ? ('✅ '+neweng+' → '+newkor+' 수정됐어요!') : ('⚠️ 저장 실패 — 다시 시도해주세요.'));
 }
 
 // 사용자 문자열(u) 안에서 매핑표에 없는 멤버 토큰만 추려 반환 (빈값·카드번호 제외)
@@ -2639,13 +2692,17 @@ async function saveNickname() {
   if(!eng || !kor) { alert('영어 닉네임과 한글 닉네임을 모두 입력해주세요.'); return; }
   if(KO_MAP[eng]) { if(!confirm(eng+' 는 이미 '+KO_MAP[eng]+'로 등록돼있어요. 덮어쓸까요?')) return; }
   KO_MAP[eng] = kor;
+  var slack = ((document.getElementById('nn-slack')||{}).value||'').trim();
+  if(slack) SLACK_ID_OVERRIDE[eng] = slack;
   rebuildNickAlias();
   document.getElementById('nn-eng').value = '';
   document.getElementById('nn-kor').value = '';
+  if(document.getElementById('nn-slack')) document.getElementById('nn-slack').value = '';
   document.getElementById('nickname-add-form').style.display = 'none';
   renderNicknameList();
   renderList();
   var ok = await saveKoMap();   // 서버(DB)에 영속 저장
+  if(slack) await saveSlackIds();
   showZpToast(ok ? ('✅ '+eng+' → '+kor+' 저장됐어요!')
                  : ('⚠️ '+eng+' 등록했지만 서버 저장에 실패했어요. 새로고침 전 다시 시도해주세요.'));
 }
