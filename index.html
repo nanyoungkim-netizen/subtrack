@@ -854,13 +854,6 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
     </div>
     <button id="nn-add-btn" class="add-main-btn" style="white-space:nowrap;width:auto;flex:0 0 auto;padding:10px 16px;" onclick="openNicknameAdd()">+ 닉네임 추가</button>
   </div>
-  <div id="nickname-add-form" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-bottom:16px;gap:12px;align-items:center;flex-wrap:wrap;">
-    <input id="nn-eng" placeholder="영어 닉네임 (예: Lime)" style="flex:1;min-width:130px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface2);">
-    <input id="nn-kor" placeholder="한글 닉네임 (예: 라임)" style="flex:1;min-width:130px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface2);">
-    <input id="nn-slack" placeholder="슬랙 아이디 (선택)" style="flex:1;min-width:130px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface2);">
-    <button class="add-main-btn" onclick="saveNickname()">저장</button>
-    <button style="background:none;border:1px solid var(--border);border-radius:var(--radius);padding:8px 14px;font-size:12px;cursor:pointer;" onclick="closeNicknameAdd()">취소</button>
-  </div>
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
     <div style="display:inline-flex;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
       <button class="nn-filter-btn" data-f="active" onclick="setNickFilter('active')" style="padding:7px 14px;border:none;background:var(--blue);color:#fff;font-size:12px;font-weight:600;cursor:pointer;">재직중</button>
@@ -961,6 +954,23 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
     <div class="mfooter">
       <button class="btn-cancel" onclick="skipMemberRegister()">등록 없이 승인</button>
       <button class="btn-ok" onclick="submitMemberRegister()">등록하고 승인</button>
+    </div>
+  </div>
+</div>
+
+<!-- 닉네임 추가 모달 -->
+<div class="overlay" id="nickname-modal">
+  <div class="modal">
+    <div class="modal-title">
+      <span>닉네임 추가</span>
+      <button class="close-x" onclick="closeNicknameAdd()">×</button>
+    </div>
+    <div class="field"><label>영어 닉네임</label><input id="nn-eng" placeholder="예: Lime" onkeydown="if(event.key==='Enter')document.getElementById('nn-kor').focus()"></div>
+    <div class="field"><label>한글 닉네임</label><input id="nn-kor" placeholder="예: 라임" onkeydown="if(event.key==='Enter')document.getElementById('nn-slack').focus()"></div>
+    <div class="field"><label>슬랙 아이디 <span style="font-size:11px;color:var(--text3);font-weight:400;">(선택)</span></label><input id="nn-slack" placeholder="예: U0…" onkeydown="if(event.key==='Enter')saveNickname()"></div>
+    <div class="mfooter">
+      <button class="btn-cancel" onclick="closeNicknameAdd()">취소</button>
+      <button class="btn-ok" onclick="saveNickname()">저장</button>
     </div>
   </div>
 </div>
@@ -1643,14 +1653,14 @@ document.addEventListener('click', function(e){
 // ESC로 모달/드롭다운/추가폼 닫기
 document.addEventListener('keydown', function(e){
   if(e.key !== 'Escape') return;
+  var nnm = document.getElementById('nickname-modal');
+  if(nnm && nnm.classList.contains('open')){ closeNicknameAdd(); return; }
   var reg = document.getElementById('member-reg-overlay');
   if(reg && reg.classList.contains('open')){ _memberRegDone = null; closeMemberRegister(); return; }
   var modal = document.getElementById('modal-overlay');
   if(modal && modal.classList.contains('open')){ closeModal(); return; }
   var openDd = document.querySelector('.ms-dropdown.open');
   if(openDd){ openDd.classList.remove('open'); return; }
-  var addf = document.getElementById('nickname-add-form');
-  if(addf && addf.style.display !== 'none'){ closeNicknameAdd(); return; }
 });
 
 // ── 정렬 ─────────────────────────────────────
@@ -2705,13 +2715,12 @@ function skipMemberRegister(){
 }
 
 function openNicknameAdd() {
-  document.getElementById('nickname-add-form').style.display = 'flex';
-  var btn = document.getElementById('nn-add-btn'); if(btn) btn.style.display = 'none';
-  document.getElementById('nn-eng').focus();
+  ['nn-eng','nn-kor','nn-slack'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('nickname-modal').classList.add('open');
+  setTimeout(function(){ var f=document.getElementById('nn-eng'); if(f) f.focus(); }, 50);
 }
 function closeNicknameAdd() {
-  document.getElementById('nickname-add-form').style.display = 'none';
-  var btn = document.getElementById('nn-add-btn'); if(btn) btn.style.display = '';
+  document.getElementById('nickname-modal').classList.remove('open');
   ['nn-eng','nn-kor','nn-slack'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
 }
 
