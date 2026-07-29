@@ -2425,6 +2425,16 @@ async function setCardManager(card, eng){
   showZpToast(ok?('✅ '+card+' 담당자 저장됐어요'):('⚠️ 저장 실패 — 다시 시도해주세요'));
 }
 
+// 수정/삭제 아이콘 버튼 (간격 + 호버 강조)
+function nickActionIcons(engEsc){
+  return '<button title="수정" onclick="editNickname(\''+engEsc+'\')" ' +
+    'style="background:none;border:none;cursor:pointer;font-size:15px;line-height:1;padding:5px 7px;border-radius:6px;opacity:.7;transition:.12s;" ' +
+    'onmouseover="this.style.opacity=1;this.style.background=\'var(--surface2)\'" onmouseout="this.style.opacity=.7;this.style.background=\'none\'">✏️</button>' +
+    '<button title="삭제" onclick="deleteNickname(\''+engEsc+'\')" ' +
+    'style="background:none;border:none;cursor:pointer;font-size:15px;line-height:1;padding:5px 7px;margin-left:8px;border-radius:6px;opacity:.7;transition:.12s;" ' +
+    'onmouseover="this.style.opacity=1;this.style.background=\'var(--red-l,#fde8e8)\'" onmouseout="this.style.opacity=.7;this.style.background=\'none\'">🗑️</button>';
+}
+
 var _editingNick = null;   // 현재 인라인 수정 중인 영어 닉네임
 var _niStyle = 'width:110px;padding:4px 8px;border:1.5px solid var(--blue);border-radius:var(--radius);font-size:12px;background:var(--surface2);color:var(--text);outline:none;';
 function renderNicknameList() {
@@ -2450,8 +2460,7 @@ function renderNicknameList() {
       '<td style="font-weight:600;">'+eng+'</td>' +
       '<td>'+kor+'</td>' +
       '<td style="font-size:11px;color:var(--text3);">'+slackId+'</td>' +
-      '<td style="white-space:nowrap;"><button onclick="editNickname(\''+engEsc+'\')" style="background:none;border:none;color:var(--blue);cursor:pointer;font-size:12px;">수정</button> ' +
-        '<button onclick="deleteNickname(\''+engEsc+'\')" style="background:none;border:none;color:var(--red,#e53e3e);cursor:pointer;font-size:12px;">삭제</button></td>' +
+      '<td style="white-space:nowrap;">' + nickActionIcons(engEsc) + '</td>' +
     '</tr>';
   }).join('');
 }
