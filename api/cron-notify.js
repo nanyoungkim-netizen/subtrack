@@ -85,6 +85,8 @@ export default async function handler(req, res){
   const koMap = (await getSetting('ko_map')) || {};
   const cardManagers = (await getSetting('card_managers')) || {};
   const notifyLog = (await getSetting('notify_log')) || {};
+  const notifyHistory = (await getSetting('notify_history')) || [];
+  const newHistory = Array.isArray(notifyHistory) ? notifyHistory.slice() : [];
 
   // KST 기준 오늘 (UTC+9)
   const nowKst = new Date(Date.now() + 9*3600*1000);
@@ -120,7 +122,11 @@ export default async function handler(req, res){
     if(dry){ results.push({ id:d.id, s:d.s, nick, to:slackId, would_send:true }); continue; }
     const r = await sendDM(token, slackId, text);
     results.push({ id:d.id, s:d.s, nick, to:slackId, sent: !!r.ok, err: r.ok?undefined:(r.error||'') });
-    if(r.ok) newLog[logKey] = new Date().toISOString();
+    if(r.ok){
+      const at = new Date().toISOString();
+      newLog[logKey] = at;
+      newHistory.unshift({ at, id:d.id, tool:d.s, nick, koName, card, renewal:renewalStr, days, amount:(d.a||'') });
+    }
   }
 
   // 오래된 로그 정리 + 저장
@@ -132,6 +138,9 @@ export default async function handler(req, res){
     });
     try {
       await sql`INSERT INTO app_settings (key,val,updated_at) VALUES ('notify_log', ${JSON.stringify(newLog)}, now())
+        ON CONFLICT (key) DO UPDATE SET val=EXCLUDED.val, updated_at=now()`;
+      const trimmed = newHistory.slice(0, 300);   // 최근 300건만 보관
+      await sql`INSERT INTO app_settings (key,val,updated_at) VALUES ('notify_history', ${JSON.stringify(trimmed)}, now())
         ON CONFLICT (key) DO UPDATE SET val=EXCLUDED.val, updated_at=now()`;
     } catch(_){}
   }

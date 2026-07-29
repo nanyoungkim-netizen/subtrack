@@ -873,13 +873,24 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
 <div id="tab-managers" style="display:none;">
   <div style="margin-bottom:20px;">
     <div class="pg-title">결제 담당자 <span id="managers-count" style="font-size:14px;color:var(--blue);font-weight:600;margin-left:6px;"></span></div>
-    <div class="pg-sub" style="margin-bottom:0;">카드(결제수단)별로 결제 담당자를 지정해요. 연결제 갱신이 임박하면 슬랙 #구매-요청에서 담당자만 태그해 알려드려요.</div>
+    <div class="pg-sub" style="margin-bottom:0;">카드(결제수단)별로 결제 담당자를 지정해요. 연결제 갱신이 임박하면 담당자에게 슬랙 개인 DM으로 알려드려요.</div>
   </div>
   <div id="managers-slack-status" style="display:none;background:var(--surface);border:1px solid var(--amber);border-left:4px solid var(--amber);border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--text);"></div>
   <div class="tbl-wrap">
     <table>
       <thead><tr><th>카드(결제수단)</th><th>사용 중인 서비스</th><th>결제 담당자</th><th>슬랙 태그</th></tr></thead>
       <tbody id="managers-body"></tbody>
+    </table>
+  </div>
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin:28px 0 12px;">
+    <div class="pg-title" style="font-size:16px;">📜 발송 이력 <span id="notify-history-count" style="font-size:13px;color:var(--text3);font-weight:500;margin-left:6px;"></span></div>
+    <button onclick="renderNotifyHistory()" style="background:none;border:1px solid var(--border);border-radius:var(--radius);padding:6px 12px;font-size:12px;cursor:pointer;color:var(--text2);">↻ 새로고침</button>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>보낸 시각</th><th>담당자</th><th>서비스</th><th>갱신 예정일</th><th>카드</th></tr></thead>
+      <tbody id="notify-history-body"></tbody>
     </table>
   </div>
 </div>
@@ -1168,7 +1179,7 @@ function showTab(t, btn) {
   if(t==='annual') renderAnnual();
   if(t==='zapier') loadZapierPending();
   if(t==='nickname') renderNicknameList();
-  if(t==='managers') renderManagers();
+  if(t==='managers'){ renderManagers(); renderNotifyHistory(); }
   if(t==='dash') renderDash();
 }
 
@@ -2494,6 +2505,36 @@ async function setCardManager(card, eng){
   renderManagers();
   var ok=await saveCardManagers();
   showZpToast(ok?('✅ '+card+' 담당자 저장됐어요'):('⚠️ 저장 실패 — 다시 시도해주세요'));
+}
+// 슬랙 발송 이력 조회
+async function renderNotifyHistory(){
+  var tbody=document.getElementById('notify-history-body');
+  var cntEl=document.getElementById('notify-history-count');
+  if(!tbody) return;
+  var hist=[];
+  if(IS_DEPLOYED){
+    try {
+      var res=await fetch('/api/settings?key=notify_history');
+      var j=await res.json();
+      if(j.ok && Array.isArray(j.value)) hist=j.value;
+    } catch(e){ console.warn('발송 이력 로드 실패', e); }
+  }
+  if(cntEl) cntEl.textContent = hist.length ? '총 '+hist.length+'건' : '';
+  if(!hist.length){
+    tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px;">아직 발송된 알림이 없어요</td></tr>';
+    return;
+  }
+  tbody.innerHTML=hist.map(function(h){
+    var at=(h.at||'').replace('T',' ').slice(0,16);
+    var who=(h.koName||h.nick||'')+(h.nick&&h.koName&&h.koName!==h.nick?' ('+h.nick+')':'');
+    return '<tr>'+
+      '<td style="font-family:var(--mono);font-size:12px;white-space:nowrap;">'+at+'</td>'+
+      '<td>'+who+'</td>'+
+      '<td>'+(h.tool||'')+'</td>'+
+      '<td style="font-family:var(--mono);font-size:12px;">'+(h.renewal||'')+(h.days!=null?' (D-'+h.days+')':'')+'</td>'+
+      '<td style="font-family:var(--mono);font-size:12px;">'+(h.card||'')+'</td>'+
+    '</tr>';
+  }).join('');
 }
 
 // 수정 + 퇴사/복직 아이콘 버튼 (간격 + 호버 강조)
