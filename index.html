@@ -852,7 +852,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
       <div class="pg-title" style="white-space:nowrap;">닉네임 관리 <span id="nickname-count" style="font-size:14px;color:var(--blue);font-weight:600;margin-left:6px;"></span></div>
       <div class="pg-sub" style="margin-bottom:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">영어 닉네임 ↔ 한글 닉네임 매핑을 관리해요</div>
     </div>
-    <button id="nn-add-btn" class="add-main-btn" style="white-space:nowrap;flex-shrink:0;" onclick="openNicknameAdd()">+ 닉네임 추가</button>
+    <button id="nn-add-btn" class="add-main-btn" style="white-space:nowrap;width:auto;flex:0 0 auto;padding:10px 16px;" onclick="openNicknameAdd()">+ 닉네임 추가</button>
   </div>
   <div id="nickname-add-form" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-bottom:16px;gap:12px;align-items:center;flex-wrap:wrap;">
     <input id="nn-eng" placeholder="영어 닉네임 (예: Lime)" style="flex:1;min-width:130px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface2);">
@@ -2452,7 +2452,8 @@ function renderManagers(){
     if(!cards[m]) cards[m]={svcs:{}, active:0};
     if(d.status==='구독중'){ cards[m].active++; cards[m].svcs[d.s]=1; }
   });
-  var cardList=Object.keys(cards).sort();
+  // 구독중 항목이 하나도 없는(전부 구독종료) 카드는 제외
+  var cardList=Object.keys(cards).filter(function(m){ return cards[m].active>0; }).sort();
   var cntEl=document.getElementById('managers-count');
   if(cntEl) cntEl.textContent='카드 '+cardList.length+'개';
   tbody.innerHTML=cardList.map(function(m){
