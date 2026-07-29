@@ -295,8 +295,17 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .tbl-wrap{
   background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
   overflow:auto;max-height:58vh;box-shadow:var(--shadow);
+  scrollbar-gutter:stable;
 }
+/* 가로 스크롤바 항상 보이게(특히 넓은 전체목록) */
+.tbl-wrap::-webkit-scrollbar{height:12px;width:12px;}
+.tbl-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:6px;border:2px solid var(--surface);}
+.tbl-wrap::-webkit-scrollbar-thumb:hover{background:var(--text3);}
+.tbl-wrap::-webkit-scrollbar-track{background:transparent;}
+.tbl-wrap{scrollbar-width:thin;}
 .tbl-wrap table{width:100%;}
+/* 전체목록은 열이 많아 최소 너비 확보(가로 스크롤 유도) */
+#tab-list .tbl-wrap table{min-width:1050px;}
 .tbl-wrap th{white-space:nowrap;}
 .tbl-wrap td{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 table{width:100%;border-collapse:collapse;font-size:12px;}
@@ -1844,22 +1853,37 @@ function getUsersKo(uStr){
   return users.map(function(u){ return koName(u); }).join(', ');
 }
 
-// ── 리서처 뷰 화면 전환 ────────────────────────────
-function rvBackToLookup(){
-  // 검색 입력창 초기화
+// ── 리서처 뷰 화면 전환 (브라우저 뒤로가기 대응) ─────────────
+function rvGoScreen(name){
   var inp = document.getElementById('rv-name-input');
-  if(inp) inp.value = '';
-  document.getElementById('rv-screen-lookup').style.display='block';
-  document.getElementById('rv-screen-result').style.display='none';
-  document.getElementById('rv-screen-all').style.display='none';
+  if(name==='lookup' && inp) inp.value = '';
+  document.getElementById('rv-screen-lookup').style.display = name==='lookup'?'block':'none';
+  document.getElementById('rv-screen-result').style.display = name==='result'?'block':'none';
+  document.getElementById('rv-screen-all').style.display = name==='all'?'block':'none';
+}
+function rvPushScreen(name){ try{ history.pushState({rvScreen:name}, ''); }catch(e){} }
+function rvBackToLookup(){
+  // 히스토리에 쌓인 상태가 있으면 브라우저 뒤로가기와 동일하게 처리
+  if(history.state && history.state.rvScreen) history.back();
+  else rvGoScreen('lookup');
 }
 function rvShowAll(){
-  document.getElementById('rv-screen-lookup').style.display='none';
-  document.getElementById('rv-screen-result').style.display='none';
-  document.getElementById('rv-screen-all').style.display='block';
+  rvGoScreen('all');
+  rvPushScreen('all');
   if(!window._rvInited){ initRV(); window._rvInited=true; }
   renderRV();
 }
+// 브라우저 뒤로가기: 리서처 결과/전체 화면이면 사이트를 벗어나지 않고 검색창으로 복귀
+window.addEventListener('popstate', function(){
+  var rv = document.getElementById('researcher-view');
+  if(rv && rv.style.display!=='none'){
+    var res = document.getElementById('rv-screen-result');
+    var all = document.getElementById('rv-screen-all');
+    if((res && res.style.display!=='none') || (all && all.style.display!=='none')){
+      rvGoScreen('lookup');
+    }
+  }
+});
 function rvLookup(){
   var q=(document.getElementById("rv-name-input").value||"").trim();
   if(!q) return;
@@ -1883,9 +1907,8 @@ function rvLookup(){
   var eng=nick?canonNick(nick):"";
   var ko2=nick?koName(nick):"";
   var dname=isCard?("카드 "+q):(ko2&&ko2!==eng?ko2+" ("+eng+")":eng);
-  document.getElementById("rv-screen-lookup").style.display="none";
-  document.getElementById("rv-screen-result").style.display="block";
-  document.getElementById("rv-screen-all").style.display="none";
+  rvGoScreen('result');
+  rvPushScreen('result');
   document.getElementById("rv-result-title").textContent=dname+"의 구독 내역";
   document.getElementById("rv-result-cnt").textContent=rows.length+"건";
   var tbody=document.getElementById("rv-result-tbody");
@@ -1899,7 +1922,7 @@ function rvLookup(){
     var descAttr=d.d?(d.d.replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;")):"";
     return "<tr>"+
       "<td class=\"rv-svc-td\""+(d.d?" data-tooltip=\""+descAttr+"\"":"")+"><strong>"+d.s+(d.d?" <span style=\"font-size:10px;color:var(--text3);\"> i</span>":"")+"</strong></td>"+
-      "<td style=\"font-size:11px;white-space:nowrap;\" title=\""+uNames+"\">"+uFirst+uMore+"</td>"+
+      "<td style=\"font-size:11px;white-space:nowrap;\" title=\""+uNames+"\">"+(uList.length>1?userCountBadge(uList.length):"")+uFirst+uMore+"</td>"+
       "<td style=\"font-family:var(--mono);font-size:12px;\">"+((d.m)||"")+"</td>"+
       "<td style=\"font-family:var(--mono);font-size:12px;\">"+((d.a)||"")+"</td>"+
       "<td><span class=\"tag\" style=\"background:var(--blue-l);color:var(--blue);\">"+((d.c)||"")+"</span></td>"+
@@ -2030,7 +2053,7 @@ function renderRV(){
     var descAttr=d.d?(d.d.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')):'';
     return '<tr>'+
       '<td class="rv-svc-td"'+(d.d?' data-tooltip="'+descAttr+'"':'')+'><strong>'+d.s+(d.d?' <span style="font-size:10px;color:var(--text3);"> i</span>':'')+'</strong></td>'+
-      '<td title="'+uTitle+'" style="white-space:nowrap;cursor:default;">'+uFirst+uMore+'</td>'+
+      '<td title="'+uTitle+'" style="white-space:nowrap;cursor:default;">'+(d.u&&d.u.split(',').filter(Boolean).length>1?userCountBadge(d.u.split(',').map(function(x){return x.trim();}).filter(Boolean).length):'')+uFirst+uMore+'</td>'+
       '<td style="font-family:var(--mono);font-size:12px;">'+(d.m||'')+'</td>'+
       '<td style="font-family:var(--mono);font-size:12px;">'+(d.a||'')+'</td>'+
       '<td><span class="tag" style="background:var(--blue-l);color:var(--blue);">'+(d.c||'')+'</span></td>'+
@@ -2312,16 +2335,16 @@ async function exportExcel() {
   }
 }
 
+// 사용자 인원수 동그라미 배지 (관리자·리서처 공용)
+function userCountBadge(n){
+  return '<span title="'+n+'명" style="display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;margin-right:6px;border-radius:9px;background:var(--blue-l);color:var(--blue);font-size:11px;font-weight:700;vertical-align:middle;">'+n+'</span>';
+}
 function displayUsers(uStr) {
   if(!uStr) return '';
   var list = uStr.split(',').map(function(u){return u.trim();}).filter(Boolean);
   if(!list.length) return '';
   var names = list.map(function(u){ return koName(u); }).join(', ');
-  // 사용자 2명 이상이면 앞쪽 동그라미에 인원수 표시
-  var badge = list.length>1
-    ? '<span title="'+list.length+'명" style="display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;margin-right:6px;border-radius:9px;background:var(--blue-l);color:var(--blue);font-size:11px;font-weight:700;vertical-align:middle;">'+list.length+'</span>'
-    : '';
-  return badge + names;
+  return (list.length>1 ? userCountBadge(list.length) : '') + names;
 }
 
 
