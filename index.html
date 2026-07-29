@@ -860,6 +860,14 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
     <button class="add-main-btn" onclick="saveNickname()">저장</button>
     <button style="background:none;border:1px solid var(--border);border-radius:var(--radius);padding:8px 14px;font-size:12px;cursor:pointer;" onclick="document.getElementById('nickname-add-form').style.display='none'">취소</button>
   </div>
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+    <div style="display:inline-flex;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
+      <button class="nn-filter-btn" data-f="active" onclick="setNickFilter('active')" style="padding:7px 14px;border:none;background:var(--blue);color:#fff;font-size:12px;font-weight:600;cursor:pointer;">재직중</button>
+      <button class="nn-filter-btn" data-f="retired" onclick="setNickFilter('retired')" style="padding:7px 14px;border:none;background:transparent;color:var(--text2);font-size:12px;cursor:pointer;">퇴사</button>
+      <button class="nn-filter-btn" data-f="all" onclick="setNickFilter('all')" style="padding:7px 14px;border:none;background:transparent;color:var(--text2);font-size:12px;cursor:pointer;">전체</button>
+    </div>
+    <input id="nn-search" oninput="renderNicknameList()" placeholder="🔍 이름 검색 (한글·영어)" style="flex:1;min-width:180px;max-width:320px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface2);color:var(--text);outline:none;">
+  </div>
   <div class="tbl-wrap">
     <table>
       <thead><tr><th>영어 닉네임</th><th>한글 닉네임</th><th>슬랙 ID</th><th>관리</th></tr></thead>
@@ -2083,6 +2091,7 @@ async function initApp(){
 
   await loadKoMap();
   await loadCardManagers();
+  await loadRetired();
 
   initMsUser(); initMsCard();
   renderDash();
@@ -2425,14 +2434,63 @@ async function setCardManager(card, eng){
   showZpToast(ok?('✅ '+card+' 담당자 저장됐어요'):('⚠️ 저장 실패 — 다시 시도해주세요'));
 }
 
-// 수정/삭제 아이콘 버튼 (간격 + 호버 강조)
-function nickActionIcons(engEsc){
-  return '<button title="수정" onclick="editNickname(\''+engEsc+'\')" ' +
+// 수정 + 퇴사/복직 아이콘 버튼 (간격 + 호버 강조)
+function nickActionIcons(engEsc, retired){
+  var edit = '<button title="수정" onclick="editNickname(\''+engEsc+'\')" ' +
     'style="background:none;border:none;cursor:pointer;font-size:15px;line-height:1;padding:5px 7px;border-radius:6px;opacity:.7;transition:.12s;" ' +
-    'onmouseover="this.style.opacity=1;this.style.background=\'var(--surface2)\'" onmouseout="this.style.opacity=.7;this.style.background=\'none\'">✏️</button>' +
-    '<button title="삭제" onclick="deleteNickname(\''+engEsc+'\')" ' +
-    'style="background:none;border:none;cursor:pointer;font-size:15px;line-height:1;padding:5px 7px;margin-left:8px;border-radius:6px;opacity:.7;transition:.12s;" ' +
-    'onmouseover="this.style.opacity=1;this.style.background=\'var(--red-l,#fde8e8)\'" onmouseout="this.style.opacity=.7;this.style.background=\'none\'">🗑️</button>';
+    'onmouseover="this.style.opacity=1;this.style.background=\'var(--surface2)\'" onmouseout="this.style.opacity=.7;this.style.background=\'none\'">✏️</button>';
+  var toggle = retired
+    ? '<button title="복직 처리" onclick="restoreNickname(\''+engEsc+'\')" style="background:none;border:none;cursor:pointer;font-size:15px;line-height:1;padding:5px 7px;margin-left:8px;border-radius:6px;opacity:.7;transition:.12s;" onmouseover="this.style.opacity=1;this.style.background=\'var(--surface2)\'" onmouseout="this.style.opacity=.7;this.style.background=\'none\'">↩️</button>'
+    : '<button title="퇴사 처리" onclick="retireNickname(\''+engEsc+'\')" style="background:none;border:none;cursor:pointer;font-size:15px;line-height:1;padding:5px 7px;margin-left:8px;border-radius:6px;opacity:.7;transition:.12s;" onmouseover="this.style.opacity=1;this.style.background=\'var(--amber-l,#fff4e0)\'" onmouseout="this.style.opacity=.7;this.style.background=\'none\'">👋</button>';
+  return edit + toggle;
+}
+
+// ── 퇴사자 관리 ────────────────────────────
+var RETIRED = [];          // 퇴사 처리된 영어 닉네임 목록 (매핑은 유지 → 이력 보존)
+var _nickFilter = 'active';
+function isRetired(eng){ return RETIRED.indexOf(eng) >= 0; }
+async function loadRetired(){
+  if(!IS_DEPLOYED) return;
+  try {
+    const res = await fetch('/api/settings?key=retired_nicks');
+    const j = await res.json();
+    if(j.ok && Array.isArray(j.value)) RETIRED = j.value;
+  } catch(e){ console.warn('퇴사자 로드 실패', e); }
+}
+async function saveRetired(){
+  if(!IS_DEPLOYED) return true;
+  try {
+    const res = await fetch('/api/settings', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({key:'retired_nicks', value:RETIRED})
+    });
+    const j = await res.json();
+    return !!j.ok;
+  } catch(e){ console.warn('퇴사자 저장 실패', e); return false; }
+}
+function setNickFilter(f){
+  _nickFilter = f;
+  document.querySelectorAll('.nn-filter-btn').forEach(function(b){
+    var on = b.dataset.f===f;
+    b.style.background = on ? 'var(--blue)' : 'transparent';
+    b.style.color = on ? '#fff' : 'var(--text2)';
+    b.style.fontWeight = on ? '600' : '400';
+  });
+  renderNicknameList();
+}
+async function retireNickname(eng){
+  if(!confirm(eng+' ('+KO_MAP[eng]+') 님을 퇴사 처리할까요?\n매핑은 유지되어 과거 이력은 그대로 보여요.')) return;
+  if(!isRetired(eng)) RETIRED.push(eng);
+  rebuildNickAlias();
+  renderNicknameList();
+  var ok = await saveRetired();
+  showZpToast(ok ? ('👋 '+(KO_MAP[eng]||eng)+' 퇴사 처리됐어요') : ('⚠️ 저장 실패 — 다시 시도해주세요'));
+}
+async function restoreNickname(eng){
+  RETIRED = RETIRED.filter(function(x){ return x!==eng; });
+  renderNicknameList();
+  var ok = await saveRetired();
+  showZpToast(ok ? ('↩️ '+(KO_MAP[eng]||eng)+' 복직 처리됐어요') : ('⚠️ 저장 실패 — 다시 시도해주세요'));
 }
 
 var _editingNick = null;   // 현재 인라인 수정 중인 영어 닉네임
@@ -2440,13 +2498,32 @@ var _niStyle = 'width:110px;padding:4px 8px;border:1.5px solid var(--blue);borde
 function renderNicknameList() {
   var tbody = document.getElementById('nickname-body');
   if(!tbody) return;
-  var entries = Object.entries(KO_MAP).sort(function(a,b){return a[0].localeCompare(b[0]);});
+  var all = Object.entries(KO_MAP).sort(function(a,b){return a[0].localeCompare(b[0]);});
+  var activeCnt = all.filter(function(e){ return !isRetired(e[0]); }).length;
+  var retiredCnt = all.length - activeCnt;
   var cntEl = document.getElementById('nickname-count');
-  if(cntEl) cntEl.textContent = '총 '+entries.length+'명';
+  if(cntEl) cntEl.textContent = '재직 '+activeCnt+'명' + (retiredCnt? ' · 퇴사 '+retiredCnt+'명' : '');
+  // 검색어
+  var q = ((document.getElementById('nn-search')||{}).value||'').trim().toLowerCase();
+  var qn = q ? normKey(q) : '';
+  var entries = all.filter(function(e){
+    var eng=e[0], ret=isRetired(eng);
+    if(_nickFilter==='active' && ret) return false;
+    if(_nickFilter==='retired' && !ret) return false;
+    if(qn){
+      return normKey(eng).indexOf(qn)>=0 || normKey(e[1]).indexOf(qn)>=0;
+    }
+    return true;
+  });
+  if(!entries.length){
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:24px;">'+(q?'검색 결과가 없어요':'해당 항목이 없어요')+'</td></tr>';
+    return;
+  }
   tbody.innerHTML = entries.map(function(e){
     var eng = e[0], kor = e[1];
     var slackId = SLACK_ID_MAP[eng] || '';
     var engEsc = eng.replace(/'/g,"\\'");
+    var ret = isRetired(eng);
     if(_editingNick === eng){
       return '<tr style="background:var(--blue-l);">' +
         '<td><input id="ne-eng" value="'+eng.replace(/"/g,'&quot;')+'" style="'+_niStyle+'"></td>' +
@@ -2456,11 +2533,11 @@ function renderNicknameList() {
           '<button onclick="cancelNicknameEdit()" style="background:none;border:1px solid var(--border);border-radius:var(--radius);padding:4px 8px;font-size:11px;cursor:pointer;">취소</button></td>' +
       '</tr>';
     }
-    return '<tr>' +
-      '<td style="font-weight:600;">'+eng+'</td>' +
+    return '<tr'+(ret?' style="opacity:.55;"':'')+'>' +
+      '<td style="font-weight:600;">'+eng+(ret?' <span style="font-size:10px;color:var(--amber);font-weight:600;">· 퇴사</span>':'')+'</td>' +
       '<td>'+kor+'</td>' +
       '<td style="font-size:11px;color:var(--text3);">'+slackId+'</td>' +
-      '<td style="white-space:nowrap;">' + nickActionIcons(engEsc) + '</td>' +
+      '<td style="white-space:nowrap;">' + nickActionIcons(engEsc, ret) + '</td>' +
     '</tr>';
   }).join('');
 }
