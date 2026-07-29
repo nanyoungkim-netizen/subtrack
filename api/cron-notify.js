@@ -55,6 +55,8 @@ export default async function handler(req, res){
   const secret = process.env.CRON_SECRET;
   const dry = req.query.dryRun==='1' || req.query.dry==='1';
   const testTo = req.query.testTo;
+  const previewTo = req.query.previewTo;   // 실제 문구를 이 사람에게만 미리보기 발송(이력 미기록)
+  const preview = !!previewTo;
 
   // 인증: CRON_SECRET이 있으면 헤더(Bearer) 또는 ?key= 로 확인 (Vercel Cron은 헤더 자동 첨부)
   const auth = req.headers['authorization'] || '';
@@ -115,22 +117,24 @@ export default async function handler(req, res){
     if(!slackId){ results.push({ id:d.id, s:d.s, nick, skip:'슬랙ID 없음' }); continue; }
     const renewalStr = ymd(renewal);
     const logKey = d.id+':'+renewalStr;
-    if(newLog[logKey]){ results.push({ id:d.id, s:d.s, skip:'이미 발송됨' }); continue; }
-    if(isWeekend){ results.push({ id:d.id, s:d.s, skip:'주말(영업일 대기)' }); continue; }
+    if(!preview && newLog[logKey]){ results.push({ id:d.id, s:d.s, skip:'이미 발송됨' }); continue; }
+    if(!preview && isWeekend){ results.push({ id:d.id, s:d.s, skip:'주말(영업일 대기)' }); continue; }
     const koName = koMap[nick] || nick;
-    const text = buildMsg(koName, d.s, renewalStr, days, d.a, card);
+    let text = buildMsg(koName, d.s, renewalStr, days, d.a, card);
+    if(preview) text = '🧪 *[미리보기]* 원래 받는 사람: *'+koName+'*\n\n' + text;
     if(dry){ results.push({ id:d.id, s:d.s, nick, to:slackId, would_send:true }); continue; }
-    const r = await sendDM(token, slackId, text);
-    results.push({ id:d.id, s:d.s, nick, to:slackId, sent: !!r.ok, err: r.ok?undefined:(r.error||'') });
-    if(r.ok){
+    const dest = preview ? previewTo : slackId;
+    const r = await sendDM(token, dest, text);
+    results.push({ id:d.id, s:d.s, nick, to:dest, preview, sent: !!r.ok, err: r.ok?undefined:(r.error||'') });
+    if(!preview && r.ok){
       const at = new Date().toISOString();
       newLog[logKey] = at;
       newHistory.unshift({ at, id:d.id, tool:d.s, nick, koName, card, renewal:renewalStr, days, amount:(d.a||'') });
     }
   }
 
-  // 오래된 로그 정리 + 저장
-  if(!dry){
+  // 오래된 로그 정리 + 저장 (미리보기는 이력 미기록)
+  if(!dry && !preview){
     const cutoff = ymd(new Date(kstToday.getTime() - 45*86400000));
     Object.keys(newLog).forEach(function(k){
       const dt = k.split(':')[1] || '';
