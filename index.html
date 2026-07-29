@@ -721,7 +721,9 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
 <div id="tab-dash">
   <div class="pg-title">대시보드</div>
   <div class="pg-sub">결제 현황과 다가오는 결제일을 확인하세요</div>
-  
+
+  <div id="yearly-alert" style="display:none;"></div>
+
   <div class="stat-grid" id="stat-grid"></div>
   <div id="dash-content"></div>
 </div>
@@ -734,8 +736,8 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
       <div class="pg-sub" style="margin-bottom:0;">항목 클릭 → 수정 · 삭제</div>
     </div>
     <div style="display:flex;gap:8px;">
-      <button class="add-main-btn" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);" onclick="exportExcel()">📥 엑셀 추출</button>
-      <button class="add-main-btn" onclick="openModal(null)">+ 구독 추가</button>
+      <button class="add-main-btn" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);white-space:nowrap;" onclick="exportExcel()">📥 엑셀 추출</button>
+      <button class="add-main-btn" style="white-space:nowrap;" onclick="openModal(null)">+ 구독 추가</button>
     </div>
   </div>
   <div class="filter-bar">
@@ -835,7 +837,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
 <div id="tab-nickname" style="display:none;">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
     <div>
-      <div class="pg-title">닉네임 관리</div>
+      <div class="pg-title">닉네임 관리 <span id="nickname-count" style="font-size:14px;color:var(--blue);font-weight:600;margin-left:6px;"></span></div>
       <div class="pg-sub" style="margin-bottom:0;">영어 닉네임 ↔ 한글 닉네임 매핑을 관리해요</div>
     </div>
     <button class="add-main-btn" onclick="openNicknameAdd()">+ 닉네임 추가</button>
@@ -848,7 +850,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
   </div>
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th>영어 닉네임</th><th>한글 닉네임</th><th>슬랙 ID</th><th>삭제</th></tr></thead>
+      <thead><tr><th>영어 닉네임</th><th>한글 닉네임</th><th>슬랙 ID</th><th>관리</th></tr></thead>
       <tbody id="nickname-body"></tbody>
     </table>
   </div>
@@ -1184,8 +1186,38 @@ function calcStats(){
   return {active:active, total:total, soon:soon, annual:annual};
 }
 
+// ── 연결제 갱신 임박 배너 (대시보드 최상단) ──────────────
+function renderYearlyAlert(){
+  var el = document.getElementById('yearly-alert');
+  if(!el) return;
+  var items = DATA.filter(function(d){
+    if(d.status!=='구독중' || d.c!=='연결제') return false;
+    var n = calcNext(d); if(!n) return false;
+    var days = daysUntil(n);
+    return days>=0 && days<=90;
+  }).map(function(d){ var n=calcNext(d); return {d:d, next:n, days:daysUntil(n)}; })
+    .sort(function(a,b){ return a.days-b.days; });
+  if(!items.length){ el.style.display='none'; el.innerHTML=''; return; }
+  var rowsHtml = items.map(function(it){
+    var urgent = it.days<=30;
+    var users = it.d.u ? ' · '+displayUsers(it.d.u) : '';
+    return '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--border);flex-wrap:wrap;">' +
+      '<span style="font-family:var(--mono);font-size:12px;font-weight:700;color:'+(urgent?'var(--red)':'var(--amber)')+';min-width:52px;">D-'+it.days+'</span>' +
+      '<span style="font-weight:600;">'+it.d.s+'</span>' +
+      '<span style="color:var(--text3);font-size:12px;">'+(it.d.a||'')+users+'</span>' +
+      '<span style="margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--text3);white-space:nowrap;">'+it.next+' 갱신</span>' +
+    '</div>';
+  }).join('');
+  el.style.display = 'block';
+  el.innerHTML = '<div style="background:var(--surface);border:1px solid var(--amber);border-left:4px solid var(--amber);border-radius:var(--radius);padding:14px 18px;margin-bottom:20px;">' +
+    '<div style="display:flex;align-items:center;gap:8px;font-weight:700;color:var(--amber);margin-bottom:4px;">🔔 다가오는 연결제 갱신 '+items.length+'건 <span style="font-size:11px;font-weight:500;color:var(--text3);">(90일 이내 · 큰 금액 주의)</span></div>' +
+    rowsHtml +
+  '</div>';
+}
+
 // ── 대시보드 렌더 ─────────────────────────────
 function renderDash(){
+  renderYearlyAlert();
   var st = calcStats();
   var sg = document.getElementById('stat-grid');
   if(sg){
@@ -1354,6 +1386,12 @@ function renderList(){
       var bv = SORT_COL==='next'?calcNext(b):b[SORT_COL]||'';
       var r = av < bv ? -1 : av > bv ? 1 : 0;
       return SORT_ASC ? r : -r;
+    });
+  } else {
+    // 기본 정렬: 구독중을 위로 (동일 상태 내에서는 기존 순서 유지)
+    rows.sort(function(a,b){
+      var ra = a.status==='구독중'?0:1, rb = b.status==='구독중'?0:1;
+      return ra-rb;
     });
   }
 
@@ -2184,75 +2222,87 @@ function startZpPolling(){
 }
 
 
+// CDN(SheetJS) 로드 시도 — 실패/지연 시 null 반환(그러면 CSV로 폴백)
+function loadXLSX(timeoutMs){
+  if(window.XLSX) return Promise.resolve(window.XLSX);
+  return new Promise(function(resolve){
+    var done=false;
+    var finish=function(v){ if(!done){done=true; resolve(v);} };
+    var s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload=function(){ finish(window.XLSX||null); };
+    s.onerror=function(){ finish(null); };
+    document.head.appendChild(s);
+    setTimeout(function(){ finish(window.XLSX||null); }, timeoutMs||6000);
+  });
+}
+function _downloadBlob(blob, filename){
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url; a.download=filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+}
+// CSV(UTF-8 BOM) 다운로드 — 의존성 없이 항상 동작, 엑셀에서 바로 열림
+function _exportCSV(rows, headers, filename){
+  var esc=function(v){ v=(v==null?'':''+v); return '"'+v.replace(/"/g,'""')+'"'; };
+  var lines=[headers.map(esc).join(',')];
+  rows.forEach(function(r){ lines.push(headers.map(function(h){return esc(r[h]);}).join(',')); });
+  var blob=new Blob(['﻿'+lines.join('\r\n')], {type:'text/csv;charset=utf-8;'});
+  _downloadBlob(blob, filename);
+}
 async function exportExcel() {
   try {
-    // SheetJS 로드
-    if(!window.XLSX) {
-      await new Promise((res,rej)=>{
-        const s=document.createElement('script');
-        s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-        s.onload=res; s.onerror=rej;
-        document.head.appendChild(s);
-      });
+    // 최신 데이터 (pending 제외). 서버 실패 시 메모리 DATA 사용
+    var data;
+    try {
+      const res = await fetch('/api/data');
+      const json = await res.json();
+      data = (json.data||[]).filter(function(d){return d.status!=='pending';});
+    } catch(_) {
+      data = DATA.filter(function(d){return d.status!=='pending';});
     }
-    // Neon DB에서 최신 데이터 가져오기 (pending 제외)
-    const res = await fetch('/api/data');
-    const json = await res.json();
-    const data = (json.data||[]).filter(function(d){return d.status!=='pending';});
     if(!data.length){ alert('데이터가 없어요.'); return; }
 
-    // 엑셀 데이터 변환
+    const headers = ['ID','서비스명','내용','사용자','상태','금액','결제수단(카드)','결제주기','구독시작일','구독종료일','비고'];
     const rows = data.map(function(d){
       return {
-        'ID': d.id,
-        '서비스명': d.s||'',
-        '내용': d.d||'',
-        '사용자': d.u||'',
-        '상태': d.status||'',
-        '금액': d.a||'',
-        '결제수단(카드)': d.m||'',
-        '결제주기': d.c||'',
-        '구독시작일': d.sd||'',
-        '구독종료일': d.ed||'',
-        '비고': d.note||''
+        'ID': d.id, '서비스명': d.s||'', '내용': d.d||'', '사용자': d.u||'',
+        '상태': d.status||'', '금액': d.a||'', '결제수단(카드)': d.m||'',
+        '결제주기': d.c||'', '구독시작일': d.sd||'', '구독종료일': d.ed||'', '비고': d.note||''
       };
     });
-
-    // 워크북 생성
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(rows);
-
-    // 컬럼 너비 설정
-    ws['!cols'] = [
-      {wch:6},{wch:20},{wch:30},{wch:20},{wch:8},
-      {wch:15},{wch:12},{wch:8},{wch:12},{wch:12},{wch:30}
-    ];
-
-    XLSX.utils.book_append_sheet(wb, ws, '구독목록');
-
-    // 오늘 날짜로 파일명
     const today = new Date().toISOString().slice(0,10);
-    XLSX.writeFile(wb, 'SubTrack_구독목록_'+today+'.xlsx');
-    showZpToast('📊 엑셀 파일이 다운로드되었어요!');
+
+    // 1순위: xlsx (CDN 로드되면). 안 되면 CSV로 폴백
+    const XLSXlib = await loadXLSX(6000);
+    if(XLSXlib){
+      const wb = XLSXlib.utils.book_new();
+      const ws = XLSXlib.utils.json_to_sheet(rows, {header:headers});
+      ws['!cols'] = [{wch:6},{wch:20},{wch:30},{wch:20},{wch:8},{wch:15},{wch:12},{wch:8},{wch:12},{wch:12},{wch:30}];
+      XLSXlib.utils.book_append_sheet(wb, ws, '구독목록');
+      XLSXlib.writeFile(wb, 'SubTrack_구독목록_'+today+'.xlsx');
+      showZpToast('📊 엑셀 파일이 다운로드되었어요!');
+    } else {
+      _exportCSV(rows, headers, 'SubTrack_구독목록_'+today+'.csv');
+      showZpToast('📊 CSV 파일로 다운로드되었어요! (엑셀에서 바로 열려요)');
+    }
   } catch(e) {
     console.error('exportExcel error:', e);
-    alert('엑셀 추출 중 오류가 발생했어요: '+e.message);
+    alert('추출 중 오류가 발생했어요: '+e.message);
   }
 }
 
 function displayUsers(uStr) {
   if(!uStr) return '';
-  return uStr.split(',').map(function(u){
-    var name = u.trim();
-    // 정확히 일치하는 키 먼저, 없으면 대소문자 무관 검색
-    var kor = KO_MAP[name];
-    if(!kor) {
-      var lower = name.toLowerCase();
-      var found = Object.keys(KO_MAP).find(function(k){ return k.toLowerCase()===lower; });
-      if(found) kor = KO_MAP[found];
-    }
-    return kor ? kor+'('+name+')' : name;
-  }).join(', ');
+  var list = uStr.split(',').map(function(u){return u.trim();}).filter(Boolean);
+  if(!list.length) return '';
+  var names = list.map(function(u){ return koName(u); }).join(', ');
+  // 사용자 2명 이상이면 앞쪽 동그라미에 인원수 표시
+  var badge = list.length>1
+    ? '<span title="'+list.length+'명" style="display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;margin-right:6px;border-radius:9px;background:var(--blue-l);color:var(--blue);font-size:11px;font-weight:700;vertical-align:middle;">'+list.length+'</span>'
+    : '';
+  return badge + names;
 }
 
 
@@ -2263,21 +2313,61 @@ function showTab_nickname() {
   renderNicknameList();
 }
 
+var _editingNick = null;   // 현재 인라인 수정 중인 영어 닉네임
+var _niStyle = 'width:110px;padding:4px 8px;border:1.5px solid var(--blue);border-radius:var(--radius);font-size:12px;background:var(--surface2);color:var(--text);outline:none;';
 function renderNicknameList() {
   var tbody = document.getElementById('nickname-body');
   if(!tbody) return;
   var entries = Object.entries(KO_MAP).sort(function(a,b){return a[0].localeCompare(b[0]);});
+  var cntEl = document.getElementById('nickname-count');
+  if(cntEl) cntEl.textContent = '총 '+entries.length+'명';
   tbody.innerHTML = entries.map(function(e){
     var eng = e[0], kor = e[1];
     var slackId = SLACK_ID_MAP[eng] || '';
     var engEsc = eng.replace(/'/g,"\\'");
+    if(_editingNick === eng){
+      return '<tr style="background:var(--blue-l);">' +
+        '<td><input id="ne-eng" value="'+eng.replace(/"/g,'&quot;')+'" style="'+_niStyle+'"></td>' +
+        '<td><input id="ne-kor" value="'+kor.replace(/"/g,'&quot;')+'" onkeydown="if(event.key===\'Enter\')saveNicknameEdit(\''+engEsc+'\')" style="'+_niStyle+'"></td>' +
+        '<td style="font-size:11px;color:var(--text3);">'+slackId+'</td>' +
+        '<td style="white-space:nowrap;"><button class="add-main-btn" style="padding:4px 10px;font-size:11px;" onclick="saveNicknameEdit(\''+engEsc+'\')">저장</button> ' +
+          '<button onclick="cancelNicknameEdit()" style="background:none;border:1px solid var(--border);border-radius:var(--radius);padding:4px 8px;font-size:11px;cursor:pointer;">취소</button></td>' +
+      '</tr>';
+    }
     return '<tr>' +
       '<td style="font-weight:600;">'+eng+'</td>' +
       '<td>'+kor+'</td>' +
       '<td style="font-size:11px;color:var(--text3);">'+slackId+'</td>' +
-      '<td><button onclick="deleteNickname(\''+engEsc+'\')" style="background:none;border:none;color:var(--red,#e53e3e);cursor:pointer;font-size:12px;">삭제</button></td>' +
+      '<td style="white-space:nowrap;"><button onclick="editNickname(\''+engEsc+'\')" style="background:none;border:none;color:var(--blue);cursor:pointer;font-size:12px;">수정</button> ' +
+        '<button onclick="deleteNickname(\''+engEsc+'\')" style="background:none;border:none;color:var(--red,#e53e3e);cursor:pointer;font-size:12px;">삭제</button></td>' +
     '</tr>';
   }).join('');
+}
+function editNickname(eng){
+  _editingNick = eng;
+  renderNicknameList();
+  setTimeout(function(){ var f=document.getElementById('ne-kor'); if(f){f.focus();f.select();} }, 50);
+}
+function cancelNicknameEdit(){
+  _editingNick = null;
+  renderNicknameList();
+}
+async function saveNicknameEdit(oldEng){
+  var neweng = (document.getElementById('ne-eng').value||'').trim();
+  var newkor = (document.getElementById('ne-kor').value||'').trim();
+  if(!neweng || !newkor){ alert('영어/한글 이름을 모두 입력해주세요.'); return; }
+  // 영어 키가 다른 기존 항목과 충돌하면 막기
+  if(neweng !== oldEng && KO_MAP[neweng]){
+    if(!confirm(neweng+' 는 이미 '+KO_MAP[neweng]+'로 등록돼있어요. 덮어쓸까요?')) return;
+  }
+  if(neweng !== oldEng) delete KO_MAP[oldEng];   // 영어 이름 변경 시 기존 키 제거
+  KO_MAP[neweng] = newkor;
+  _editingNick = null;
+  rebuildNickAlias();
+  renderNicknameList();
+  renderList();
+  var ok = await saveKoMap();
+  showZpToast(ok ? ('✅ '+neweng+' → '+newkor+' 수정됐어요!') : ('⚠️ 저장 실패 — 다시 시도해주세요.'));
 }
 
 // 사용자 문자열(u) 안에서 매핑표에 없는 멤버 토큰만 추려 반환 (빈값·카드번호 제외)
