@@ -73,9 +73,8 @@ export default async function handler(req, res){
   const slackOverride = (await getSetting('slack_ids')) || {};
   const slackIdOf = (nick)=> (nick && (slackOverride[nick] || BASE_SLACK_ID[nick])) || null;
 
-  // 테스트 발송(본인 등 특정 슬랙ID로 1회) — 남용 방지 위해 CRON_SECRET 필수
+  // 테스트 발송(특정 슬랙ID로 1회). CRON_SECRET이 설정돼 있으면 위 인증을 통과해야 함.
   if(testTo){
-    if(!secret || !authed) return res.status(403).json({ ok:false, error:'testTo requires CRON_SECRET (?key=)' });
     if(!token) return res.status(200).json({ ok:false, error:'no SLACK_BOT_TOKEN' });
     const r = await sendDM(token, testTo, '🔔 [테스트] 구독 알림 봇 연결 테스트예요. 잘 도착했나요? 😊');
     return res.status(200).json({ ok: !!r.ok, test:true, resp:r });
