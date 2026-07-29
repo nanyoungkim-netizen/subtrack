@@ -669,7 +669,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
           <div class="ms-dropdown" id="rv-ms-user-dd">
             <input class="ms-search" id="rv-ms-user-search" placeholder="검색..." onclick="event.stopPropagation()"/>
             <div class="ms-list" id="rv-ms-user-list"></div>
-            <div class="ms-footer"><span class="ms-clear" id="rv-ms-user-clear">초기화</span><span class="ms-count" id="rv-ms-user-cnt"></span></div>
+            <div class="ms-footer"><span><span class="ms-clear" style="color:var(--blue);" onclick="selectAllMs('rv-ms-user')">전체선택</span> <span class="ms-clear" id="rv-ms-user-clear">초기화</span></span><span class="ms-count" id="rv-ms-user-cnt"></span></div>
           </div>
         </div>
       </div>
@@ -761,7 +761,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
           <div class="ms-item" data-val="구독중" onclick="toggleMsItem('ms-status','구독중')"><div class="cb"></div>구독중</div>
           <div class="ms-item" data-val="구독종료" onclick="toggleMsItem('ms-status','구독종료')"><div class="cb"></div>구독종료</div>
         </div>
-        <div class="ms-footer"><span class="ms-clear" onclick="clearMs('ms-status')">초기화</span><span class="ms-count" id="ms-status-cnt"></span></div>
+        <div class="ms-footer"><span><span class="ms-clear" style="color:var(--blue);" onclick="selectAllMs('ms-status')">전체선택</span> <span class="ms-clear" onclick="clearMs('ms-status')">초기화</span></span><span class="ms-count" id="ms-status-cnt"></span></div>
       </div>
     </div>
     <div class="ms-wrap" id="ms-user">
@@ -769,7 +769,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
       <div class="ms-dropdown" id="ms-user-dd">
         <input class="ms-search" id="ms-user-search" placeholder="사용자 검색..." oninput="filterMsList('ms-user')" onclick="event.stopPropagation()"/>
         <div class="ms-list" id="ms-user-list"></div>
-        <div class="ms-footer"><span class="ms-clear" onclick="clearMs('ms-user')">초기화</span><span class="ms-count" id="ms-user-cnt"></span></div>
+        <div class="ms-footer"><span><span class="ms-clear" style="color:var(--blue);" onclick="selectAllMs('ms-user')">전체선택</span> <span class="ms-clear" onclick="clearMs('ms-user')">초기화</span></span><span class="ms-count" id="ms-user-cnt"></span></div>
       </div>
     </div>
     <div class="ms-wrap" id="ms-card">
@@ -777,7 +777,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
       <div class="ms-dropdown" id="ms-card-dd">
         <input class="ms-search" id="ms-card-search" placeholder="결제수단 검색..." oninput="filterMsList('ms-card')" onclick="event.stopPropagation()"/>
         <div class="ms-list" id="ms-card-list"></div>
-        <div class="ms-footer"><span class="ms-clear" onclick="clearMs('ms-card')">초기화</span><span class="ms-count" id="ms-card-cnt"></span></div>
+        <div class="ms-footer"><span><span class="ms-clear" style="color:var(--blue);" onclick="selectAllMs('ms-card')">전체선택</span> <span class="ms-clear" onclick="clearMs('ms-card')">초기화</span></span><span class="ms-count" id="ms-card-cnt"></span></div>
       </div>
     </div>
     <button class="reset-all" id="reset-all" onclick="resetAll()">✕ 전체 초기화</button>
@@ -847,19 +847,19 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
   </div>
 </div>
 <div id="tab-nickname" style="display:none;">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-    <div>
-      <div class="pg-title">닉네임 관리 <span id="nickname-count" style="font-size:14px;color:var(--blue);font-weight:600;margin-left:6px;"></span></div>
-      <div class="pg-sub" style="margin-bottom:0;">영어 닉네임 ↔ 한글 닉네임 매핑을 관리해요</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px;">
+    <div style="min-width:0;">
+      <div class="pg-title" style="white-space:nowrap;">닉네임 관리 <span id="nickname-count" style="font-size:14px;color:var(--blue);font-weight:600;margin-left:6px;"></span></div>
+      <div class="pg-sub" style="margin-bottom:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">영어 닉네임 ↔ 한글 닉네임 매핑을 관리해요</div>
     </div>
-    <button class="add-main-btn" onclick="openNicknameAdd()">+ 닉네임 추가</button>
+    <button id="nn-add-btn" class="add-main-btn" style="white-space:nowrap;flex-shrink:0;" onclick="openNicknameAdd()">+ 닉네임 추가</button>
   </div>
-  <div id="nickname-add-form" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-bottom:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-    <input id="nn-eng" placeholder="영어 닉네임 (예: Lime)" style="flex:1;min-width:140px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface2);">
-    <input id="nn-kor" placeholder="한글 닉네임 (예: 라임)" style="flex:1;min-width:140px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface2);">
-    <input id="nn-slack" placeholder="슬랙 ID (선택, 예: U0…)" style="flex:1;min-width:140px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface2);">
+  <div id="nickname-add-form" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-bottom:16px;gap:12px;align-items:center;flex-wrap:wrap;">
+    <input id="nn-eng" placeholder="영어 닉네임 (예: Lime)" style="flex:1;min-width:130px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface2);">
+    <input id="nn-kor" placeholder="한글 닉네임 (예: 라임)" style="flex:1;min-width:130px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface2);">
+    <input id="nn-slack" placeholder="슬랙 아이디 (선택)" style="flex:1;min-width:130px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface2);">
     <button class="add-main-btn" onclick="saveNickname()">저장</button>
-    <button style="background:none;border:1px solid var(--border);border-radius:var(--radius);padding:8px 14px;font-size:12px;cursor:pointer;" onclick="document.getElementById('nickname-add-form').style.display='none'">취소</button>
+    <button style="background:none;border:1px solid var(--border);border-radius:var(--radius);padding:8px 14px;font-size:12px;cursor:pointer;" onclick="closeNicknameAdd()">취소</button>
   </div>
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
     <div style="display:inline-flex;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
@@ -1599,6 +1599,15 @@ function clearMs(wrpId){
   updateMsTrigger(wrpId);
   applyAll();
 }
+function selectAllMs(wrpId){
+  document.querySelectorAll('#'+wrpId+'-dd .ms-item').forEach(function(item){
+    if(item.style.display==='none') return;   // 검색으로 숨겨진 항목은 제외
+    item.classList.add('checked');
+    var cb = item.querySelector('.cb'); if(cb) cb.textContent = '✓';
+  });
+  updateMsTrigger(wrpId);
+  if(wrpId.indexOf('rv-')===0) renderRV(); else applyAll();
+}
 function getMsSel(wrpId){
   return [...document.querySelectorAll('#'+wrpId+'-dd .ms-item.checked')].map(function(el){return el.dataset.val;});
 }
@@ -1630,6 +1639,18 @@ document.addEventListener('click', function(e){
   if(!e.target.closest('.ms-wrap')){
     document.querySelectorAll('.ms-dropdown.open').forEach(function(el){el.classList.remove('open');});
   }
+});
+// ESC로 모달/드롭다운/추가폼 닫기
+document.addEventListener('keydown', function(e){
+  if(e.key !== 'Escape') return;
+  var reg = document.getElementById('member-reg-overlay');
+  if(reg && reg.classList.contains('open')){ _memberRegDone = null; closeMemberRegister(); return; }
+  var modal = document.getElementById('modal-overlay');
+  if(modal && modal.classList.contains('open')){ closeModal(); return; }
+  var openDd = document.querySelector('.ms-dropdown.open');
+  if(openDd){ openDd.classList.remove('open'); return; }
+  var addf = document.getElementById('nickname-add-form');
+  if(addf && addf.style.display !== 'none'){ closeNicknameAdd(); return; }
 });
 
 // ── 정렬 ─────────────────────────────────────
@@ -2356,9 +2377,11 @@ function displayUsers(uStr) {
   if(!list.length) return '';
   var names = list.map(function(u){ return koName(u); });
   if(list.length===1) return names[0];
-  // 리서처 뷰와 동일: [인원수 배지] 첫사람 +N (호버 시 전체 표시)
-  var more = ' <span style="color:var(--blue);font-size:10px;font-weight:600;cursor:pointer;" onclick="showUserTooltip(event,this)" onmouseleave="hideTooltip()" data-users="'+names.slice(1).join(',').replace(/"/g,'&quot;')+'" data-first="'+names[0].replace(/"/g,'&quot;')+'">+'+(list.length-1)+'</span>';
-  return '<span title="'+names.join(', ').replace(/"/g,'&quot;')+'">'+userCountBadge(list.length)+names[0]+more+'</span>';
+  // 리서처 뷰와 동일: [인원수 배지] 첫사람 +N — 셀에 커서 올리면 전체 이름 툴팁
+  var data = 'data-users="'+names.slice(1).join(',').replace(/"/g,'&quot;')+'" data-first="'+names[0].replace(/"/g,'&quot;')+'"';
+  return '<span '+data+' onmouseover="showUserTooltip(event,this)" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()" style="cursor:default;">' +
+    userCountBadge(list.length) + names[0] +
+    ' <span style="color:var(--blue);font-size:10px;font-weight:600;">+'+(list.length-1)+'</span></span>';
 }
 
 
@@ -2681,9 +2704,14 @@ function skipMemberRegister(){
 }
 
 function openNicknameAdd() {
-  var f = document.getElementById('nickname-add-form');
-  f.style.display = 'flex';
+  document.getElementById('nickname-add-form').style.display = 'flex';
+  var btn = document.getElementById('nn-add-btn'); if(btn) btn.style.display = 'none';
   document.getElementById('nn-eng').focus();
+}
+function closeNicknameAdd() {
+  document.getElementById('nickname-add-form').style.display = 'none';
+  var btn = document.getElementById('nn-add-btn'); if(btn) btn.style.display = '';
+  ['nn-eng','nn-kor','nn-slack'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
 }
 
 async function saveNickname() {
@@ -2695,10 +2723,7 @@ async function saveNickname() {
   var slack = ((document.getElementById('nn-slack')||{}).value||'').trim();
   if(slack) SLACK_ID_OVERRIDE[eng] = slack;
   rebuildNickAlias();
-  document.getElementById('nn-eng').value = '';
-  document.getElementById('nn-kor').value = '';
-  if(document.getElementById('nn-slack')) document.getElementById('nn-slack').value = '';
-  document.getElementById('nickname-add-form').style.display = 'none';
+  closeNicknameAdd();
   renderNicknameList();
   renderList();
   var ok = await saveKoMap();   // 서버(DB)에 영속 저장
