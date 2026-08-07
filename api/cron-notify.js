@@ -44,6 +44,13 @@ function hikeStrOf(d, today){
   if(daysBetween(today, new Date(str)) < -183) str = mk(today.getUTCFullYear()+1);
   return str;
 }
+function buildGenericMsg(koName, tool, amount, card){
+  return '👋 '+koName+' 안녕하세요!\n\n' +
+    '담당하고 계신 *'+tool+'* 구독 관련해서 확인 부탁드려요 📌\n' +
+    (amount ? ('• 금액: *'+amount+'*\n') : '') +
+    '• 카드 끝자리 '+card+'\n\n' +
+    '계속 사용/해지 여부 확인 후 처리 부탁드리고, 완료되면 알려주세요 🙏\n\n감사합니다 😊';
+}
 function buildHikeMsg(koName, tool, hikeStr, days, ha, a){
   const dd = days<0 ? ('D+'+(-days)) : ('D-'+days);
   const head = days<0 ? '요금 인상 승인 기간이 *지났어요*' : '요금 인상 승인 기간이 *곧 끝나요*';
@@ -82,6 +89,7 @@ export default async function handler(req, res){
   const testTo = req.query.testTo;
   const previewTo = req.query.previewTo;   // 실제 문구를 이 사람에게만 미리보기 발송(이력 미기록)
   const preview = !!previewTo;
+  const sendId = req.query.sendId;          // 특정 구독 1건만 수동 발송
 
   // 인증: CRON_SECRET이 있으면 헤더(Bearer) 또는 ?key= 로 확인 (Vercel Cron은 헤더 자동 첨부)
   const auth = req.headers['authorization'] || '';
@@ -120,6 +128,39 @@ export default async function handler(req, res){
   const kstToday = new Date(Date.UTC(nowKst.getUTCFullYear(), nowKst.getUTCMonth(), nowKst.getUTCDate()));
   const dow = kstToday.getUTCDay(); // 0=일 6=토
   const isWeekend = (dow===0 || dow===6);
+
+  // ── 특정 구독 1건 수동 발송 (앱의 '지금 알림 보내기' 버튼) ──
+  if(sendId){
+    if(!token) return res.status(200).json({ ok:false, error:'no SLACK_BOT_TOKEN' });
+    let one;
+    try { const rows = await sql`SELECT * FROM subscriptions WHERE id=${parseInt(sendId)} LIMIT 1`; one = rows[0]; }
+    catch(e){ return res.status(500).json({ ok:false, error:e.message }); }
+    if(!one) return res.status(200).json({ ok:false, error:'구독을 찾을 수 없어요' });
+    const card = (one.m||'').trim();
+    const nick = cardManagers[card];
+    if(!nick) return res.status(200).json({ ok:false, error:'담당자 미지정 (카드 '+card+')' });
+    const slackId = slackIdOf(nick);
+    if(!slackId) return res.status(200).json({ ok:false, error:'담당자 슬랙ID 없음 ('+nick+')' });
+    const koName = koMap[nick] || nick;
+    let text, kind;
+    const hs = hikeStrOf(one, kstToday);
+    if(hs){ const hd = daysBetween(kstToday, new Date(hs)); text = buildHikeMsg(koName, one.s, hs, hd, one.ha, one.a); kind='인상만료'; }
+    else if(one.c==='연결제' && one.sd){ const rn = nextRenewal(one.sd, kstToday); const rd = daysBetween(kstToday, rn); text = buildMsg(koName, one.s, ymd(rn), rd, one.a, card); kind='갱신'; }
+    else { text = buildGenericMsg(koName, one.s, one.a, card); kind='구독확인'; }
+    if(preview) text = '🧪 *[미리보기]* 원래 받는 사람: *'+koName+'*\n\n' + text;
+    const dest = (previewTo || testTo) ? (previewTo || testTo) : slackId;
+    if(dry) return res.status(200).json({ ok:true, dry:true, to:slackId, nick, koName, kind, text });
+    const r = await sendDM(token, dest, text);
+    if(r.ok && !preview && !(previewTo||testTo)){
+      const at = new Date().toISOString();
+      newHistory.unshift({ at, id:one.id, tool:one.s, nick, koName, card, kind:'수동('+kind+')', amount:(one.a||'') });
+      try {
+        await sql`INSERT INTO app_settings (key,val,updated_at) VALUES ('notify_history', ${JSON.stringify(newHistory.slice(0,300))}, now())
+          ON CONFLICT (key) DO UPDATE SET val=EXCLUDED.val, updated_at=now()`;
+      } catch(_){}
+    }
+    return res.status(200).json({ ok: !!r.ok, sent: !!r.ok, to:dest, nick, koName, kind, err: r.ok?undefined:(r.error||'') });
+  }
 
   let subs = [];
   try {
