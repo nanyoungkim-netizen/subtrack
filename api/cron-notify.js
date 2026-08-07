@@ -32,6 +32,29 @@ function buildMsg(koName, tool, renewalStr, days, amount, card){
     '감사합니다 😊';
 }
 
+// 인상 승인 종료일: 전용 필드 hu 우선, 없으면 제목 (~M/D까지) 파싱
+function hikeStrOf(d, today){
+  if(d.hu) return (''+d.hu).slice(0,10);
+  const m = (d.s||'').match(/~\s*(\d{1,2})\s*\/\s*(\d{1,2})/);
+  if(!m) return null;
+  const mo=parseInt(m[1],10), dy=parseInt(m[2],10);
+  if(!mo||!dy) return null;
+  const mk = (yy)=> ymd(new Date(Date.UTC(yy, mo-1, dy)));
+  let str = mk(today.getUTCFullYear());
+  if(daysBetween(today, new Date(str)) < -183) str = mk(today.getUTCFullYear()+1);
+  return str;
+}
+function buildHikeMsg(koName, tool, hikeStr, days){
+  const dd = days<0 ? ('D+'+(-days)) : ('D-'+days);
+  const head = days<0 ? '요금 인상 승인 기간이 *지났어요*' : '요금 인상 승인 기간이 *곧 끝나요*';
+  return '👋 '+koName+' 안녕하세요!\n\n' +
+    '*'+tool+'* '+head+' 📌\n' +
+    '• 인상 승인 종료일: *'+hikeStr+'* ('+dd+')\n\n' +
+    '승인 기간이 끝나면 원래 요금제로 낮추거나 해지가 필요해요.\n' +
+    '확인해서 처리 부탁드리고, 완료되면 알려주세요 🙏\n\n' +
+    '감사합니다 😊';
+}
+
 async function sendDM(token, userId, text){
   try {
     const open = await fetch('https://slack.com/api/conversations.open', {
@@ -129,7 +152,32 @@ export default async function handler(req, res){
     if(!preview && r.ok){
       const at = new Date().toISOString();
       newLog[logKey] = at;
-      newHistory.unshift({ at, id:d.id, tool:d.s, nick, koName, card, renewal:renewalStr, days, amount:(d.a||'') });
+      newHistory.unshift({ at, id:d.id, tool:d.s, nick, koName, card, kind:'갱신', renewal:renewalStr, days, amount:(d.a||'') });
+    }
+  }
+
+  // ── 요금 인상 승인 기간 만료/임박 알림 (3일 전부터 처리 전까지 매일 1회) ──
+  let hikeSubs = [];
+  try { hikeSubs = await sql`SELECT id,s,u,a,m,c,sd,status,hu FROM subscriptions WHERE status='구독중'`; } catch(_){}
+  for(const d of hikeSubs){
+    const hs = hikeStrOf(d, kstToday);
+    if(!hs) continue;
+    const hdays = daysBetween(kstToday, new Date(hs));
+    if(hdays > 3) continue;                      // 만료 3일 전부터
+    const card = (d.m||'').trim();
+    const nick = cardManagers[card];
+    if(!nick){ results.push({ id:d.id, s:d.s, hike:hs, kind:'hike', skip:'담당자 미지정' }); continue; }
+    const slackId = slackIdOf(nick);
+    if(!slackId){ results.push({ id:d.id, s:d.s, nick, hike:hs, kind:'hike', skip:'슬랙ID 없음' }); continue; }
+    const koName = koMap[nick] || nick;
+    let text = buildHikeMsg(koName, d.s, hs, hdays);
+    if(preview) text = '🧪 *[미리보기]* 원래 받는 사람: *'+koName+'*\n\n' + text;
+    if(dry){ results.push({ id:d.id, s:d.s, nick, to:slackId, kind:'hike', would_send:true }); continue; }
+    const dest = preview ? previewTo : slackId;
+    const r = await sendDM(token, dest, text);
+    results.push({ id:d.id, s:d.s, nick, to:dest, preview, kind:'hike', sent: !!r.ok, err: r.ok?undefined:(r.error||'') });
+    if(!preview && r.ok){
+      newHistory.unshift({ at:new Date().toISOString(), id:d.id, tool:d.s, nick, koName, card, kind:'인상만료', hike:hs, days:hdays, amount:(d.a||'') });
     }
   }
 

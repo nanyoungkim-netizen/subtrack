@@ -734,6 +734,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
   <div class="pg-title">대시보드</div>
   <div class="pg-sub">결제 현황과 다가오는 결제일을 확인하세요</div>
 
+  <div id="hike-alert" style="display:none;"></div>
   <div id="yearly-alert" style="display:none;"></div>
 
   <div class="stat-grid" id="stat-grid"></div>
@@ -889,7 +890,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
   </div>
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th>보낸 시각</th><th>담당자</th><th>서비스</th><th>갱신 예정일</th><th>카드</th></tr></thead>
+      <thead><tr><th>보낸 시각</th><th>구분</th><th>담당자</th><th>서비스</th><th>대상일</th><th>카드</th></tr></thead>
       <tbody id="notify-history-body"></tbody>
     </table>
   </div>
@@ -936,7 +937,11 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
         <label>결제일 <span style="font-size:11px;color:var(--text3);font-weight:400;">(기본: 시작일 일자, 수정 가능)</span></label>
         <input type="number" id="f-pd" min="1" max="31" placeholder="예: 18 (매월 18일)">
       </div>
-      <div class="field"></div>
+      <div class="field">
+        <label>인상 승인 종료일 <span style="font-size:11px;color:var(--text3);font-weight:400;">(요금 인상 기간)</span></label>
+        <input type="date" id="f-hike" onchange="toggleHikeDoneBtn()">
+        <button type="button" id="hike-done-btn" onclick="hikeMoveToNote()" style="display:none;margin-top:6px;background:none;border:1px solid var(--border);border-radius:var(--radius);padding:5px 10px;font-size:11px;cursor:pointer;color:var(--text2);">✔ 처리 완료 → 비고로 이동하고 비우기</button>
+      </div>
     </div>
     <div class="field"><label>구독상태</label>
       <div class="cy-row">
@@ -1224,6 +1229,37 @@ function daysUntil(dateStr){
   return Math.round((d-TODAY)/86400000);
 }
 
+// ── 요금 인상 승인 기간 ────────────────────────────
+// 전용 필드 hu('YYYY-MM-DD') 우선, 없으면 제목의 (~M/D까지) 표기에서 파싱
+function hikeDateStr(d){
+  if(!d) return null;
+  if(d.hu) return (''+d.hu).slice(0,10);
+  var m = (d.s||'').match(/~\s*(\d{1,2})\s*\/\s*(\d{1,2})/);
+  if(!m) return null;
+  var mo=parseInt(m[1],10), dy=parseInt(m[2],10);
+  if(!mo||!dy) return null;
+  var y=TODAY.getFullYear();
+  var str=y+'-'+_p(mo)+'-'+_p(dy);
+  if(daysUntil(str) < -183) str=(y+1)+'-'+_p(mo)+'-'+_p(dy);  // 반년 이상 지났으면 내년으로
+  return str;
+}
+function hikeInfo(d){
+  var str=hikeDateStr(d);
+  if(!str) return null;
+  var days=daysUntil(str);
+  var p=str.split('-');
+  return { str:str, days:days, expired:days<0, label:parseInt(p[1],10)+'/'+parseInt(p[2],10) };
+}
+function hikeBadge(d){
+  var h=hikeInfo(d);
+  if(!h) return '';
+  var color, bg, txt;
+  if(h.expired){ color='var(--red,#e53e3e)'; bg='rgba(229,62,62,.12)'; txt='⚠️ 인상만료 ~'+h.label+' · 해지검토'; }
+  else if(h.days<=3){ color='var(--amber)'; bg='rgba(245,158,11,.15)'; txt='⏳ ~'+h.label+' (D-'+h.days+')'; }
+  else { color='var(--blue)'; bg='var(--blue-l)'; txt='⏳ ~'+h.label; }
+  return ' <span title="인상 승인 종료일 '+h.str+'" style="display:inline-block;margin-left:4px;padding:1px 7px;border-radius:8px;font-size:10px;font-weight:700;color:'+color+';background:'+bg+';vertical-align:middle;white-space:nowrap;">'+txt+'</span>';
+}
+
 // ── 통계 ─────────────────────────────────────
 function calcStats(){
   var active = DATA.filter(function(d){return d.status==='구독중';}).length;
@@ -1272,8 +1308,36 @@ function renderYearlyAlert(){
   '</div>';
 }
 
+// 요금 인상 기간 만료/임박 배너 (대시보드 최상단)
+function renderHikeAlert(){
+  var el=document.getElementById('hike-alert');
+  if(!el) return;
+  var items=DATA.filter(function(d){ return d.status==='구독중'; })
+    .map(function(d){ var h=hikeInfo(d); return h?{d:d,h:h}:null; })
+    .filter(function(x){ return x && x.h.days<=7; })   // 만료 또는 7일 이내
+    .sort(function(a,b){ return a.h.days-b.h.days; });
+  if(!items.length){ el.style.display='none'; el.innerHTML=''; return; }
+  var rows=items.map(function(it){
+    var exp=it.h.expired;
+    var tag=exp?('<span style="color:var(--red,#e53e3e);font-weight:700;">만료 D+'+(-it.h.days)+'</span>')
+                :('<span style="color:var(--amber);font-weight:700;">D-'+it.h.days+'</span>');
+    var who=it.d.u?' · '+displayUsers(it.d.u):'';
+    return '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--border);flex-wrap:wrap;">'+
+      '<span style="min-width:56px;font-family:var(--mono);font-size:12px;">'+tag+'</span>'+
+      '<span style="font-weight:600;">'+it.d.s+'</span>'+
+      '<span style="color:var(--text3);font-size:12px;">~'+it.h.label+' 종료'+who+'</span>'+
+    '</div>';
+  }).join('');
+  el.style.display='block';
+  el.innerHTML='<div style="background:var(--surface);border:1px solid var(--red,#e53e3e);border-left:4px solid var(--red,#e53e3e);border-radius:var(--radius);padding:14px 18px;margin-bottom:20px;">'+
+    '<div style="display:flex;align-items:center;gap:8px;font-weight:700;color:var(--red,#e53e3e);margin-bottom:4px;">🚨 요금 인상 기간 만료·임박 '+items.length+'건 <span style="font-size:11px;font-weight:500;color:var(--text3);">(만료 시 해지/원복 검토)</span></div>'+
+    rows+
+  '</div>';
+}
+
 // ── 대시보드 렌더 ─────────────────────────────
 function renderDash(){
+  renderHikeAlert();
   renderYearlyAlert();
   var st = calcStats();
   var sg = document.getElementById('stat-grid');
@@ -1459,7 +1523,7 @@ function renderList(){
     var isSoon = d.status==='구독중'&&next&&daysUntil(next)>=0&&daysUntil(next)<=7;
     var trCls = d.status==='구독종료'?'ended':'';
     return '<tr class="'+trCls+' list-row" data-id="'+d.id+'" style="cursor:pointer;">' +
-      '<td><strong>'+d.s+'</strong>'+(d.source==='zapier'?'<span class="new-badge">NEW</span>':'')+'</td>' +
+      '<td><strong>'+d.s+'</strong>'+(d.source==='zapier'?'<span class="new-badge">NEW</span>':'')+hikeBadge(d)+'</td>' +
       '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;color:var(--text3);">'+(d.d||'')+'</td>' +
       '<td>'+displayUsers(d.u)+'</td>' +
       '<td style="font-family:var(--mono);">'+(d.a||'')+'</td>' +
@@ -1718,10 +1782,27 @@ function openModal(id){
   document.getElementById('f-pd').value = pdVal;
   document.getElementById('f-ed').value = d?d.ed:'';
   document.getElementById('f-note').value = d?d.note:'';
+  document.getElementById('f-hike').value = (d&&d.hu) ? d.hu : '';
+  toggleHikeDoneBtn();
   setCycle(d?d.c:'월결제');
   setSt(d?d.status:'구독중');
   document.getElementById('del-btn').style.display = id?'block':'none';
   document.getElementById('modal-overlay').classList.add('open');
+}
+function toggleHikeDoneBtn(){
+  var v = (document.getElementById('f-hike')||{}).value;
+  var btn = document.getElementById('hike-done-btn');
+  if(btn) btn.style.display = v ? 'inline-block' : 'none';
+}
+// 처리 완료: 인상 기간을 비고로 옮기고 필드는 비움 → 다음 승인 때 다시 입력
+function hikeMoveToNote(){
+  var hv = (document.getElementById('f-hike')||{}).value;
+  if(!hv) return;
+  var noteEl = document.getElementById('f-note');
+  var stamp = '[인상 승인 ~'+hv+' 종료]';
+  noteEl.value = (noteEl.value && noteEl.value.trim() ? noteEl.value.trim()+'\n' : '') + stamp;
+  document.getElementById('f-hike').value = '';
+  toggleHikeDoneBtn();
 }
 function closeModal(){
   document.getElementById('modal-overlay').classList.remove('open');
@@ -1757,7 +1838,8 @@ function saveModal(){
     sd: document.getElementById('f-sd').value,
     ed: document.getElementById('f-ed').value,
     note: document.getElementById('f-note').value.trim(),
-    pd: document.getElementById('f-pd').value ? parseInt(document.getElementById('f-pd').value) : null
+    pd: document.getElementById('f-pd').value ? parseInt(document.getElementById('f-pd').value) : null,
+    hu: document.getElementById('f-hike').value || null
   });
   if(editId){
     DATA[DATA.findIndex(function(x){return x.id===editId;})]=item;
@@ -2521,17 +2603,23 @@ async function renderNotifyHistory(){
   }
   if(cntEl) cntEl.textContent = hist.length ? '총 '+hist.length+'건' : '';
   if(!hist.length){
-    tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px;">아직 발송된 알림이 없어요</td></tr>';
+    tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px;">아직 발송된 알림이 없어요</td></tr>';
     return;
   }
   tbody.innerHTML=hist.map(function(h){
     var at=(h.at||'').replace('T',' ').slice(0,16);
     var who=(h.koName||h.nick||'')+(h.nick&&h.koName&&h.koName!==h.nick?' ('+h.nick+')':'');
+    var kind=h.kind||'갱신';
+    var isHike=(kind==='인상만료');
+    var kindTag='<span style="font-size:11px;font-weight:600;padding:1px 7px;border-radius:8px;color:'+(isHike?'var(--red,#e53e3e)':'var(--blue)')+';background:'+(isHike?'rgba(229,62,62,.12)':'var(--blue-l)')+';">'+kind+'</span>';
+    var target=(h.renewal||h.hike||'');
+    var dtxt=(h.days!=null)?(h.days<0?' (D+'+(-h.days)+')':' (D-'+h.days+')'):'';
     return '<tr>'+
       '<td style="font-family:var(--mono);font-size:12px;white-space:nowrap;">'+at+'</td>'+
+      '<td>'+kindTag+'</td>'+
       '<td>'+who+'</td>'+
       '<td>'+(h.tool||'')+'</td>'+
-      '<td style="font-family:var(--mono);font-size:12px;">'+(h.renewal||'')+(h.days!=null?' (D-'+h.days+')':'')+'</td>'+
+      '<td style="font-family:var(--mono);font-size:12px;">'+target+dtxt+'</td>'+
       '<td style="font-family:var(--mono);font-size:12px;">'+(h.card||'')+'</td>'+
     '</tr>';
   }).join('');
