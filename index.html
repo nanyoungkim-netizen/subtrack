@@ -940,7 +940,8 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
       <div class="field">
         <label>인상 승인 종료일 <span style="font-size:11px;color:var(--text3);font-weight:400;">(요금 인상 기간)</span></label>
         <input type="date" id="f-hike" onchange="toggleHikeDoneBtn()">
-        <button type="button" id="hike-done-btn" onclick="hikeMoveToNote()" style="display:none;margin-top:6px;background:none;border:1px solid var(--border);border-radius:var(--radius);padding:5px 10px;font-size:11px;cursor:pointer;color:var(--text2);">✔ 처리 완료 → 비고로 이동하고 비우기</button>
+        <input id="f-hamt" placeholder="인상 금액 (예: 44달러) — 이 기간엔 이 금액으로 표시" style="margin-top:6px;width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface2);color:var(--text);box-sizing:border-box;">
+        <button type="button" id="hike-done-btn" onclick="hikeMoveToNote()" style="display:none;margin-top:6px;background:none;border:1px solid var(--border);border-radius:var(--radius);padding:5px 10px;font-size:11px;cursor:pointer;color:var(--text2);">✔ 처리 완료 → 원래 금액 복귀 + 비고 기록</button>
       </div>
     </div>
     <div class="field"><label>구독상태</label>
@@ -1526,7 +1527,7 @@ function renderList(){
       '<td><strong>'+d.s+'</strong>'+(d.source==='zapier'?'<span class="new-badge">NEW</span>':'')+hikeBadge(d)+'</td>' +
       '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;color:var(--text3);">'+(d.d||'')+'</td>' +
       '<td>'+displayUsers(d.u)+'</td>' +
-      '<td style="font-family:var(--mono);">'+(d.a||'')+'</td>' +
+      '<td style="font-family:var(--mono);">'+amountCell(d)+'</td>' +
       '<td><span class="tag" style="background:'+(d.status==='구독중'?'var(--green-l)':'var(--surface2)')+';color:'+(d.status==='구독중'?'var(--green)':'var(--text3)')+';">'+(d.status||'')+'</span></td>' +
       '<td><span class="tag" style="background:var(--blue-l);color:var(--blue);">'+(d.c||'')+'</span></td>' +
       '<td style="font-family:var(--mono);font-size:12px;">'+(d.m||'')+'</td>' +
@@ -1783,6 +1784,7 @@ function openModal(id){
   document.getElementById('f-ed').value = d?d.ed:'';
   document.getElementById('f-note').value = d?d.note:'';
   document.getElementById('f-hike').value = (d&&d.hu) ? d.hu : '';
+  document.getElementById('f-hamt').value = (d&&d.ha) ? d.ha : '';
   toggleHikeDoneBtn();
   setCycle(d?d.c:'월결제');
   setSt(d?d.status:'구독중');
@@ -1794,15 +1796,25 @@ function toggleHikeDoneBtn(){
   var btn = document.getElementById('hike-done-btn');
   if(btn) btn.style.display = v ? 'inline-block' : 'none';
 }
-// 처리 완료: 인상 기간을 비고로 옮기고 필드는 비움 → 다음 승인 때 다시 입력
+// 처리 완료: 인상 기간·금액을 비고로 옮기고 필드는 비움 → 원래 금액으로 복귀, 다음 승인 때 재입력
 function hikeMoveToNote(){
   var hv = (document.getElementById('f-hike')||{}).value;
   if(!hv) return;
+  var ha = (document.getElementById('f-hamt')||{}).value.trim();
   var noteEl = document.getElementById('f-note');
-  var stamp = '[인상 승인 ~'+hv+' 종료]';
+  var stamp = '[인상 '+(ha?ha+' ':'')+'승인 ~'+hv+' 종료]';
   noteEl.value = (noteEl.value && noteEl.value.trim() ? noteEl.value.trim()+'\n' : '') + stamp;
   document.getElementById('f-hike').value = '';
+  document.getElementById('f-hamt').value = '';
   toggleHikeDoneBtn();
+}
+// 현재 표시 금액: 인상 기간 중(hu+ha 있음)이면 인상 금액, 아니면 원래 금액
+function displayAmount(d){ return (d && d.hu && d.ha) ? d.ha : (d && d.a || ''); }
+function amountCell(d){
+  if(d && d.hu && d.ha){
+    return '<span title="인상 금액 (원래 '+(d.a||'-').replace(/"/g,'&quot;')+')" style="color:var(--amber);font-weight:700;">'+d.ha+' ▲</span>';
+  }
+  return (d && d.a) || '';
 }
 function closeModal(){
   document.getElementById('modal-overlay').classList.remove('open');
@@ -1839,7 +1851,8 @@ function saveModal(){
     ed: document.getElementById('f-ed').value,
     note: document.getElementById('f-note').value.trim(),
     pd: document.getElementById('f-pd').value ? parseInt(document.getElementById('f-pd').value) : null,
-    hu: document.getElementById('f-hike').value || null
+    hu: document.getElementById('f-hike').value || null,
+    ha: document.getElementById('f-hamt').value.trim() || null
   });
   if(editId){
     DATA[DATA.findIndex(function(x){return x.id===editId;})]=item;
@@ -2188,7 +2201,7 @@ function renderRV(){
       '<td class="rv-svc-td"'+(d.d?' data-tooltip="'+descAttr+'"':'')+'><strong>'+d.s+(d.d?' <span style="font-size:10px;color:var(--text3);"> i</span>':'')+'</strong></td>'+
       '<td title="'+uTitle+'" style="white-space:nowrap;cursor:default;">'+(d.u&&d.u.split(',').filter(Boolean).length>1?userCountBadge(d.u.split(',').map(function(x){return x.trim();}).filter(Boolean).length):'')+uFirst+uMore+'</td>'+
       '<td style="font-family:var(--mono);font-size:12px;">'+(d.m||'')+'</td>'+
-      '<td style="font-family:var(--mono);font-size:12px;">'+(d.a||'')+'</td>'+
+      '<td style="font-family:var(--mono);font-size:12px;">'+amountCell(d)+'</td>'+
       '<td><span class="tag" style="background:var(--blue-l);color:var(--blue);">'+(d.c||'')+'</span></td>'+
       '<td style="font-family:var(--mono);font-size:12px;">'+(d.sd||'')+'</td>'+
     '</tr>';

@@ -44,12 +44,14 @@ function hikeStrOf(d, today){
   if(daysBetween(today, new Date(str)) < -183) str = mk(today.getUTCFullYear()+1);
   return str;
 }
-function buildHikeMsg(koName, tool, hikeStr, days){
+function buildHikeMsg(koName, tool, hikeStr, days, ha, a){
   const dd = days<0 ? ('D+'+(-days)) : ('D-'+days);
   const head = days<0 ? '요금 인상 승인 기간이 *지났어요*' : '요금 인상 승인 기간이 *곧 끝나요*';
+  const amtLine = ha ? ('• 현재(인상) 금액: *'+ha+'*'+(a?' / 원래 '+a:'')+'\n') : '';
   return '👋 '+koName+' 안녕하세요!\n\n' +
     '*'+tool+'* '+head+' 📌\n' +
-    '• 인상 승인 종료일: *'+hikeStr+'* ('+dd+')\n\n' +
+    '• 인상 승인 종료일: *'+hikeStr+'* ('+dd+')\n' +
+    amtLine + '\n' +
     '승인 기간이 끝나면 원래 요금제로 낮추거나 해지가 필요해요.\n' +
     '확인해서 처리 부탁드리고, 완료되면 알려주세요 🙏\n\n' +
     '감사합니다 😊';
@@ -158,7 +160,7 @@ export default async function handler(req, res){
 
   // ── 요금 인상 승인 기간 만료/임박 알림 (3일 전부터 처리 전까지 매일 1회) ──
   let hikeSubs = [];
-  try { hikeSubs = await sql`SELECT id,s,u,a,m,c,sd,status,hu FROM subscriptions WHERE status='구독중'`; } catch(_){}
+  try { hikeSubs = await sql`SELECT id,s,u,a,m,c,sd,status,hu,ha FROM subscriptions WHERE status='구독중'`; } catch(_){}
   for(const d of hikeSubs){
     const hs = hikeStrOf(d, kstToday);
     if(!hs) continue;
@@ -170,7 +172,7 @@ export default async function handler(req, res){
     const slackId = slackIdOf(nick);
     if(!slackId){ results.push({ id:d.id, s:d.s, nick, hike:hs, kind:'hike', skip:'슬랙ID 없음' }); continue; }
     const koName = koMap[nick] || nick;
-    let text = buildHikeMsg(koName, d.s, hs, hdays);
+    let text = buildHikeMsg(koName, d.s, hs, hdays, d.ha, d.a);
     if(preview) text = '🧪 *[미리보기]* 원래 받는 사람: *'+koName+'*\n\n' + text;
     if(dry){ results.push({ id:d.id, s:d.s, nick, to:slackId, kind:'hike', would_send:true }); continue; }
     const dest = preview ? previewTo : slackId;
