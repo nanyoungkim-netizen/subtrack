@@ -1185,7 +1185,12 @@ function showTab(t, btn) {
   if(t==='annual') renderAnnual();
   if(t==='zapier') loadZapierPending();
   if(t==='nickname') renderNicknameList();
-  if(t==='managers'){ renderManagers(); renderNotifyHistory(); }
+  if(t==='managers'){
+    renderManagers();   // 현재 상태로 즉시 표시
+    // 서버에서 최신 담당자·슬랙ID 다시 불러와 재렌더(로드 타이밍 문제 방지)
+    Promise.all([loadCardManagers(), loadSlackIds()]).then(function(){ renderManagers(); });
+    renderNotifyHistory();
+  }
   if(t==='dash') renderDash();
 }
 
