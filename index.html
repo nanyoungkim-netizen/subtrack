@@ -717,8 +717,11 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
     <button class="nav-btn" id="nav-nickname" onclick="showTab('nickname',this)">
       <span class="nav-icon">👤</span> 닉네임 관리
     </button>
+    <button class="nav-btn" id="nav-cardusers" onclick="showTab('cardusers',this)">
+      <span class="nav-icon">💳</span> 카드 사용자
+    </button>
     <button class="nav-btn" id="nav-managers" onclick="showTab('managers',this)">
-      <span class="nav-icon">💳</span> 결제 담당자
+      <span class="nav-icon">🧑‍💼</span> 결제 담당자
     </button>
   </nav>
   <div class="sidebar-foot">
@@ -871,15 +874,30 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
   </div>
 </div>
 
-<div id="tab-managers" style="display:none;">
-  <div style="margin-bottom:20px;">
-    <div class="pg-title">결제 담당자 <span id="managers-count" style="font-size:14px;color:var(--blue);font-weight:600;margin-left:6px;"></span></div>
-    <div class="pg-sub" style="margin-bottom:0;">카드(결제수단)별로 결제 담당자를 지정해요. 연결제 갱신이 임박하면 담당자에게 슬랙 개인 DM으로 알려드려요.</div>
+<div id="tab-cardusers" style="display:none;">
+  <div style="margin-bottom:16px;">
+    <div class="pg-title">카드 사용자 <span id="cardusers-count" style="font-size:14px;color:var(--blue);font-weight:600;margin-left:6px;"></span></div>
+    <div class="pg-sub" style="margin-bottom:0;">법인카드별 사용자(소유자)를 확인·지정해요. 결제 담당자의 기본값으로 쓰여요.</div>
   </div>
-  <div id="managers-slack-status" style="display:none;background:var(--surface);border:1px solid var(--amber);border-left:4px solid var(--amber);border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--text);"></div>
+  <input id="cardusers-search" oninput="renderCardUsers()" placeholder="🔍 카드번호 · 사용자(닉네임) 검색" style="width:100%;max-width:360px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface2);color:var(--text);margin-bottom:14px;">
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th>카드(결제수단)</th><th>사용 중인 서비스</th><th>결제 담당자</th><th>슬랙 태그</th></tr></thead>
+      <thead><tr><th>카드번호</th><th>사용자</th><th>사용 중인 서비스</th></tr></thead>
+      <tbody id="cardusers-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="tab-managers" style="display:none;">
+  <div style="margin-bottom:16px;">
+    <div class="pg-title">결제 담당자 <span id="managers-count" style="font-size:14px;color:var(--blue);font-weight:600;margin-left:6px;"></span></div>
+    <div class="pg-sub" style="margin-bottom:0;">구독(툴)별 결제 담당자예요. 기본값은 카드 사용자이며, 필요하면 개별 변경할 수 있어요. 갱신/인상 임박 시 이 담당자에게 슬랙 DM이 갑니다.</div>
+  </div>
+  <input id="toolmgr-search" oninput="renderManagers()" placeholder="🔍 서비스 · 결제수단 · 담당자 검색" style="width:100%;max-width:360px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface2);color:var(--text);margin-bottom:14px;">
+  <div id="managers-slack-status" style="display:none;"></div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>서비스</th><th>결제수단</th><th>결제 담당자 (기본=카드사용자)</th><th>슬랙 태그</th></tr></thead>
       <tbody id="managers-body"></tbody>
     </table>
   </div>
@@ -919,7 +937,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
       <div class="field"><label>금액</label><input id="f-amt" placeholder="예: 22달러"/></div>
     </div>
     <div class="row2">
-      <div class="field"><label>결제수단</label><input id="f-method" placeholder="예: 3728"/></div>
+      <div class="field"><label>결제수단</label><input id="f-method" placeholder="예: 3728" oninput="refreshMgrDefault()"/></div>
       <div class="field"><label>결제주기</label>
         <div class="cy-row">
           <button class="cy-btn sel" id="cy-monthly" onclick="setCycle('월결제')">월결제</button>
@@ -927,6 +945,13 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
           <button class="cy-btn" id="cy-once" onclick="setCycle('1회성')">1회성</button>
         </div>
       </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>결제 담당자 <span style="font-size:11px;color:var(--text3);font-weight:400;">(비우면 카드 사용자로 자동)</span></label>
+        <select id="f-mgr" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface2);color:var(--text);box-sizing:border-box;"></select>
+      </div>
+      <div class="field"></div>
     </div>
     <div class="row2">
       <div class="field"><label>구독 시작일</label><input type="date" id="f-sd"/></div>
@@ -1186,9 +1211,13 @@ function showTab(t, btn) {
   if(t==='annual') renderAnnual();
   if(t==='zapier') loadZapierPending();
   if(t==='nickname') renderNicknameList();
+  if(t==='cardusers'){
+    renderCardUsers();
+    Promise.all([loadCardManagers(), loadSlackIds()]).then(function(){ renderCardUsers(); });
+  }
   if(t==='managers'){
     renderManagers();   // 현재 상태로 즉시 표시
-    // 서버에서 최신 담당자·슬랙ID 다시 불러와 재렌더(로드 타이밍 문제 방지)
+    // 서버에서 최신 카드사용자·슬랙ID 다시 불러와 재렌더(로드 타이밍 문제 방지)
     Promise.all([loadCardManagers(), loadSlackIds()]).then(function(){ renderManagers(); });
     renderNotifyHistory();
   }
@@ -1773,6 +1802,13 @@ function resetAll(){
 }
 
 // ── 모달 ─────────────────────────────────────
+// 결제수단(카드) 바뀌면 담당자 드롭다운의 '카드 기본값' 라벨 갱신
+function refreshMgrDefault(){
+  var mgrSel=document.getElementById('f-mgr'); if(!mgrSel) return;
+  var cur=mgrSel.value;
+  var card=(document.getElementById('f-method').value||'').trim();
+  mgrSel.innerHTML=mgrOptions(cur, cardOwnerOf(card));
+}
 function openModal(id){
   editId = id;
   var d = id ? DATA.find(function(x){return x.id===id;}) : null;
@@ -1783,6 +1819,8 @@ function openModal(id){
   initUserDropdown(d?d.u:'');
   document.getElementById('f-amt').value = d?d.a:'';
   document.getElementById('f-method').value = d?d.m:'';
+  var mgrSel=document.getElementById('f-mgr');
+  if(mgrSel) mgrSel.innerHTML = mgrOptions((d&&d.mgr)||'', cardOwnerOf(d?d.m:''));
   document.getElementById('f-sd').value = d?d.sd:'';
   // 결제일: 저장된 값 있으면 사용, 없으면 구독시작일의 '일' 추출
   var pdVal = d&&d.pd ? d.pd : (d&&d.sd ? parseInt(d.sd.split('-')[2])||'' : '');
@@ -1804,8 +1842,8 @@ async function sendManualAlert(id){
   var d = DATA.find(function(x){return x.id===id;});
   if(!d){ alert('구독 정보를 찾을 수 없어요.'); return; }
   var card=(d.m||'').trim();
-  var nick=CARD_MANAGERS[card];
-  if(!nick){ alert('이 카드('+(card||'-')+')에 결제 담당자가 지정돼 있지 않아요.\n결제 담당자 탭에서 먼저 지정해주세요.'); return; }
+  var nick=effectiveMgr(d);
+  if(!nick){ alert('이 구독에 결제 담당자가 없어요.\n결제 담당자 탭(또는 이 창의 담당자)에서 먼저 지정해주세요.'); return; }
   var who=koName(nick)+' ('+nick+')';
   if(!confirm('"'+d.s+'" 알림을 담당자 '+who+'님에게 지금 보낼까요?')) return;
   showZpToast('📨 발송 중…');
@@ -1877,7 +1915,8 @@ function saveModal(){
     note: document.getElementById('f-note').value.trim(),
     pd: document.getElementById('f-pd').value ? parseInt(document.getElementById('f-pd').value) : null,
     hu: document.getElementById('f-hike').value || null,
-    ha: document.getElementById('f-hamt').value.trim() || null
+    ha: document.getElementById('f-hamt').value.trim() || null,
+    mgr: (document.getElementById('f-mgr')||{}).value || null
   });
   if(editId){
     DATA[DATA.findIndex(function(x){return x.id===editId;})]=item;
@@ -2578,14 +2617,71 @@ async function saveCardManagers(){
   } catch(e){ console.warn('결제 담당자 저장 실패', e); return false; }
 }
 function isCardNo(m){ return m && /^\d{3,}$/.test((''+m).trim()); }   // 숫자만(카드번호 끝자리)
-function managerOptions(sel){
+function cardOwnerOf(m){ return CARD_MANAGERS[(''+(m||'')).trim()] || ''; }
+function effectiveMgr(d){ return (d && d.mgr) || cardOwnerOf(d && d.m) || ''; }
+
+// 카드 사용자 지정용 옵션(닉네임 목록)
+function ownerOptions(sel){
   return '<option value="">— 선택 —</option>' + Object.keys(KO_MAP).sort().map(function(eng){
     return '<option value="'+eng+'"'+(eng===sel?' selected':'')+'>'+KO_MAP[eng]+' ('+eng+')</option>';
   }).join('');
 }
-function renderManagers(){
+// 툴별 담당자 옵션: 카드 기본값 상속 + 닉네임들
+function mgrOptions(selMgr, cardDefault){
+  var defLabel = cardDefault ? ('카드 기본값 ('+(KO_MAP[cardDefault]||cardDefault)+')') : '미지정 (카드 기본값 없음)';
+  var html = '<option value=""'+(!selMgr?' selected':'')+'>'+defLabel+'</option>';
+  html += Object.keys(KO_MAP).sort().map(function(eng){
+    return '<option value="'+eng+'"'+(eng===selMgr?' selected':'')+'>'+KO_MAP[eng]+' ('+eng+')</option>';
+  }).join('');
+  return html;
+}
+
+// ── 결제 담당자 (툴별) ────────────────────────────
+function renderManagers(){   // 결제 담당자 탭(툴별)
   var tbody=document.getElementById('managers-body');
   if(!tbody) return;
+  var q=((document.getElementById('toolmgr-search')||{}).value||'').trim().toLowerCase();
+  var rows=DATA.filter(function(d){return d.status==='구독중';});
+  if(q) rows=rows.filter(function(d){
+    var eff=effectiveMgr(d);
+    return (d.s||'').toLowerCase().indexOf(q)>=0 || (''+(d.m||'')).toLowerCase().indexOf(q)>=0 ||
+           (eff && ((''+eff).toLowerCase().indexOf(q)>=0 || (KO_MAP[eff]||'').toLowerCase().indexOf(q)>=0));
+  });
+  rows.sort(function(a,b){return (a.s||'').localeCompare(b.s||'');});
+  var cntEl=document.getElementById('managers-count');
+  if(cntEl) cntEl.textContent='구독 '+rows.length+'건';
+  tbody.innerHTML=rows.map(function(d){
+    var card=(d.m||'').trim();
+    var cardDef=cardOwnerOf(card);
+    var eff=effectiveMgr(d);
+    var isOverride=!!d.mgr;
+    var hasSlack=eff && slackIdOf(eff);
+    var effLabel = eff ? ((KO_MAP[eff]||eff)+(isOverride?' <span style="font-size:10px;color:var(--blue);font-weight:700;">(개별지정)</span>':' <span style="font-size:10px;color:var(--text3);">(카드기본)</span>')) : '<span style="color:var(--text3);">미지정</span>';
+    var tag = eff ? (hasSlack?'<span style="color:var(--green);font-size:12px;">✓ 태그 가능</span>':'<span style="color:var(--amber);font-size:11px;">슬랙 ID 없음</span>') : '<span style="color:var(--text3);font-size:12px;">미지정</span>';
+    return '<tr>'+
+      '<td><strong>'+d.s+'</strong></td>'+
+      '<td style="font-family:var(--mono);font-size:12px;">'+(d.m||'-')+'</td>'+
+      '<td><select onchange="setToolMgr('+d.id+',this.value)" style="padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;background:var(--surface2);color:var(--text);">'+mgrOptions(d.mgr||'', cardDef)+'</select><div style="font-size:11px;margin-top:3px;color:var(--text2);">→ '+effLabel+'</div></td>'+
+      '<td>'+tag+'</td>'+
+    '</tr>';
+  }).join('');
+  var st=document.getElementById('managers-slack-status');
+  if(st) st.style.display='none';
+}
+async function setToolMgr(id, val){
+  var d=DATA.find(function(x){return x.id===id;});
+  if(!d) return;
+  d.mgr = val || null;
+  renderManagers();
+  var ok=await serverPatch(d);
+  showZpToast((ok!==false)?('✅ '+d.s+' 담당자 저장됐어요'):('⚠️ 저장 실패 — 다시 시도해주세요'));
+}
+
+// ── 카드 사용자 (카드↔사용자 조회/지정) ────────────────────────────
+function renderCardUsers(){
+  var tbody=document.getElementById('cardusers-body');
+  if(!tbody) return;
+  var q=((document.getElementById('cardusers-search')||{}).value||'').trim().toLowerCase();
   var cards={};
   DATA.forEach(function(d){
     var m=(d.m||'').trim();
@@ -2593,39 +2689,34 @@ function renderManagers(){
     if(!cards[m]) cards[m]={svcs:{}, active:0};
     if(d.status==='구독중'){ cards[m].active++; cards[m].svcs[d.s]=1; }
   });
-  // 구독중 항목이 하나도 없는(전부 구독종료) 카드는 제외
-  var cardList=Object.keys(cards).filter(function(m){ return cards[m].active>0; }).sort();
-  var cntEl=document.getElementById('managers-count');
+  var cardList=Object.keys(cards).filter(function(m){return cards[m].active>0;}).sort();
+  if(q){
+    cardList=cardList.filter(function(m){
+      var owner=CARD_MANAGERS[m]||'';
+      return m.toLowerCase().indexOf(q)>=0 || (owner && ((''+owner).toLowerCase().indexOf(q)>=0 || (KO_MAP[owner]||'').toLowerCase().indexOf(q)>=0));
+    });
+  }
+  var cntEl=document.getElementById('cardusers-count');
   if(cntEl) cntEl.textContent='카드 '+cardList.length+'개';
   tbody.innerHTML=cardList.map(function(m){
     var svcArr=Object.keys(cards[m].svcs);
-    var svcNames=svcArr.slice(0,4).join(', ')+(svcArr.length>4?' 외 '+(svcArr.length-4):'');
+    var svcNames=svcArr.slice(0,5).join(', ')+(svcArr.length>5?' 외 '+(svcArr.length-5):'');
     var cur=CARD_MANAGERS[m]||'';
-    var hasSlack=cur && slackIdOf(cur);
-    var tagCell = cur
-      ? (hasSlack ? '<span style="color:var(--green);font-size:12px;">✓ 태그 가능</span>'
-                  : '<span style="color:var(--amber);font-size:11px;">슬랙 ID 없음</span>')
-      : '<span style="color:var(--text3);font-size:12px;">미지정</span>';
     return '<tr>'+
       '<td style="font-family:var(--mono);font-weight:600;">'+m+'</td>'+
-      '<td style="font-size:12px;color:var(--text3);max-width:280px;">'+(svcNames||'-')+'</td>'+
-      '<td><select onchange="setCardManager(\''+m+'\',this.value)" style="padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;background:var(--surface2);color:var(--text);">'+managerOptions(cur)+'</select></td>'+
-      '<td>'+tagCell+'</td>'+
+      '<td><select data-card="'+m+'" onchange="setCardManager(this.dataset.card,this.value)" style="padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;background:var(--surface2);color:var(--text);">'+ownerOptions(cur)+'</select></td>'+
+      '<td style="font-size:12px;color:var(--text3);max-width:340px;">'+(svcNames||'-')+'</td>'+
     '</tr>';
   }).join('');
-  var missing=cardList.filter(function(m){var c=CARD_MANAGERS[m];return c&&!slackIdOf(c);});
-  var st=document.getElementById('managers-slack-status');
-  if(st){
-    if(missing.length){ st.style.display='block'; st.innerHTML='⚠️ 슬랙 ID가 없는 담당자('+missing.length+'명)가 있어요. 닉네임 관리 표에 슬랙 ID가 있는 멤버만 자동 태그됩니다.'; }
-    else st.style.display='none';
-  }
 }
 async function setCardManager(card, eng){
   if(eng) CARD_MANAGERS[card]=eng; else delete CARD_MANAGERS[card];
+  renderCardUsers();
   renderManagers();
   var ok=await saveCardManagers();
-  showZpToast(ok?('✅ '+card+' 담당자 저장됐어요'):('⚠️ 저장 실패 — 다시 시도해주세요'));
+  showZpToast(ok?('✅ '+card+' 사용자 저장됐어요'):('⚠️ 저장 실패 — 다시 시도해주세요'));
 }
+
 // 슬랙 발송 이력 조회
 async function renderNotifyHistory(){
   var tbody=document.getElementById('notify-history-body');

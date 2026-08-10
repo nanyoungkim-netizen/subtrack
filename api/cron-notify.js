@@ -137,7 +137,7 @@ export default async function handler(req, res){
     catch(e){ return res.status(500).json({ ok:false, error:e.message }); }
     if(!one) return res.status(200).json({ ok:false, error:'구독을 찾을 수 없어요' });
     const card = (one.m||'').trim();
-    const nick = cardManagers[card];
+    const nick = one.mgr || cardManagers[card];
     if(!nick) return res.status(200).json({ ok:false, error:'담당자 미지정 (카드 '+card+')' });
     const slackId = slackIdOf(nick);
     if(!slackId) return res.status(200).json({ ok:false, error:'담당자 슬랙ID 없음 ('+nick+')' });
@@ -164,7 +164,7 @@ export default async function handler(req, res){
 
   let subs = [];
   try {
-    subs = await sql`SELECT id,s,u,a,m,c,sd,status FROM subscriptions WHERE status='구독중' AND c='연결제'`;
+    subs = await sql`SELECT id,s,u,a,m,c,sd,status,mgr FROM subscriptions WHERE status='구독중' AND c='연결제'`;
   } catch(e){ return res.status(500).json({ ok:false, error:e.message }); }
 
   const newLog = Object.assign({}, notifyLog);
@@ -177,7 +177,7 @@ export default async function handler(req, res){
     const days = daysBetween(kstToday, renewal);
     if(days < 0 || days > NOTIFY_WINDOW_DAYS) continue;
     const card = (d.m||'').trim();
-    const nick = cardManagers[card];
+    const nick = d.mgr || cardManagers[card];
     if(!nick){ results.push({ id:d.id, s:d.s, card, skip:'담당자 미지정' }); continue; }
     const slackId = slackIdOf(nick);
     if(!slackId){ results.push({ id:d.id, s:d.s, nick, skip:'슬랙ID 없음' }); continue; }
@@ -201,14 +201,14 @@ export default async function handler(req, res){
 
   // ── 요금 인상 승인 기간 만료/임박 알림 (3일 전부터 처리 전까지 매일 1회) ──
   let hikeSubs = [];
-  try { hikeSubs = await sql`SELECT id,s,u,a,m,c,sd,status,hu,ha FROM subscriptions WHERE status='구독중'`; } catch(_){}
+  try { hikeSubs = await sql`SELECT id,s,u,a,m,c,sd,status,hu,ha,mgr FROM subscriptions WHERE status='구독중'`; } catch(_){}
   for(const d of hikeSubs){
     const hs = hikeStrOf(d, kstToday);
     if(!hs) continue;
     const hdays = daysBetween(kstToday, new Date(hs));
     if(hdays > 3) continue;                      // 만료 3일 전부터
     const card = (d.m||'').trim();
-    const nick = cardManagers[card];
+    const nick = d.mgr || cardManagers[card];
     if(!nick){ results.push({ id:d.id, s:d.s, hike:hs, kind:'hike', skip:'담당자 미지정' }); continue; }
     const slackId = slackIdOf(nick);
     if(!slackId){ results.push({ id:d.id, s:d.s, nick, hike:hs, kind:'hike', skip:'슬랙ID 없음' }); continue; }

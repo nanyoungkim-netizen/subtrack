@@ -8,9 +8,10 @@ export default async function handler(req, res) {
 
   const sql = neon(process.env.DATABASE_URL);
 
-  // 인상 승인 종료일(hu) · 인상 금액(ha) 컬럼 보장 (최초 1회 생성, 이미 있으면 무시)
+  // 인상 승인 종료일(hu)·인상 금액(ha)·툴별 담당자(mgr) 컬럼 보장 (최초 1회 생성)
   try { await sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS hu text`; } catch (_) {}
   try { await sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS ha text`; } catch (_) {}
+  try { await sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS mgr text`; } catch (_) {}
 
   if (req.method === 'GET') {
     try {
@@ -37,13 +38,13 @@ export default async function handler(req, res) {
 
   if (req.method === 'PATCH') {
     try {
-      const { id, s, d, u, status, a, m, c, sd, ed, note, source, pd, hu, ha } = req.body;
+      const { id, s, d, u, status, a, m, c, sd, ed, note, source, pd, hu, ha, mgr } = req.body;
       const rows = await sql`
         UPDATE subscriptions SET
           s=${s||null}, d=${d||''}, u=${u||''}, status=${status||'구독중'},
           a=${a||''}, m=${m||''}, c=${c||'월결제'},
           sd=${sd||null}, ed=${ed||null}, note=${note||''},
-          source=${source||null}, pd=${pd||null}, hu=${hu||null}, ha=${ha||null}
+          source=${source||null}, pd=${pd||null}, hu=${hu||null}, ha=${ha||null}, mgr=${mgr||null}
         WHERE id=${id}
         RETURNING *
       `;
@@ -57,20 +58,20 @@ export default async function handler(req, res) {
     try {
       // 단건 삽입: body.item 이 있으면 single insert
       if (req.body && req.body.item) {
-        const { id, s, d, u, status, a, m, c, sd, ed, note, source, pd, hu, ha } = req.body.item;
+        const { id, s, d, u, status, a, m, c, sd, ed, note, source, pd, hu, ha, mgr } = req.body.item;
         let insertId = id;
         if (!insertId) {
           const maxRow = await sql`SELECT COALESCE(MAX(id),0)+1 AS next_id FROM subscriptions`;
           insertId = maxRow[0].next_id;
         }
-        await sql`INSERT INTO subscriptions (id,s,d,u,status,a,m,c,sd,ed,note,source,pd,hu,ha)
+        await sql`INSERT INTO subscriptions (id,s,d,u,status,a,m,c,sd,ed,note,source,pd,hu,ha,mgr)
           VALUES (${insertId},${s||null},${d||''},${u||''},${status||'구독중'},
                   ${a||''},${m||''},${c||'월결제'},${sd||null},${ed||null},
-                  ${note||''},${source||null},${pd||null},${hu||null},${ha||null})
+                  ${note||''},${source||null},${pd||null},${hu||null},${ha||null},${mgr||null})
           ON CONFLICT (id) DO UPDATE SET
             s=EXCLUDED.s, d=EXCLUDED.d, u=EXCLUDED.u, status=EXCLUDED.status,
             a=EXCLUDED.a, m=EXCLUDED.m, c=EXCLUDED.c, sd=EXCLUDED.sd, ed=EXCLUDED.ed,
-            note=EXCLUDED.note, source=EXCLUDED.source, pd=EXCLUDED.pd, hu=EXCLUDED.hu, ha=EXCLUDED.ha`;
+            note=EXCLUDED.note, source=EXCLUDED.source, pd=EXCLUDED.pd, hu=EXCLUDED.hu, ha=EXCLUDED.ha, mgr=EXCLUDED.mgr`;
         return res.status(200).json({ ok: true, id: insertId });
       }
 
@@ -79,11 +80,11 @@ export default async function handler(req, res) {
       if (!Array.isArray(data)) return res.status(400).json({ ok: false, error: 'data array required' });
       await sql`DELETE FROM subscriptions`;
       for (const row of data) {
-        const { id, s, d, u, status, a, m, c, sd, ed, note, source, pd, hu, ha } = row;
-        await sql`INSERT INTO subscriptions (id,s,d,u,status,a,m,c,sd,ed,note,source,pd,hu,ha)
+        const { id, s, d, u, status, a, m, c, sd, ed, note, source, pd, hu, ha, mgr } = row;
+        await sql`INSERT INTO subscriptions (id,s,d,u,status,a,m,c,sd,ed,note,source,pd,hu,ha,mgr)
           VALUES (${id},${s||null},${d||''},${u||''},${status||'구독중'},
                   ${a||''},${m||''},${c||'월결제'},${sd||null},${ed||null},
-                  ${note||''},${source||null},${pd||null},${hu||null},${ha||null})`;
+                  ${note||''},${source||null},${pd||null},${hu||null},${ha||null},${mgr||null})`;
       }
       return res.status(200).json({ ok: true });
     } catch (e) {
