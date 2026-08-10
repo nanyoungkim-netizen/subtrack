@@ -949,7 +949,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
     <div class="row2">
       <div class="field">
         <label>결제 담당자 <span style="font-size:11px;color:var(--text3);font-weight:400;">(비우면 카드 사용자로 자동)</span></label>
-        <select id="f-mgr" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface2);color:var(--text);box-sizing:border-box;"></select>
+        <input id="f-mgr" list="nick-datalist" placeholder="검색해서 지정 (비우면 카드 사용자)" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface2);color:var(--text);box-sizing:border-box;">
       </div>
       <div class="field"></div>
     </div>
@@ -1019,6 +1019,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
 </div>
 
 <div id="toast"></div>
+<datalist id="nick-datalist"></datalist>
 
 <script>
 // ── API 설정 (Neon 기반 /api/data 사용) ──────
@@ -1804,10 +1805,10 @@ function resetAll(){
 // ── 모달 ─────────────────────────────────────
 // 결제수단(카드) 바뀌면 담당자 드롭다운의 '카드 기본값' 라벨 갱신
 function refreshMgrDefault(){
-  var mgrSel=document.getElementById('f-mgr'); if(!mgrSel) return;
-  var cur=mgrSel.value;
+  var mgrEl=document.getElementById('f-mgr'); if(!mgrEl) return;
   var card=(document.getElementById('f-method').value||'').trim();
-  mgrSel.innerHTML=mgrOptions(cur, cardOwnerOf(card));
+  var own=cardOwnerOf(card);
+  mgrEl.placeholder = own?('카드 사용자: '+(KO_MAP[own]||own)):'검색해서 지정 (비우면 카드 사용자)';
 }
 function openModal(id){
   editId = id;
@@ -1819,8 +1820,8 @@ function openModal(id){
   initUserDropdown(d?d.u:'');
   document.getElementById('f-amt').value = d?d.a:'';
   document.getElementById('f-method').value = d?d.m:'';
-  var mgrSel=document.getElementById('f-mgr');
-  if(mgrSel) mgrSel.innerHTML = mgrOptions((d&&d.mgr)||'', cardOwnerOf(d?d.m:''));
+  var mgrEl=document.getElementById('f-mgr');
+  if(mgrEl){ mgrEl.value = nickInputValue((d&&d.mgr)||''); var _own=cardOwnerOf(d?d.m:''); mgrEl.placeholder = _own?('카드 사용자: '+(KO_MAP[_own]||_own)):'검색해서 지정 (비우면 카드 사용자)'; }
   document.getElementById('f-sd').value = d?d.sd:'';
   // 결제일: 저장된 값 있으면 사용, 없으면 구독시작일의 '일' 추출
   var pdVal = d&&d.pd ? d.pd : (d&&d.sd ? parseInt(d.sd.split('-')[2])||'' : '');
@@ -1916,7 +1917,7 @@ function saveModal(){
     pd: document.getElementById('f-pd').value ? parseInt(document.getElementById('f-pd').value) : null,
     hu: document.getElementById('f-hike').value || null,
     ha: document.getElementById('f-hamt').value.trim() || null,
-    mgr: (document.getElementById('f-mgr')||{}).value || null
+    mgr: (resolveNick((document.getElementById('f-mgr')||{}).value) || null)
   });
   if(editId){
     DATA[DATA.findIndex(function(x){return x.id===editId;})]=item;
@@ -2035,6 +2036,7 @@ function rebuildNickAlias(){
     NICK_ALIAS[normKey(KO_MAP[k])] = k;
   });
   NICK_EXTRA_ALIAS.forEach(function(p){ NICK_ALIAS[normKey(p[0])] = p[1]; });
+  if(typeof buildNickDatalist==='function') buildNickDatalist();
 }
 rebuildNickAlias();
 
@@ -2620,6 +2622,41 @@ function isCardNo(m){ return m && /^\d{3,}$/.test((''+m).trim()); }   // 숫자�
 function cardOwnerOf(m){ return CARD_MANAGERS[(''+(m||'')).trim()] || ''; }
 function effectiveMgr(d){ return (d && d.mgr) || cardOwnerOf(d && d.m) || ''; }
 
+// ── 닉네임 검색 드롭다운(datalist 기반) ────────────────────────────
+function nickInputValue(eng){ return eng ? ((KO_MAP[eng]||eng)+' ('+eng+')') : ''; }
+// 입력값 → 표준 영문 닉네임. ''=비움(상속/미지정), null=목록에 없는 값
+function resolveNick(val){
+  val=(''+(val||'')).trim();
+  if(!val) return '';
+  var m=val.match(/\(([^)]+)\)\s*$/);
+  if(m && KO_MAP[m[1]]) return m[1];
+  var c=canonNick(val); if(KO_MAP[c]) return c;
+  var found=Object.keys(KO_MAP).find(function(k){ return KO_MAP[k]===val || k.toLowerCase()===val.toLowerCase(); });
+  return found || null;
+}
+function buildNickDatalist(){
+  var dl=document.getElementById('nick-datalist');
+  if(!dl) return;
+  dl.innerHTML=Object.keys(KO_MAP).sort().map(function(eng){
+    return '<option value="'+(KO_MAP[eng]||eng).replace(/"/g,'&quot;')+' ('+eng+')"></option>';
+  }).join('');
+}
+async function setToolMgrInput(el, id){
+  var d=DATA.find(function(x){return x.id===id;});
+  if(!d) return;
+  var r=resolveNick(el.value);
+  if(r===null){ alert('목록에 없는 이름이에요. 검색 후 목록에서 선택해주세요.'); el.value=nickInputValue(d.mgr||''); return; }
+  d.mgr = r || null;
+  renderManagers();
+  var ok=await serverPatch(d);
+  showZpToast((ok!==false)?('✅ '+d.s+' 담당자 저장됐어요'):('⚠️ 저장 실패 — 다시 시도해주세요'));
+}
+async function setCardManagerInput(el, card){
+  var r=resolveNick(el.value);
+  if(r===null){ alert('목록에 없는 이름이에요. 검색 후 목록에서 선택해주세요.'); el.value=nickInputValue(CARD_MANAGERS[card]||''); return; }
+  setCardManager(card, r);
+}
+
 // 카드 사용자 지정용 옵션(닉네임 목록)
 function ownerOptions(sel){
   return '<option value="">— 선택 —</option>' + Object.keys(KO_MAP).sort().map(function(eng){
@@ -2661,7 +2698,7 @@ function renderManagers(){   // 결제 담당자 탭(툴별)
     return '<tr>'+
       '<td><strong>'+d.s+'</strong></td>'+
       '<td style="font-family:var(--mono);font-size:12px;">'+(d.m||'-')+'</td>'+
-      '<td><select onchange="setToolMgr('+d.id+',this.value)" style="padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;background:var(--surface2);color:var(--text);">'+mgrOptions(d.mgr||'', cardDef)+'</select><div style="font-size:11px;margin-top:3px;color:var(--text2);">→ '+effLabel+'</div></td>'+
+      '<td><input list="nick-datalist" value="'+nickInputValue(d.mgr||'').replace(/"/g,'&quot;')+'" placeholder="'+(cardDef?('카드기본: '+(KO_MAP[cardDef]||cardDef)):'미지정 (검색해서 지정)')+'" onchange="setToolMgrInput(this,'+d.id+')" style="width:160px;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;background:var(--surface2);color:var(--text);"><div style="font-size:11px;margin-top:3px;color:var(--text2);">→ '+effLabel+'</div></td>'+
       '<td>'+tag+'</td>'+
     '</tr>';
   }).join('');
@@ -2704,7 +2741,7 @@ function renderCardUsers(){
     var cur=CARD_MANAGERS[m]||'';
     return '<tr>'+
       '<td style="font-family:var(--mono);font-weight:600;">'+m+'</td>'+
-      '<td><select data-card="'+m+'" onchange="setCardManager(this.dataset.card,this.value)" style="padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;background:var(--surface2);color:var(--text);">'+ownerOptions(cur)+'</select></td>'+
+      '<td><input list="nick-datalist" data-card="'+m+'" value="'+nickInputValue(cur).replace(/"/g,'&quot;')+'" placeholder="검색해서 지정" onchange="setCardManagerInput(this, this.dataset.card)" style="width:160px;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;background:var(--surface2);color:var(--text);"></td>'+
       '<td style="font-size:12px;color:var(--text3);max-width:340px;">'+(svcNames||'-')+'</td>'+
     '</tr>';
   }).join('');
