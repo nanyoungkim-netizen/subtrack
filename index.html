@@ -1018,6 +1018,20 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
   </div>
 </div>
 
+<!-- 업그레이드: 기존 구독 선택 -->
+<div class="overlay" id="zp-upgrade-overlay">
+  <div class="modal">
+    <div class="modal-title">
+      <span>기존 구독에 반영 (업그레이드)</span>
+      <button class="close-x" onclick="closeZpUpgrade()">×</button>
+    </div>
+    <div id="zp-upgrade-src" style="font-size:13px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:12px;color:var(--text);"></div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:8px;">반영할 기존 구독을 고르세요. 선택하면 편집창에서 새 값(금액·주기 등)이 적용된 채 열려요.</div>
+    <input id="zp-upgrade-search" placeholder="🔍 서비스 · 사용자 검색" oninput="renderZpUpgradeList()" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface2);color:var(--text);box-sizing:border-box;margin-bottom:10px;">
+    <div id="zp-upgrade-list" style="max-height:340px;overflow:auto;"></div>
+  </div>
+</div>
+
 <div id="toast"></div>
 <datalist id="nick-datalist"></datalist>
 
@@ -1765,6 +1779,8 @@ document.addEventListener('click', function(e){
 // ESC로 모달/드롭다운/추가폼 닫기
 document.addEventListener('keydown', function(e){
   if(e.key !== 'Escape') return;
+  var zpu = document.getElementById('zp-upgrade-overlay');
+  if(zpu && zpu.classList.contains('open')){ closeZpUpgrade(); return; }
   var nnm = document.getElementById('nickname-modal');
   if(nnm && nnm.classList.contains('open')){ closeNicknameAdd(); return; }
   var reg = document.getElementById('member-reg-overlay');
@@ -1956,6 +1972,17 @@ function saveModal(){
     } else {
       finalizeApprove();
     }
+  }
+  // 업그레이드 반영: 기존 구독에 저장했으니 원래 워크플로(pending) 건은 삭제
+  if(window._zpUpgradeFrom){
+    var upId = window._zpUpgradeFrom;
+    window._zpUpgradeFrom = null;
+    fetch('/api/data?id='+upId, {method:'DELETE'}).then(function(){
+      DATA = DATA.filter(function(x){return x.id!==upId;});
+      setTimeout(function(){ loadZapierPending(); }, 300);
+    });
+    showZpToast('✅ 기존 구독에 반영하고, 워크플로 건은 정리했어요.');
+    showTab('zapier', document.getElementById('nav-zapier'));
   }
 }
 function delItem(){
@@ -2393,7 +2420,8 @@ async function loadZapierPending() {
         ${item.d?'<div class="zp-desc">'+item.d+'</div>':''}
       </div>
       <div class="zp-actions">
-        <button class="zp-approve" onclick="zpOpenEdit(${item.id})">✅ 승인</button>
+        <button class="zp-approve" onclick="zpOpenEdit(${item.id})">✅ 신규 승인</button>
+        <button class="zp-reject" style="border-color:var(--blue);color:var(--blue);" onclick="zpUpgrade(${item.id})">🔄 기존 반영</button>
         <button class="zp-reject" onclick="zpReject(${item.id})">❌ 거절</button>
       </div>
     </div>`;
@@ -2462,6 +2490,55 @@ async function zpReject(id) {
     setTimeout(loadZapierPending,400);
   }
 }
+
+// ── 워크플로 → 기존 구독 업그레이드 반영 ──────────────
+var _zpUpgradeItem=null;
+function zpUpgrade(id){
+  fetch('/api/data?id='+id).then(function(r){return r.json();}).then(function(json){
+    var it=json.data; if(!it){ alert('항목을 찾을 수 없어요.'); return; }
+    _zpUpgradeItem=it;
+    document.getElementById('zp-upgrade-src').innerHTML=
+      '🆕 새 워크플로: <b>'+it.s+'</b> · '+(it.u||'-')+' · 💰'+(it.a||'-')+' · 💳'+(it.m||'-')+' · '+(it.c||'월결제');
+    document.getElementById('zp-upgrade-search').value=it.s||'';
+    renderZpUpgradeList();
+    document.getElementById('zp-upgrade-overlay').classList.add('open');
+  });
+}
+function renderZpUpgradeList(){
+  var q=(document.getElementById('zp-upgrade-search').value||'').trim().toLowerCase();
+  var rows=DATA.filter(function(d){return d.status==='구독중';});
+  if(q) rows=rows.filter(function(d){
+    var uMatch=(d.u||'').split(',').some(function(u){return nickMatch(u,q);});
+    return (d.s||'').toLowerCase().indexOf(q)>=0 || uMatch;
+  });
+  rows.sort(function(a,b){return (a.s||'').localeCompare(b.s||'');});
+  rows=rows.slice(0,60);
+  var el=document.getElementById('zp-upgrade-list');
+  if(!rows.length){ el.innerHTML='<div style="color:var(--text3);padding:16px;text-align:center;">검색 결과가 없어요</div>'; return; }
+  el.innerHTML=rows.map(function(d){
+    return '<div onclick="zpApplyUpgrade('+d.id+')" style="padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;cursor:pointer;transition:.12s;" onmouseover="this.style.background=\'var(--surface2)\'" onmouseout="this.style.background=\'transparent\'">'+
+      '<div style="font-weight:600;">'+d.s+'</div>'+
+      '<div style="font-size:12px;color:var(--text3);margin-top:2px;">'+displayUsers(d.u)+' · 💰'+(d.a||'-')+' · 💳'+(d.m||'-')+' · '+(d.c||'')+'</div>'+
+    '</div>';
+  }).join('');
+}
+function zpApplyUpgrade(targetId){
+  var it=_zpUpgradeItem; if(!it) return;
+  var d=DATA.find(function(x){return x.id===targetId;});
+  if(!d){ alert('대상 구독을 찾을 수 없어요.'); return; }
+  closeZpUpgrade();
+  openModal(targetId);
+  // 워크플로의 새 값 적용(검토용) — 금액/주기/결제수단
+  if(it.a) document.getElementById('f-amt').value=it.a;
+  if(it.c) setCycle(it.c);
+  if(it.m){ document.getElementById('f-method').value=it.m; if(typeof refreshMgrDefault==='function') refreshMgrDefault(); }
+  var noteEl=document.getElementById('f-note');
+  var stamp='[워크플로 업그레이드 반영 '+TODAY_STR+(it.a?(' → '+it.a):'')+']';
+  noteEl.value=(noteEl.value&&noteEl.value.trim()?noteEl.value.trim()+'\n':'')+stamp;
+  window._zpUpgradeFrom=it.id;   // 저장 시 이 pending 삭제
+  _zpUpgradeItem=null;
+}
+function closeZpUpgrade(){ document.getElementById('zp-upgrade-overlay').classList.remove('open'); }
 
 function showZpToast(msg){
   let t=document.getElementById('zp-toast');
