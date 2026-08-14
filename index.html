@@ -2190,10 +2190,10 @@ function rvLookup(){
     var uRest=uList.slice(1).map(function(u){return koName(u);}).join(",");var uMore=uList.length>1?" <span style=\"color:var(--blue);font-size:10px;font-weight:600;cursor:pointer;\" onclick=\"showUserTooltip(event,this)\" onmouseleave=\"hideTooltip()\" data-users=\""+uRest+"\" data-first=\""+uFirst+"\">+"+(uList.length-1)+"</span>":"";
     var descAttr=d.d?(d.d.replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;")):"";
     return "<tr>"+
-      "<td class=\"rv-svc-td\""+(d.d?" data-tooltip=\""+descAttr+"\"":"")+"><strong>"+d.s+(d.d?" <span style=\"font-size:10px;color:var(--text3);\"> i</span>":"")+"</strong></td>"+
+      "<td class=\"rv-svc-td\""+(d.d?" data-tooltip=\""+descAttr+"\"":"")+"><strong>"+d.s+(d.d?" <span style=\"font-size:10px;color:var(--text3);\"> i</span>":"")+"</strong>"+hikeBadge(d)+"</td>"+
       "<td style=\"font-size:11px;white-space:nowrap;\" title=\""+uNames+"\">"+(uList.length>1?userCountBadge(uList.length):"")+uFirst+uMore+"</td>"+
       "<td style=\"font-family:var(--mono);font-size:12px;\">"+((d.m)||"")+"</td>"+
-      "<td style=\"font-family:var(--mono);font-size:12px;\">"+((d.a)||"")+"</td>"+
+      "<td style=\"font-family:var(--mono);font-size:12px;\">"+amountCell(d)+"</td>"+
       "<td><span class=\"tag\" style=\"background:var(--blue-l);color:var(--blue);\">"+((d.c)||"")+"</span></td>"+
       "<td style=\"font-family:var(--mono);font-size:12px;\">"+((d.sd)||"")+"</td>"+
     "</tr>";
@@ -2321,7 +2321,7 @@ function renderRV(){
     if(d.u){var ul=d.u.split(',').map(function(u){return u.trim();}).filter(Boolean);uFirst=getUsersKo(ul[0]||'');uMore=ul.length>1?' <span style="color:var(--blue);font-size:10px;font-weight:600;cursor:pointer;" onclick="showUserTooltip(event,this)" onmouseleave="hideTooltip()" data-users="'+ul.slice(1).map(function(u){return koName(u);}).join(',')+'" data-first="'+koName(ul[0])+'">+' +(ul.length-1)+'</span>':'' ;uTitle=ul.map(function(u){return koName(u);}).join(', ');}
     var descAttr=d.d?(d.d.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')):'';
     return '<tr>'+
-      '<td class="rv-svc-td"'+(d.d?' data-tooltip="'+descAttr+'"':'')+'><strong>'+d.s+(d.d?' <span style="font-size:10px;color:var(--text3);"> i</span>':'')+'</strong></td>'+
+      '<td class="rv-svc-td"'+(d.d?' data-tooltip="'+descAttr+'"':'')+'><strong>'+d.s+(d.d?' <span style="font-size:10px;color:var(--text3);"> i</span>':'')+'</strong>'+hikeBadge(d)+'</td>'+
       '<td title="'+uTitle+'" style="white-space:nowrap;cursor:default;">'+(d.u&&d.u.split(',').filter(Boolean).length>1?userCountBadge(d.u.split(',').map(function(x){return x.trim();}).filter(Boolean).length):'')+uFirst+uMore+'</td>'+
       '<td style="font-family:var(--mono);font-size:12px;">'+(d.m||'')+'</td>'+
       '<td style="font-family:var(--mono);font-size:12px;">'+amountCell(d)+'</td>'+
