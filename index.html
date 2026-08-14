@@ -923,6 +923,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
       <span id="modal-title-txt">구독 추가</span>
       <button class="close-x" onclick="closeModal()">×</button>
     </div>
+    <div id="modal-ref-banner" style="display:none;background:var(--blue-l);border:1px solid var(--blue);border-radius:var(--radius);padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--text);"></div>
     <div class="field"><label>서비스명</label><input id="f-svc" placeholder="예: ChatGPT"/></div>
     <div class="field"><label>내용 설명</label><textarea id="f-desc" placeholder="서비스 설명"></textarea></div>
     <div class="row2">
@@ -1830,6 +1831,8 @@ function refreshMgrDefault(){
 }
 function openModal(id){
   editId = id;
+  window._zpUpgradeFrom = null;   // 새 모달 열 때 업그레이드 상태 초기화
+  var _rb=document.getElementById('modal-ref-banner'); if(_rb){ _rb.style.display='none'; _rb.innerHTML=''; }
   var d = id ? DATA.find(function(x){return x.id===id;}) : null;
   document.getElementById('modal-title-txt').textContent = id ? d.s+' 수정' : '구독 추가';
   document.getElementById('f-svc').value = d?d.s:'';
@@ -2529,15 +2532,22 @@ function zpApplyUpgrade(targetId){
   var d=DATA.find(function(x){return x.id===targetId;});
   if(!d){ alert('대상 구독을 찾을 수 없어요.'); return; }
   closeZpUpgrade();
+  // 기존 구독을 '원래 값 그대로' 편집창에 열고, 제출 내용은 위에 참고로만 표시
   openModal(targetId);
-  // 워크플로의 새 값 적용(검토용) — 금액/주기/결제수단
-  if(it.a) document.getElementById('f-amt').value=it.a;
-  if(it.c) setCycle(it.c);
-  if(it.m){ document.getElementById('f-method').value=it.m; if(typeof refreshMgrDefault==='function') refreshMgrDefault(); }
-  var noteEl=document.getElementById('f-note');
-  var stamp='[워크플로 업그레이드 반영 '+TODAY_STR+(it.a?(' → '+it.a):'')+']';
-  noteEl.value=(noteEl.value&&noteEl.value.trim()?noteEl.value.trim()+'\n':'')+stamp;
-  window._zpUpgradeFrom=it.id;   // 저장 시 이 pending 삭제
+  var esc=function(v){ return (''+(v==null?'':v)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); };
+  var rb=document.getElementById('modal-ref-banner');
+  if(rb){
+    rb.innerHTML =
+      '<div style="font-weight:700;color:var(--blue);margin-bottom:6px;">📥 제출된 워크플로 내용 (참고 — 아래에서 직접 수정하세요)</div>'+
+      '<div style="line-height:1.7;">'+
+        '• 서비스: <b>'+esc(it.s)+'</b><br>'+
+        '• 사용자: '+esc(it.u||'-')+'<br>'+
+        '• 금액: <b>'+esc(it.a||'-')+'</b> &nbsp; • 결제수단: '+esc(it.m||'-')+' &nbsp; • 결제주기: '+esc(it.c||'월결제')+
+        (it.d?('<br>• 내용: '+esc(it.d)):'')+
+      '</div>';
+    rb.style.display='block';
+  }
+  window._zpUpgradeFrom=it.id;   // 저장 시 이 pending(워크플로) 삭제
   _zpUpgradeItem=null;
 }
 function closeZpUpgrade(){ document.getElementById('zp-upgrade-overlay').classList.remove('open'); }
