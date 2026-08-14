@@ -13,13 +13,36 @@ async function notifyPurchase(info, thread){
   const token = process.env.SLACK_BOT_TOKEN;
   const adminId = process.env.ADMIN_SLACK_ID || 'U03JQ5FHP5Z';
   if(!token) return;
-  const text =
-    '<@'+adminId+'> 새 구독 결제 워크플로가 올라왔어요! 확인해서 등록/반영 부탁드려요 🙏\n' +
-    (info.service ? '• 서비스: *'+info.service+'*\n' : '') +
-    '👉 <'+SITE_URL+'|구독관리에서 반영하기>';
+  // 금액이 숫자면 "원" 붙이기
+  const won = (v)=> (v && /^[\d,]+$/.test(String(v).trim())) ? (String(v).trim()+'원') : (v||'');
+  // 2열 그리드 필드(값 있는 것만)
+  const fields = [];
+  const add = (label, val)=>{ if(val) fields.push({ type:'mrkdwn', text:'*'+label+'*\n'+val }); };
+  add('서비스', info.service);
+  add('사용자', info.user);
+  add('결제금액', won(info.amount));
+  add('결제방식', info.cycle);
+  add('결제카드', info.payment);
+  add('결제일', info.start_date);
+
+  const blocks = [
+    { type:'section', text:{ type:'mrkdwn', text:
+      '🆕 *새 구독 결제 워크플로가 올라왔어요!*\n<@'+adminId+'> 확인해서 등록/반영 부탁드려요 🙏' } }
+  ];
+  if(fields.length) blocks.push({ type:'section', fields: fields.slice(0,10) });
+  if(info.description && info.description !== info.service){
+    blocks.push({ type:'section', text:{ type:'mrkdwn', text:'*내용*\n'+info.description } });
+  }
+  blocks.push({ type:'actions', elements:[
+    { type:'button', text:{ type:'plain_text', text:'구독관리에서 반영하기', emoji:true }, url: SITE_URL, style:'primary' }
+  ] });
+
+  // 알림 미리보기/폴백용 text
+  const fallback = '새 구독 결제 워크플로'+(info.service ? ' · '+info.service : '');
+  const payloadBase = { text: fallback, blocks, unfurl_links:false };
   try {
     if(thread && thread.channel && thread.ts){
-      await slackPost(token, { channel: thread.channel, thread_ts: thread.ts, text: text, unfurl_links:false });
+      await slackPost(token, Object.assign({ channel: thread.channel, thread_ts: thread.ts }, payloadBase));
       return;
     }
     // 폴백: 관리자 DM
@@ -28,7 +51,7 @@ async function notifyPurchase(info, thread){
       body: JSON.stringify({ users: adminId })
     }).then(r=>r.json());
     const ch = (open && open.ok && open.channel && open.channel.id) ? open.channel.id : adminId;
-    await slackPost(token, { channel: ch, text: text, unfurl_links:false });
+    await slackPost(token, Object.assign({ channel: ch }, payloadBase));
   } catch(_){}
 }
 
@@ -113,7 +136,7 @@ export default async function handler(req, res) {
     `;
 
     // 워크플로 스레드(또는 관리자 DM 폴백)로 즉시 알림. 실패해도 웹훅 응답엔 영향 없음.
-    await notifyPurchase({ service, user, amount, payment, cycle: cycle||'월결제' }, thread);
+    await notifyPurchase({ service, user, amount, payment, cycle: cycle||'월결제', start_date, description }, thread);
 
     return res.status(200).json({ ok: true, id: newId, service, user, payment });
   } catch(e) {
