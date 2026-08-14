@@ -1,5 +1,13 @@
 import { neon } from '@neondatabase/serverless';
 
+// 워크플로 스레드에 처리 결과 답글
+function slackReply(token, channel, ts, text){
+  return fetch('https://slack.com/api/chat.postMessage', {
+    method:'POST', headers:{ 'Authorization':'Bearer '+token, 'Content-Type':'application/json; charset=utf-8' },
+    body: JSON.stringify({ channel: channel, thread_ts: ts, text: text, unfurl_links:false })
+  }).then(function(r){return r.json();}).catch(function(){return null;});
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
@@ -12,6 +20,10 @@ export default async function handler(req, res) {
   try { await sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS hu text`; } catch (_) {}
   try { await sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS ha text`; } catch (_) {}
   try { await sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS mgr text`; } catch (_) {}
+  // 워크플로 스레드 정보(채널/ts) + 결과답글 발송여부
+  try { await sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS thch text`; } catch (_) {}
+  try { await sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS tts text`; } catch (_) {}
+  try { await sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS thdone text`; } catch (_) {}
 
   if (req.method === 'GET') {
     try {
@@ -39,6 +51,9 @@ export default async function handler(req, res) {
   if (req.method === 'PATCH') {
     try {
       const { id, s, d, u, status, a, m, c, sd, ed, note, source, pd, hu, ha, mgr } = req.body;
+      // 처리 결과 답글용: 업데이트 전 상태/스레드정보 조회
+      let prev = null;
+      try { const pr = await sql`SELECT status, thch, tts, thdone FROM subscriptions WHERE id=${id} LIMIT 1`; prev = pr[0] || null; } catch (_) {}
       const rows = await sql`
         UPDATE subscriptions SET
           s=${s||null}, d=${d||''}, u=${u||''}, status=${status||'구독중'},
@@ -48,6 +63,17 @@ export default async function handler(req, res) {
         WHERE id=${id}
         RETURNING *
       `;
+      // pending → 처리완료 전환이면 워크플로 스레드에 결과 답글(1회)
+      try {
+        const token = process.env.SLACK_BOT_TOKEN;
+        const LABEL = { '구독중':'✅ *신규 구독으로 등록했어요*', '거절':'🚫 *거절 처리했어요*', '업그레이드반영':'🔁 *기존 구독에 반영했어요*' };
+        if (token && prev && prev.status === 'pending' && LABEL[status] && prev.thch && prev.tts && !prev.thdone) {
+          const svc = (rows[0] && rows[0].s) || s || '';
+          const msg = LABEL[status] + (svc ? ' — *' + svc + '*' : '');
+          await slackReply(token, prev.thch, prev.tts, msg);
+          try { await sql`UPDATE subscriptions SET thdone='1' WHERE id=${id}`; } catch (_) {}
+        }
+      } catch (_) {}
       return res.status(200).json({ ok: true, data: rows[0] });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e.message });

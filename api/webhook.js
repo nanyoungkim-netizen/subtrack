@@ -121,14 +121,19 @@ export default async function handler(req, res) {
     const maxRow = await sql`SELECT COALESCE(MAX(id),0)+1 AS next_id FROM subscriptions`;
     const newId = maxRow[0].next_id;
 
-    // 삽입
+    // 스레드 정보 컬럼 보장(처리 결과 답글용)
+    try { await sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS thch text`; } catch(_){}
+    try { await sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS tts text`; } catch(_){}
+
+    // 삽입 (스레드 채널/ts 함께 저장 → 처리 시 그 스레드에 결과 답글)
     await sql`
-      INSERT INTO subscriptions (id,s,u,d,a,m,c,sd,status,source,note)
+      INSERT INTO subscriptions (id,s,u,d,a,m,c,sd,status,source,note,thch,tts)
       VALUES (
         ${newId}, ${service}, ${user||''}, ${description||''},
         ${amount||''}, ${payment||''}, ${cycle||'월결제'},
         ${start_date||new Date().toISOString().slice(0,10)},
-        'pending', 'zapier', ${note||''}
+        'pending', 'zapier', ${note||''},
+        ${thread.channel||null}, ${thread.ts||null}
       )
     `;
 
