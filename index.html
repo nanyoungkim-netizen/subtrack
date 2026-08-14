@@ -1244,7 +1244,8 @@ function getPrevNext(d){
   var start = new Date(d.sd);
   if(isNaN(start)) return null;
   if(d.c==='연결제'){
-    var prev = new Date(start);
+    var billingDayY = d.pd || start.getDate();
+    var prev = new Date(start.getFullYear(), start.getMonth(), billingDayY);
     while(prev <= TODAY) prev.setFullYear(prev.getFullYear()+1);
     prev.setFullYear(prev.getFullYear()-1);
     return prev.getFullYear()+'-'+_p(prev.getMonth()+1)+'-'+_p(prev.getDate());
@@ -1263,7 +1264,8 @@ function calcNext(d){
   if(isNaN(start)) return '';
   if(d.c==='1회성') return d.sd;
   if(d.c==='연결제'){
-    var next = new Date(start);
+    var billingDayY = d.pd || start.getDate();
+    var next = new Date(start.getFullYear(), start.getMonth(), billingDayY);
     while(next <= TODAY) next.setFullYear(next.getFullYear()+1);
     return next.getFullYear()+'-'+_p(next.getMonth()+1)+'-'+_p(next.getDate());
   } else {

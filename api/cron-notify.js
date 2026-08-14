@@ -12,10 +12,11 @@ const NOTIFY_WINDOW_DAYS = 15;   // 갱신 며칠 이내면 알림
 
 function pad(n){ return n<10 ? '0'+n : ''+n; }
 function ymd(d){ return d.getUTCFullYear()+'-'+pad(d.getUTCMonth()+1)+'-'+pad(d.getUTCDate()); }
-function nextRenewal(sd, today){
+function nextRenewal(sd, today, pd){
   const start = new Date(sd);
   if(isNaN(start)) return null;
-  const next = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()));
+  const day = (pd && parseInt(pd,10)) ? parseInt(pd,10) : start.getUTCDate();  // 결제일(pd) 우선
+  const next = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), day));
   while(next <= today) next.setUTCFullYear(next.getUTCFullYear()+1);
   return next;
 }
@@ -145,7 +146,7 @@ export default async function handler(req, res){
     let text, kind;
     const hs = hikeStrOf(one, kstToday);
     if(hs){ const hd = daysBetween(kstToday, new Date(hs)); text = buildHikeMsg(koName, one.s, hs, hd, one.ha, one.a); kind='인상만료'; }
-    else if(one.c==='연결제' && one.sd){ const rn = nextRenewal(one.sd, kstToday); const rd = daysBetween(kstToday, rn); text = buildMsg(koName, one.s, ymd(rn), rd, one.a, card); kind='갱신'; }
+    else if(one.c==='연결제' && one.sd){ const rn = nextRenewal(one.sd, kstToday, one.pd); const rd = daysBetween(kstToday, rn); text = buildMsg(koName, one.s, ymd(rn), rd, one.a, card); kind='갱신'; }
     else { text = buildGenericMsg(koName, one.s, one.a, card); kind='구독확인'; }
     if(preview) text = '🧪 *[미리보기]* 원래 받는 사람: *'+koName+'*\n\n' + text;
     const dest = (previewTo || testTo) ? (previewTo || testTo) : slackId;
@@ -164,7 +165,7 @@ export default async function handler(req, res){
 
   let subs = [];
   try {
-    subs = await sql`SELECT id,s,u,a,m,c,sd,status,mgr FROM subscriptions WHERE status='구독중' AND c='연결제'`;
+    subs = await sql`SELECT id,s,u,a,m,c,sd,status,mgr,pd FROM subscriptions WHERE status='구독중' AND c='연결제'`;
   } catch(e){ return res.status(500).json({ ok:false, error:e.message }); }
 
   const newLog = Object.assign({}, notifyLog);
@@ -172,7 +173,7 @@ export default async function handler(req, res){
 
   for(const d of subs){
     if(!d.sd) continue;
-    const renewal = nextRenewal(d.sd, kstToday);
+    const renewal = nextRenewal(d.sd, kstToday, d.pd);
     if(!renewal) continue;
     const days = daysBetween(kstToday, renewal);
     if(days < 0 || days > NOTIFY_WINDOW_DAYS) continue;
