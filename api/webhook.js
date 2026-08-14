@@ -13,9 +13,13 @@ async function notifyPurchase(info, thread){
   const token = process.env.SLACK_BOT_TOKEN;
   const adminId = process.env.ADMIN_SLACK_ID || 'U03JQ5FHP5Z';
   if(!token) return;
-  // 금액이 숫자면 "원" 붙이기
+  const header = { type:'section', text:{ type:'mrkdwn', text:
+    '🆕 *새 구독 결제 워크플로가 올라왔어요!*\n<@'+adminId+'> 확인해서 등록/반영 부탁드려요 🙏' } };
+  const button = { type:'actions', elements:[
+    { type:'button', text:{ type:'plain_text', text:'반영하기', emoji:true }, url: SITE_URL, style:'primary' }
+  ] };
+  // DM 폴백용 2열 그리드 필드(스레드 답글엔 원본이 위에 있어 생략)
   const won = (v)=> (v && /^[\d,]+$/.test(String(v).trim())) ? (String(v).trim()+'원') : (v||'');
-  // 2열 그리드 필드(값 있는 것만)
   const fields = [];
   const add = (label, val)=>{ if(val) fields.push({ type:'mrkdwn', text:'*'+label+'*\n'+val }); };
   add('서비스', info.service);
@@ -24,31 +28,23 @@ async function notifyPurchase(info, thread){
   add('결제방식', info.cycle);
   add('결제카드', info.payment);
   add('결제일', info.start_date);
+  const fieldsBlock = fields.length ? { type:'section', fields: fields.slice(0,10) } : null;
 
-  const blocks = [
-    { type:'section', text:{ type:'mrkdwn', text:
-      '🆕 *새 구독 결제 워크플로가 올라왔어요!*\n<@'+adminId+'> 확인해서 등록/반영 부탁드려요 🙏' } }
-  ];
-  if(fields.length) blocks.push({ type:'section', fields: fields.slice(0,10) });
-  blocks.push({ type:'actions', elements:[
-    { type:'button', text:{ type:'plain_text', text:'반영하기', emoji:true }, url: SITE_URL, style:'primary' }
-  ] });
-
-  // 알림 미리보기/폴백용 text
   const fallback = '새 구독 결제 워크플로'+(info.service ? ' · '+info.service : '');
-  const payloadBase = { text: fallback, blocks, unfurl_links:false };
   try {
+    // 스레드 답글: 원본 워크플로가 바로 위에 있으니 헤더 + 버튼만
     if(thread && thread.channel && thread.ts){
-      await slackPost(token, Object.assign({ channel: thread.channel, thread_ts: thread.ts }, payloadBase));
+      await slackPost(token, { channel: thread.channel, thread_ts: thread.ts, text: fallback, blocks: [header, button], unfurl_links:false });
       return;
     }
-    // 폴백: 관리자 DM
+    // 폴백: 관리자 DM (맥락이 없으니 필드 포함)
     const open = await fetch('https://slack.com/api/conversations.open', {
       method:'POST', headers:{ 'Authorization':'Bearer '+token, 'Content-Type':'application/json; charset=utf-8' },
       body: JSON.stringify({ users: adminId })
     }).then(r=>r.json());
     const ch = (open && open.ok && open.channel && open.channel.id) ? open.channel.id : adminId;
-    await slackPost(token, Object.assign({ channel: ch }, payloadBase));
+    const dmBlocks = fieldsBlock ? [header, fieldsBlock, button] : [header, button];
+    await slackPost(token, { channel: ch, text: fallback, blocks: dmBlocks, unfurl_links:false });
   } catch(_){}
 }
 
