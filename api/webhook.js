@@ -30,11 +30,8 @@ async function notifyPurchase(info, thread){
       '🆕 *새 구독 결제 워크플로가 올라왔어요!*\n<@'+adminId+'> 확인해서 등록/반영 부탁드려요 🙏' } }
   ];
   if(fields.length) blocks.push({ type:'section', fields: fields.slice(0,10) });
-  if(info.description && info.description !== info.service){
-    blocks.push({ type:'section', text:{ type:'mrkdwn', text:'*내용*\n'+info.description } });
-  }
   blocks.push({ type:'actions', elements:[
-    { type:'button', text:{ type:'plain_text', text:'구독관리에서 반영하기', emoji:true }, url: SITE_URL, style:'primary' }
+    { type:'button', text:{ type:'plain_text', text:'반영하기', emoji:true }, url: SITE_URL, style:'primary' }
   ] });
 
   // 알림 미리보기/폴백용 text
