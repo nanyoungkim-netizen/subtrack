@@ -709,7 +709,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
       <span class="nav-icon">≡</span> 전체 목록
     </button>
     <button class="nav-btn" id="nav-annual" onclick="showTab('annual',this)">
-      <span class="nav-icon">◷</span> 연결제 알림
+      <span class="nav-icon">🔔</span> 결제 알림
     </button>
     <button class="nav-btn" id="nav-zapier" onclick="showTab('zapier',this)">
       <span class="nav-icon" id="zapier-dot-nav">●</span> 자피어 연동
@@ -811,9 +811,23 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
 
 <!-- 연결제 알림 -->
 <div id="tab-annual" style="display:none">
-  <div class="pg-title">연결제 알림</div>
-  <div class="pg-sub">연간 결제 예정 서비스를 확인하세요</div>
+  <div class="pg-title">결제 알림</div>
+  <div class="pg-sub">담당자에게 나갈 예정인 알림과 지난 발송 내역을 확인하세요</div>
+
+  <div class="pg-title" style="font-size:16px;margin-top:8px;">📅 알림 예정 <span id="annual-count" style="font-size:13px;color:var(--text3);font-weight:500;margin-left:6px;"></span></div>
+  <div class="pg-sub" style="font-size:12px;">연결제 갱신(15일 전)·요금 인상 만료(3일 전)에 담당자에게 자동 발송돼요.</div>
   <div id="annual-content"></div>
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin:28px 0 12px;">
+    <div class="pg-title" style="font-size:16px;">📜 발송 내역 <span id="notify-history-count" style="font-size:13px;color:var(--text3);font-weight:500;margin-left:6px;"></span></div>
+    <button onclick="renderNotifyHistory()" style="background:none;border:1px solid var(--border);border-radius:var(--radius);padding:6px 12px;font-size:12px;cursor:pointer;color:var(--text2);">↻ 새로고침</button>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>보낸 시각</th><th>구분</th><th>담당자</th><th>서비스</th><th>대상일</th><th>카드</th></tr></thead>
+      <tbody id="notify-history-body"></tbody>
+    </table>
+  </div>
 </div>
 
 <!-- 자피어 연동 -->
@@ -899,17 +913,6 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
     <table>
       <thead><tr><th>서비스</th><th>결제수단</th><th>결제 담당자 (기본=카드사용자)</th><th>슬랙 태그</th></tr></thead>
       <tbody id="managers-body"></tbody>
-    </table>
-  </div>
-
-  <div style="display:flex;align-items:center;justify-content:space-between;margin:28px 0 12px;">
-    <div class="pg-title" style="font-size:16px;">📜 발송 이력 <span id="notify-history-count" style="font-size:13px;color:var(--text3);font-weight:500;margin-left:6px;"></span></div>
-    <button onclick="renderNotifyHistory()" style="background:none;border:1px solid var(--border);border-radius:var(--radius);padding:6px 12px;font-size:12px;cursor:pointer;color:var(--text2);">↻ 새로고침</button>
-  </div>
-  <div class="tbl-wrap">
-    <table>
-      <thead><tr><th>보낸 시각</th><th>구분</th><th>담당자</th><th>서비스</th><th>대상일</th><th>카드</th></tr></thead>
-      <tbody id="notify-history-body"></tbody>
     </table>
   </div>
 </div>
@@ -1224,7 +1227,11 @@ function showTab(t, btn) {
   if(btn) btn.classList.add('active');
   // 탭별 렌더링
   if(t==='list'){ document.getElementById('cat-chips').innerHTML=''; renderList(); }
-  if(t==='annual') renderAnnual();
+  if(t==='annual'){
+    Promise.all([loadCardManagers(), loadSlackIds()]).then(function(){ renderAnnual(); });
+    renderAnnual();
+    renderNotifyHistory();
+  }
   if(t==='zapier') loadZapierPending();
   if(t==='nickname') renderNicknameList();
   if(t==='cardusers'){
@@ -1235,7 +1242,6 @@ function showTab(t, btn) {
     renderManagers();   // 현재 상태로 즉시 표시
     // 서버에서 최신 카드사용자·슬랙ID 다시 불러와 재렌더(로드 타이밍 문제 방지)
     Promise.all([loadCardManagers(), loadSlackIds()]).then(function(){ renderManagers(); });
-    renderNotifyHistory();
   }
   if(t==='dash') renderDash();
 }
@@ -1667,33 +1673,48 @@ function hideTooltip(){
 }
 
 // ── 연결제 알림 ──────────────────────────────
+function _addDays(dateStr, n){
+  var d=new Date(dateStr); if(isNaN(d)) return dateStr;
+  d.setDate(d.getDate()+n);
+  return d.getFullYear()+'-'+_p(d.getMonth()+1)+'-'+_p(d.getDate());
+}
 function renderAnnual(){
-  var items = DATA.filter(function(d){
-    if(d.status!=='구독중'||d.c!=='연결제') return false;
-    var n = calcNext(d); if(!n) return false;
-    return daysUntil(n) >= 0;
-  }).sort(function(a,b){return calcNext(a).localeCompare(calcNext(b));});
   var el = document.getElementById('annual-content');
   if(!el) return;
-  if(items.length===0){
-    el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);">연결제 항목이 없어요</div>';
-    return;
-  }
-  el.innerHTML = items.map(function(d){
-    var next = calcNext(d);
-    var days = daysUntil(next);
-    var soon = days<=90;
-    var pillBg = days<=30?'var(--red-l)':days<=90?'var(--amber-l)':'var(--blue-l)';
-    var pillColor = days<=30?'var(--red)':days<=90?'var(--amber)':'var(--blue)';
-    return '<div class="ann-card '+(soon?'soon':'')+'" onclick="openModal('+d.id+')">' +
-      '<div>' +
-        '<div style="font-size:14px;font-weight:600;">' + d.s + '</div>' +
-        '<div style="font-size:12px;color:var(--text3);margin-top:3px;">'+(d.u||'')+' · '+(d.a||'')+'</div>' +
-      '</div>' +
-      '<div style="text-align:right;">' +
-        '<div class="ann-pill" style="background:'+pillBg+';color:'+pillColor+';">D-'+days+'</div>' +
-        '<div style="font-size:11px;color:var(--text3);margin-top:4px;font-family:var(--mono);">'+next+'</div>' +
-      '</div>' +
+  // 알림 예정 수집: 연결제 갱신(대상일-15) + 인상 만료(대상일-3)
+  var alerts=[];
+  DATA.forEach(function(d){
+    if(d.status!=='구독중') return;
+    var mgr=effectiveMgr(d);
+    if(d.c==='연결제'){
+      var renew=calcNext(d);
+      if(renew){ var ad=_addDays(renew,-15); alerts.push({id:d.id,kind:'연결제 갱신',s:d.s,mgr:mgr,target:renew,targetDays:daysUntil(renew),alertDays:daysUntil(ad),alertDate:ad}); }
+    }
+    var h=hikeInfo(d);
+    if(h){ var adh=_addDays(h.str,-3); alerts.push({id:d.id,kind:'인상 만료',s:d.s,mgr:mgr,target:h.str,targetDays:h.days,alertDays:daysUntil(adh),alertDate:adh}); }
+  });
+  alerts.sort(function(a,b){ return a.alertDays-b.alertDays; });
+  var cntEl=document.getElementById('annual-count');
+  if(cntEl) cntEl.textContent='총 '+alerts.length+'건';
+  if(!alerts.length){ el.innerHTML='<div style="text-align:center;padding:32px;color:var(--text3);">예정된 알림이 없어요</div>'; return; }
+  el.innerHTML=alerts.map(function(a){
+    var active = a.alertDays<=0;   // 알림 발송 창에 들어옴(진행 중)
+    var isHike = a.kind==='인상 만료';
+    var pillTxt = active ? (a.targetDays<0 ? '발송 중 (지남)' : '발송 중') : ('D-'+a.alertDays+' 후');
+    var pillBg = active ? 'var(--red-l)' : 'var(--blue-l)';
+    var pillColor = active ? 'var(--red,#e53e3e)' : 'var(--blue)';
+    var kindBg = isHike ? 'rgba(229,62,62,.12)' : 'var(--blue-l)';
+    var kindColor = isHike ? 'var(--red,#e53e3e)' : 'var(--blue)';
+    var who = a.mgr ? (koName(a.mgr)+(slackIdOf(a.mgr)?'':' <span style="color:var(--amber);font-size:10px;">(슬랙ID없음)</span>')) : '<span style="color:var(--text3);">담당자 미지정</span>';
+    return '<div class="ann-card" onclick="openModal('+a.id+')" style="cursor:pointer;">'+
+      '<div>'+
+        '<div style="font-size:14px;font-weight:600;">'+a.s+' <span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:8px;background:'+kindBg+';color:'+kindColor+';">'+a.kind+'</span></div>'+
+        '<div style="font-size:12px;color:var(--text3);margin-top:3px;">👤 '+who+' · '+(isHike?'만료':'갱신')+' '+a.target+' (D-'+(a.targetDays<0?('+'+(-a.targetDays)):a.targetDays)+')</div>'+
+      '</div>'+
+      '<div style="text-align:right;">'+
+        '<div class="ann-pill" style="background:'+pillBg+';color:'+pillColor+';">'+pillTxt+'</div>'+
+        '<div style="font-size:11px;color:var(--text3);margin-top:4px;font-family:var(--mono);">알림 '+a.alertDate+'</div>'+
+      '</div>'+
     '</div>';
   }).join('');
 }
