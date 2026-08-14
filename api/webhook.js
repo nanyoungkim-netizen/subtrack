@@ -1,5 +1,34 @@
 import { neon } from '@neondatabase/serverless';
 
+const SITE_URL = 'https://subtrack-sage.vercel.app';
+
+// 관리자(머시)에게 슬랙 개인 DM. SLACK_BOT_TOKEN 없으면 조용히 스킵.
+async function notifyAdmin(info){
+  const token = process.env.SLACK_BOT_TOKEN;
+  const adminId = process.env.ADMIN_SLACK_ID || 'U03JQ5FHP5Z';
+  if(!token) return;
+  const text =
+    '🔔 새 구독 결제 워크플로가 올라왔어요! 확인해서 반영 부탁드려요.\n\n' +
+    '• 서비스: *'+(info.service||'-')+'*\n' +
+    '• 사용자: '+(info.user||'-')+'\n' +
+    '• 금액: '+(info.amount||'-')+'\n' +
+    '• 결제수단: '+(info.payment||'-')+'\n' +
+    '• 결제방식: '+(info.cycle||'월결제')+'\n\n' +
+    '👉 <'+SITE_URL+'|구독관리에서 승인/반영하기>\n' +
+    '(승인 탭에서 확인 후 등록해주세요 🙏)';
+  try {
+    const open = await fetch('https://slack.com/api/conversations.open', {
+      method:'POST', headers:{ 'Authorization':'Bearer '+token, 'Content-Type':'application/json; charset=utf-8' },
+      body: JSON.stringify({ users: adminId })
+    }).then(r=>r.json());
+    const channel = (open && open.ok && open.channel && open.channel.id) ? open.channel.id : adminId;
+    await fetch('https://slack.com/api/chat.postMessage', {
+      method:'POST', headers:{ 'Authorization':'Bearer '+token, 'Content-Type':'application/json; charset=utf-8' },
+      body: JSON.stringify({ channel, text, unfurl_links:false })
+    });
+  } catch(_){}
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   try {
@@ -66,6 +95,9 @@ export default async function handler(req, res) {
         'pending', 'zapier', ${note||''}
       )
     `;
+
+    // 관리자에게 즉시 알림(사이트 링크 포함). 실패해도 웹훅 응답엔 영향 없음.
+    await notifyAdmin({ service, user, amount, payment, cycle: cycle||'월결제' });
 
     return res.status(200).json({ ok: true, id: newId, service, user, payment });
   } catch(e) {
