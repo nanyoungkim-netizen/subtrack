@@ -451,7 +451,17 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
 .overlay.open{display:flex;}
 .modal{
   background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);
-  padding:24px;width:500px;box-shadow:var(--shadow-lg);margin:auto;
+  padding:24px;width:500px;box-shadow:var(--shadow-lg);margin:auto;max-width:calc(100vw - 32px);
+}
+.modal.wide{width:880px;}
+.modal-cols{display:flex;gap:22px;align-items:flex-start;}
+.modal-ref-pane{display:none;flex:0 0 300px;position:sticky;top:0;}
+.modal.has-ref .modal-ref-pane{display:block;}
+.modal-form{flex:1 1 auto;min-width:0;}
+@media(max-width:760px){
+  .modal.wide{width:500px;}
+  .modal-cols{flex-direction:column;}
+  .modal-ref-pane{flex-basis:auto;width:100%;position:static;}
 }
 .modal-title{font-size:15px;font-weight:700;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;}
 .close-x{background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;padding:2px 5px;border-radius:5px;line-height:1;}
@@ -921,12 +931,16 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
 
 <!-- ── 수정/추가 모달 ─────────────────────────── -->
 <div class="overlay" id="modal-overlay">
-  <div class="modal">
+  <div class="modal" id="edit-modal">
     <div class="modal-title">
       <span id="modal-title-txt">구독 추가</span>
       <button class="close-x" onclick="closeModal()">×</button>
     </div>
-    <div id="modal-ref-banner" style="display:none;background:var(--blue-l);border:1px solid var(--blue);border-radius:var(--radius);padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--text);"></div>
+    <div class="modal-cols">
+    <div class="modal-ref-pane" id="modal-ref-pane">
+      <div id="modal-ref-banner" style="display:none;background:var(--blue-l);border:1px solid var(--blue);border-radius:var(--radius);padding:12px 14px;font-size:13px;color:var(--text);"></div>
+    </div>
+    <div class="modal-form">
     <div class="field"><label>서비스명</label><input id="f-svc" placeholder="예: ChatGPT"/></div>
     <div class="field"><label>내용 설명</label><textarea id="f-desc" placeholder="서비스 설명"></textarea></div>
     <div class="row2">
@@ -986,6 +1000,8 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
       <button class="btn-cancel" onclick="closeModal()">취소</button>
       <button class="btn-ok" id="save-btn" onclick="saveModal()">저장</button>
     </div>
+    </div><!-- /modal-form -->
+    </div><!-- /modal-cols -->
   </div>
 </div>
 
@@ -1854,6 +1870,7 @@ function openModal(id){
   editId = id;
   window._zpUpgradeFrom = null;   // 새 모달 열 때 업그레이드 상태 초기화
   var _rb=document.getElementById('modal-ref-banner'); if(_rb){ _rb.style.display='none'; _rb.innerHTML=''; }
+  var _em=document.getElementById('edit-modal'); if(_em){ _em.classList.remove('wide','has-ref'); }
   var d = id ? DATA.find(function(x){return x.id===id;}) : null;
   document.getElementById('modal-title-txt').textContent = id ? d.s+' 수정' : '구독 추가';
   document.getElementById('f-svc').value = d?d.s:'';
@@ -2576,6 +2593,7 @@ function zpApplyUpgrade(targetId){
         (it.d?('<br>• 내용: '+esc(it.d)):'')+
       '</div>';
     rb.style.display='block';
+    var em=document.getElementById('edit-modal'); if(em){ em.classList.add('wide','has-ref'); }
   }
   window._zpUpgradeFrom=it.id;   // 저장 시 이 pending(워크플로) 삭제
   _zpUpgradeItem=null;
