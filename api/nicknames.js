@@ -2,6 +2,18 @@ import { neon } from '@neondatabase/serverless';
 
 // 닉네임 매핑표(KO_MAP)를 Neon DB에 영속 저장한다.
 // app_settings(key,val) 키-값 테이블에 key='ko_map' 한 행으로 전체 맵을 JSON 문자열로 보관.
+// 테이블 보장은 인스턴스당 1회만 (매 요청 CREATE TABLE 왕복 제거)
+let tableReady = false;
+async function ensureTable(sql) {
+  if (tableReady) return;
+  await sql`CREATE TABLE IF NOT EXISTS app_settings (
+    key text PRIMARY KEY,
+    val text,
+    updated_at timestamptz DEFAULT now()
+  )`;
+  tableReady = true;
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -11,11 +23,7 @@ export default async function handler(req, res) {
   const sql = neon(process.env.DATABASE_URL);
 
   try {
-    await sql`CREATE TABLE IF NOT EXISTS app_settings (
-      key text PRIMARY KEY,
-      val text,
-      updated_at timestamptz DEFAULT now()
-    )`;
+    await ensureTable(sql);
 
     if (req.method === 'GET') {
       const rows = await sql`SELECT val FROM app_settings WHERE key = 'ko_map' LIMIT 1`;

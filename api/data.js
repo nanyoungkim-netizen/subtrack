@@ -8,15 +8,12 @@ function slackReply(token, channel, ts, text){
   }).then(function(r){return r.json();}).catch(function(){return null;});
 }
 
-export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-
-  const sql = neon(process.env.DATABASE_URL);
-
-  // 인상 승인 종료일(hu)·인상 금액(ha)·툴별 담당자(mgr) 컬럼 보장 (최초 1회 생성)
+// 컬럼 보장(DDL)은 서버 인스턴스당 1회만. 예전엔 매 요청마다 ALTER 6번을
+// 순차 실행해 GET 한 번에 DB를 7번 왕복(2~3초)했다.
+let schemaReady = false;
+async function ensureSchema(sql) {
+  if (schemaReady) return;
+  // 인상 승인 종료일(hu)·인상 금액(ha)·툴별 담당자(mgr) 컬럼 보장
   try { await sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS hu text`; } catch (_) {}
   try { await sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS ha text`; } catch (_) {}
   try { await sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS mgr text`; } catch (_) {}
@@ -24,6 +21,17 @@ export default async function handler(req, res) {
   try { await sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS thch text`; } catch (_) {}
   try { await sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS tts text`; } catch (_) {}
   try { await sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS thdone text`; } catch (_) {}
+  schemaReady = true;
+}
+
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
+  const sql = neon(process.env.DATABASE_URL);
+  await ensureSchema(sql);
 
   if (req.method === 'GET') {
     try {

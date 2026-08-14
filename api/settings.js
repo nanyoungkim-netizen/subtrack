@@ -2,6 +2,18 @@ import { neon } from '@neondatabase/serverless';
 
 // 범용 키-값 설정 저장 (app_settings 테이블 재사용).
 // 예) key='card_managers' → 카드별 결제 담당자 매핑 JSON
+// 테이블 보장은 인스턴스당 1회만 (매 요청 CREATE TABLE 왕복 제거)
+let tableReady = false;
+async function ensureTable(sql) {
+  if (tableReady) return;
+  await sql`CREATE TABLE IF NOT EXISTS app_settings (
+    key text PRIMARY KEY,
+    val text,
+    updated_at timestamptz DEFAULT now()
+  )`;
+  tableReady = true;
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -11,11 +23,7 @@ export default async function handler(req, res) {
   const sql = neon(process.env.DATABASE_URL);
 
   try {
-    await sql`CREATE TABLE IF NOT EXISTS app_settings (
-      key text PRIMARY KEY,
-      val text,
-      updated_at timestamptz DEFAULT now()
-    )`;
+    await ensureTable(sql);
 
     if (req.method === 'GET') {
       const key = req.query.key;
