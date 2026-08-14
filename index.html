@@ -1317,7 +1317,7 @@ function hikeBadge(d){
 // ── 통계 ─────────────────────────────────────
 function calcStats(){
   var active = DATA.filter(function(d){return d.status==='구독중';}).length;
-  var total = DATA.length;
+  var total = DATA.filter(function(d){return d.status==='구독중'||d.status==='구독종료';}).length;
   var soon = DATA.filter(function(d){
     if(d.status!=='구독중') return false;
     var n = calcNext(d); if(!n) return false;
@@ -1542,7 +1542,7 @@ function renderList(){
   var cSel = getMsSel('ms-card');
   var chips = [...document.querySelectorAll('#cat-chips .chip.sel')].map(function(c){return c.dataset.val;});
 
-  var rows = DATA.filter(function(d){ return d.status !== 'pending'; });
+  var rows = DATA.filter(function(d){ return d.status==='구독중' || d.status==='구독종료'; });
   if(q) rows = rows.filter(function(d){
     var uMatch=(d.u||'').split(',').some(function(u){return nickMatch(u,q);});
     return (d.s||'').toLowerCase().includes(q)||uMatch||(d.m||'').toLowerCase().includes(q)||(d.d||'').toLowerCase().includes(q);
@@ -1978,15 +1978,19 @@ function saveModal(){
       finalizeApprove();
     }
   }
-  // 업그레이드 반영: 기존 구독에 저장했으니 원래 워크플로(pending) 건은 삭제
+  // 업그레이드 반영: 기존 구독에 저장했으니 원래 워크플로(pending) 건은 '업그레이드반영'으로 이력에 남김
   if(window._zpUpgradeFrom){
     var upId = window._zpUpgradeFrom;
     window._zpUpgradeFrom = null;
-    fetch('/api/data?id='+upId, {method:'DELETE'}).then(function(){
+    fetch('/api/data?id='+upId).then(function(r){return r.json();}).then(function(j){
+      var pit=j.data; if(!pit) return null;
+      return fetch('/api/data',{method:'PATCH',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(Object.assign({},pit,{status:'업그레이드반영'}))});
+    }).then(function(){
       DATA = DATA.filter(function(x){return x.id!==upId;});
       setTimeout(function(){ loadZapierPending(); }, 300);
     });
-    showZpToast('✅ 기존 구독에 반영하고, 워크플로 건은 정리했어요.');
+    showZpToast('✅ 기존 구독에 반영했어요. 워크플로 건은 "업그레이드 반영"으로 이력에 남겼어요.');
     showTab('zapier', document.getElementById('nav-zapier'));
   }
 }
@@ -2448,8 +2452,9 @@ async function loadZpDone() {
   }
   if(empty)empty.style.display='none';
   list.innerHTML = items.map(item=>{
-    const badgeClass = item.status==='구독중'?'ok':'rej';
-    const badgeTxt = item.status==='구독중'?'승인됨':item.status;
+    const st = item.status;
+    const badgeTxt = st==='구독중'?'승인됨' : st==='구독종료'?'종료' : st==='거절'?'거절됨' : st==='업그레이드반영'?'업그레이드 반영' : st;
+    const badgeClass = st==='거절'?'rej':'ok';
     const date = item.sd?item.sd.slice(0,10):'-';
     return `<div class="zp-done-card">
       <div style="flex:1">
@@ -2484,14 +2489,18 @@ function zpOpenEdit(id) {
 }
 
 async function zpReject(id) {
-  if(!confirm('이 항목을 삭제할까요?')) return;
-  const res = await fetch('/api/data?id='+id, {method:'DELETE'});
+  if(!confirm('이 항목을 거절할까요? ("처리됨" 탭에 거절됨으로 남아요)')) return;
+  var item;
+  try { const r=await fetch('/api/data?id='+id); item=(await r.json()).data; } catch(e){}
+  if(!item){ showZpToast('⚠️ 항목을 찾을 수 없어요'); return; }
+  const res = await fetch('/api/data', {method:'PATCH', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(Object.assign({}, item, {status:'거절'}))});
   const json = await res.json();
   if(json.ok){
     const el=document.getElementById('zp-item-'+id);
     if(el){el.style.opacity='0';el.style.transition='.3s';setTimeout(()=>el.remove(),300);}
     _zpPrevCount=Math.max(0,_zpPrevCount-1);
-    showZpToast('🗑️ 삭제됐어요.');
+    showZpToast('❌ 거절됨 — 처리됨 탭에 남겼어요.');
     setTimeout(loadZapierPending,400);
   }
 }
@@ -2603,9 +2612,9 @@ async function exportExcel() {
     try {
       const res = await fetch('/api/data');
       const json = await res.json();
-      data = (json.data||[]).filter(function(d){return d.status!=='pending';});
+      data = (json.data||[]).filter(function(d){return d.status==='구독중'||d.status==='구독종료';});
     } catch(_) {
-      data = DATA.filter(function(d){return d.status!=='pending';});
+      data = DATA.filter(function(d){return d.status==='구독중'||d.status==='구독종료';});
     }
     if(!data.length){ alert('데이터가 없어요.'); return; }
 
