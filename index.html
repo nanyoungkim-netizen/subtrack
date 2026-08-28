@@ -3282,5 +3282,35 @@ function applyRvSearch() {
 }
 
 </script>
+<script>
+/* 포털에서 모바일로 열렸을 때 상단 '포털로' 바 (정적 앱이라 직접 주입) */
+(function () {
+  try {
+    if (/[#&]sso=/.test(location.hash)) {
+      sessionStorage.setItem('plabPortal', '1');
+      history.replaceState(null, '', location.pathname + location.search);
+    }
+    if (
+      sessionStorage.getItem('plabPortal') === '1' &&
+      window.matchMedia('(pointer: coarse)').matches
+    ) {
+      document.body.style.paddingTop = '46px';
+      var bar = document.createElement('div');
+      bar.style.cssText =
+        'position:fixed;top:0;left:0;right:0;height:46px;z-index:100000;background:#fff;border-bottom:1px solid #eef0f2;box-shadow:0 1px 3px rgba(0,0,0,.04);display:flex;align-items:center;padding:0 12px';
+      var btn = document.createElement('button');
+      btn.textContent = '‹ 포털로';
+      btn.style.cssText =
+        'background:#191f28;color:#fff;font-size:13px;font-weight:700;padding:8px 14px;border-radius:999px;border:none;font-family:inherit;cursor:pointer';
+      btn.onclick = function () {
+        if (history.length > 1) history.back();
+        else location.href = 'https://plab-account.vercel.app';
+      };
+      bar.appendChild(btn);
+      document.body.appendChild(bar);
+    }
+  } catch (e) {}
+})();
+</script>
 </body>
 </html>
