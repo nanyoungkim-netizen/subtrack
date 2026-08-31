@@ -727,11 +727,8 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
     <button class="nav-btn" id="nav-nickname" onclick="showTab('nickname',this)">
       <span class="nav-icon">👤</span> 닉네임 관리
     </button>
-    <button class="nav-btn" id="nav-cardusers" onclick="showTab('cardusers',this)">
-      <span class="nav-icon">💳</span> 카드 사용자
-    </button>
     <button class="nav-btn" id="nav-cards" onclick="showTab('cards',this)">
-      <span class="nav-icon">🔐</span> 법인카드
+      <span class="nav-icon">💳</span> 법인카드
     </button>
     <button class="nav-btn" id="nav-managers" onclick="showTab('managers',this)">
       <span class="nav-icon">🧑‍💼</span> 결제 담당자
@@ -901,20 +898,6 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
   </div>
 </div>
 
-<div id="tab-cardusers" style="display:none;">
-  <div style="margin-bottom:16px;">
-    <div class="pg-title">카드 사용자 <span id="cardusers-count" style="font-size:14px;color:var(--blue);font-weight:600;margin-left:6px;"></span></div>
-    <div class="pg-sub" style="margin-bottom:0;">법인카드별 사용자(소유자)를 확인·지정해요. 결제 담당자의 기본값으로 쓰여요.</div>
-  </div>
-  <input id="cardusers-search" oninput="renderCardUsers()" placeholder="🔍 카드번호 · 사용자(닉네임) 검색" style="width:100%;max-width:360px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface2);color:var(--text);margin-bottom:14px;">
-  <div class="tbl-wrap">
-    <table>
-      <thead><tr><th>카드번호</th><th>사용자</th><th>사용 중인 서비스</th></tr></thead>
-      <tbody id="cardusers-body"></tbody>
-    </table>
-  </div>
-</div>
-
 <div id="tab-cards" style="display:none;">
   <div style="margin-bottom:16px;">
     <div class="pg-title">법인카드 <span id="cards-count" style="font-size:14px;color:var(--blue);font-weight:600;margin-left:6px;"></span></div>
@@ -924,13 +907,25 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
     세션이 만료됐어요. 다시 로그인해야 카드 정보를 볼 수 있어요.
     <button onclick="reloginForCards()" style="margin-left:8px;background:#e24b4a;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;">다시 로그인</button>
   </div>
-  <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;">
-    <input id="cards-search" oninput="renderCards()" placeholder="🔍 사용자 · 끝4자리 · 상태 검색" style="flex:1;min-width:220px;max-width:360px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface2);color:var(--text);">
+  <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
+    <input id="cards-search" oninput="renderCards()" placeholder="🔍 소유자 · 끝4자리 · 서비스 · 담당자 검색" style="flex:1;min-width:220px;max-width:340px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface2);color:var(--text);">
     <button onclick="openCardModal(null)" style="background:var(--blue);color:#fff;border:none;border-radius:var(--radius);padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">+ 카드 추가</button>
+  </div>
+  <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center;font-size:12px;color:var(--text2);">
+    <select id="cards-f-status" onchange="renderCards()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;background:var(--surface2);color:var(--text);">
+      <option value="">상태: 전체</option><option value="사용중">사용중</option><option value="사용전">사용전</option><option value="해지">해지</option>
+    </select>
+    <select id="cards-f-sub" onchange="renderCards()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;background:var(--surface2);color:var(--text);">
+      <option value="">구독: 전체</option><option value="has">구독 걸린 카드</option><option value="none">여분(구독 無)</option>
+    </select>
+    <label style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;"><input type="checkbox" id="cards-f-paybook" onchange="renderCards()"> 페이북</label>
+    <label style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;"><input type="checkbox" id="cards-f-confirmed" onchange="renderCards()"> 확인완료</label>
+    <label style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;"><input type="checkbox" id="cards-f-expiry" onchange="renderCards()"> 유효기간 임박(6개월내)</label>
+    <button onclick="resetCardFilters()" style="background:none;border:1px solid var(--border);border-radius:var(--radius);padding:5px 10px;font-size:12px;cursor:pointer;color:var(--text2);">필터 초기화</button>
   </div>
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th>사용자</th><th>카드번호</th><th>유효기간</th><th>CVC</th><th>상태</th><th>페이북</th><th>확인</th><th></th></tr></thead>
+      <thead><tr><th>소유자</th><th>카드번호</th><th>유효기간</th><th>CVC</th><th>상태</th><th>사용중 서비스</th><th>결제 담당자</th><th>페이북</th><th>확인</th><th></th></tr></thead>
       <tbody id="cards-body"></tbody>
     </table>
   </div>
@@ -1343,11 +1338,10 @@ function showTab(t, btn) {
   }
   if(t==='zapier') loadZapierPending();
   if(t==='nickname') renderNicknameList();
-  if(t==='cardusers'){
-    renderCardUsers();
-    Promise.all([loadCardManagers(), loadSlackIds()]).then(function(){ renderCardUsers(); });
+  if(t==='cards'){
+    buildNickDatalist();
+    Promise.all([loadCardManagers(), loadSlackIds()]).then(function(){ loadCards(); });
   }
-  if(t==='cards') loadCards();
   if(t==='managers'){
     renderManagers();   // 현재 상태로 즉시 표시
     // 서버에서 최신 카드사용자·슬랙ID 다시 불러와 재렌더(로드 타이밍 문제 방지)
@@ -2979,15 +2973,15 @@ function renderCardUsers(){
 }
 async function setCardManager(card, eng){
   if(eng) CARD_MANAGERS[card]=eng; else delete CARD_MANAGERS[card];
-  renderCardUsers();
+  if(typeof renderCards==='function') renderCards();
   renderManagers();
   var ok=await saveCardManagers();
-  showZpToast(ok?('✅ '+card+' 사용자 저장됐어요'):('⚠️ 저장 실패 — 다시 시도해주세요'));
+  showZpToast(ok?('✅ '+card+' 담당자 저장됐어요'):('⚠️ 저장 실패 — 다시 시도해주세요'));
 }
 
 // ── 법인카드(암호화 저장, 서버 인증 필요) ──────────────
 var CARDS = [];
-var _revealed = {};
+var _revN = {}, _revC = {};
 var cardEditId = null;
 var CARD_TOKEN = (function(){ try{ return sessionStorage.getItem('sub_token') || ''; }catch(e){ return ''; } })();
 // 카드 API 요청: 쿠키(credentials) + 토큰(Authorization) 둘 다 실어보냄(iframe 제3자쿠키 차단 대비)
@@ -3015,29 +3009,70 @@ async function loadCards(){
     document.getElementById('cards-auth-warn').style.display='none';
     var j = await r.json();
     CARDS = (j && j.cards) || [];
-    _revealed = {};
+    _revN = {}; _revC = {};
     renderCards();
   } catch(e){ console.warn('카드 로드 실패', e); }
+}
+function cardExpInfo(exp){
+  var m=(''+(exp||'')).match(/(\d{2})\D+(\d{1,2})/);
+  if(!m) return null;
+  return { y:2000+parseInt(m[1],10), mo:parseInt(m[2],10) };
+}
+function cardExpirySoon(exp){
+  var i=cardExpInfo(exp); if(!i) return false;
+  var now=new Date();
+  var months=(i.y-now.getFullYear())*12 + (i.mo-(now.getMonth()+1));
+  return months <= 6;   // 6개월 이내(이미 지난 것 포함)
+}
+function cardServices(last4){
+  if(!last4) return [];
+  return DATA.filter(function(d){ return d.status==='구독중' && isCardNo(d.m) && (''+d.m).trim().slice(-4)===(''+last4); }).map(function(d){ return d.s; });
+}
+function resetCardFilters(){
+  ['cards-f-status','cards-f-sub'].forEach(function(i){ var e=document.getElementById(i); if(e) e.value=''; });
+  ['cards-f-paybook','cards-f-confirmed','cards-f-expiry'].forEach(function(i){ var e=document.getElementById(i); if(e) e.checked=false; });
+  var s=document.getElementById('cards-search'); if(s) s.value='';
+  renderCards();
 }
 function renderCards(){
   var tb = document.getElementById('cards-body');
   if(!tb) return;
   var q = ((document.getElementById('cards-search')||{}).value||'').trim().toLowerCase();
+  var fSt = (document.getElementById('cards-f-status')||{}).value||'';
+  var fSub = (document.getElementById('cards-f-sub')||{}).value||'';
+  var fPay = !!(document.getElementById('cards-f-paybook')||{}).checked;
+  var fConf = !!(document.getElementById('cards-f-confirmed')||{}).checked;
+  var fExp = !!(document.getElementById('cards-f-expiry')||{}).checked;
   var rows = CARDS.filter(function(c){
-    if(!q) return true;
-    return ((c.user_name||'')+' '+(c.last4||'')+' '+(c.status||'')).toLowerCase().indexOf(q) >= 0;
+    var svcs = cardServices(c.last4);
+    if(fSt && c.status!==fSt) return false;
+    if(fSub==='has' && svcs.length===0) return false;
+    if(fSub==='none' && svcs.length>0) return false;
+    if(fPay && !c.paybook) return false;
+    if(fConf && !c.confirmed) return false;
+    if(fExp && !cardExpirySoon(c.expiry)) return false;
+    if(q){
+      var hay = ((c.user_name||'')+' '+(c.last4||'')+' '+(c.status||'')+' '+svcs.join(' ')+' '+(cardOwnerOf(c.last4)||'')+' '+(KO_MAP[cardOwnerOf(c.last4)]||'')).toLowerCase();
+      if(hay.indexOf(q)<0) return false;
+    }
+    return true;
   });
   var cnt = document.getElementById('cards-count');
-  if(cnt) cnt.textContent = '총 '+CARDS.length+'개';
+  if(cnt) cnt.textContent = '총 '+CARDS.length+'개'+(rows.length!==CARDS.length?(' · 표시 '+rows.length):'');
+  var revBtn = ' style="background:none;border:1px solid var(--border);border-radius:6px;padding:1px 6px;cursor:pointer;font-size:12px;"';
   tb.innerHTML = rows.map(function(c){
+    var svcs = cardServices(c.last4);
+    var svcTxt = svcs.length ? cesc(svcs.slice(0,3).join(', '))+(svcs.length>3?(' <span style="color:var(--text3)">외 '+(svcs.length-3)+'</span>'):'') : '<span style="color:var(--text3)">-</span>';
+    var cur = cardOwnerOf(c.last4);
+    var soon = cardExpirySoon(c.expiry);
     return '<tr>'+
       '<td>'+cesc(c.user_name||'-')+'</td>'+
-      '<td style="white-space:nowrap;"><span id="cn-'+c.id+'" style="font-family:var(--mono);">'+cesc(c.number)+'</span>'+
-        ' <button onclick="revealCard('+c.id+')" title="보기/가리기" style="background:none;border:1px solid var(--border);border-radius:6px;padding:1px 6px;cursor:pointer;font-size:12px;">🔓</button>'+
-        (c.has_prev?' <span style="font-size:11px;color:var(--text3);">갱신전有</span>':'')+'</td>'+
-      '<td>'+cesc(c.expiry||'-')+'</td>'+
-      '<td id="cv-'+c.id+'">'+cesc(c.cvc||'-')+'</td>'+
+      '<td style="white-space:nowrap;"><span id="cn-'+c.id+'" style="font-family:var(--mono);">'+cesc(c.number)+'</span> <button onclick="revealCard('+c.id+')" title="보기/가리기"'+revBtn+'>🔓</button>'+(c.has_prev?' <span style="font-size:11px;color:var(--text3);">갱신전有</span>':'')+'</td>'+
+      '<td style="white-space:nowrap;'+(soon?'color:#a50e0e;font-weight:600;':'')+'">'+cesc(c.expiry||'-')+(soon?' ⚠️':'')+'</td>'+
+      '<td style="white-space:nowrap;"><span id="cv-'+c.id+'">'+cesc(c.cvc||'-')+'</span>'+(c.cvc?' <button onclick="revealCvc('+c.id+')" title="CVC 보기/가리기"'+revBtn+'>🔓</button>':'')+'</td>'+
       '<td>'+cardStatusBadge(c.status)+'</td>'+
+      '<td style="font-size:12px;max-width:230px;">'+svcTxt+'</td>'+
+      '<td><input list="nick-datalist" data-card="'+cesc(c.last4)+'" value="'+nickInputValue(cur).replace(/"/g,'&quot;')+'" placeholder="지정" onchange="setCardManagerInput(this, this.dataset.card)" style="width:130px;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;background:var(--surface2);color:var(--text);"></td>'+
       '<td style="text-align:center;">'+(c.paybook?'✅':'')+'</td>'+
       '<td style="text-align:center;">'+(c.confirmed?'💙':'')+'</td>'+
       '<td><button onclick="openCardModal('+c.id+')" title="수정" style="background:none;border:none;cursor:pointer;font-size:14px;">✏️</button></td>'+
@@ -3045,26 +3080,27 @@ function renderCards(){
   }).join('');
 }
 async function revealCard(id){
-  var el = document.getElementById('cn-'+id);
-  var cv = document.getElementById('cv-'+id);
-  var c = CARDS.find(function(x){return x.id===id;});
-  if(_revealed[id]){   // 다시 가리기
-    _revealed[id]=false;
-    if(el&&c) el.textContent=c.number;
-    if(cv&&c) cv.textContent=c.cvc||'-';
-    return;
-  }
+  var el=document.getElementById('cn-'+id); var c=CARDS.find(function(x){return x.id===id;});
+  if(_revN[id]){ _revN[id]=false; if(el&&c) el.textContent=c.number; return; }
   try {
-    var r = await cardFetch('/api/cards?id='+id+'&reveal=1');
+    var r=await cardFetch('/api/cards?id='+id+'&reveal=1');
     if(r.status===401){ document.getElementById('cards-auth-warn').style.display='block'; return; }
-    var j = await r.json(); var d=j.card;
-    if(el) el.textContent = d.number || '';
-    if(cv) cv.textContent = d.cvc || '-';
-    _revealed[id]=true;
-    setTimeout(function(){
-      if(_revealed[id]){ _revealed[id]=false; var cc=CARDS.find(function(x){return x.id===id;});
-        if(el&&cc) el.textContent=cc.number; if(cv&&cc) cv.textContent=cc.cvc||'-'; }
-    }, 15000);
+    var j=await r.json();
+    if(el) el.textContent=(j.card&&j.card.number)||'';
+    _revN[id]=true;
+    setTimeout(function(){ if(_revN[id]){ _revN[id]=false; var cc=CARDS.find(function(x){return x.id===id;}); if(el&&cc) el.textContent=cc.number; } }, 15000);
+  } catch(e){}
+}
+async function revealCvc(id){
+  var el=document.getElementById('cv-'+id); var c=CARDS.find(function(x){return x.id===id;});
+  if(_revC[id]){ _revC[id]=false; if(el&&c) el.textContent=c.cvc||'-'; return; }
+  try {
+    var r=await cardFetch('/api/cards?id='+id+'&reveal=1');
+    if(r.status===401){ document.getElementById('cards-auth-warn').style.display='block'; return; }
+    var j=await r.json();
+    if(el) el.textContent=(j.card&&j.card.cvc)||'-';
+    _revC[id]=true;
+    setTimeout(function(){ if(_revC[id]){ _revC[id]=false; var cc=CARDS.find(function(x){return x.id===id;}); if(el&&cc) el.textContent=cc.cvc||'-'; } }, 15000);
   } catch(e){}
 }
 function reloginForCards(){
