@@ -925,7 +925,18 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
   </div>
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th>소유자</th><th>카드번호</th><th>유효기간</th><th>CVC</th><th>상태</th><th>사용중 서비스</th><th>결제 담당자</th><th>페이북</th><th>확인</th><th></th></tr></thead>
+      <thead><tr>
+        <th onclick="sortCards('user_name')" style="cursor:pointer;">소유자 <span class="csort" data-k="user_name"></span></th>
+        <th onclick="sortCards('last4')" style="cursor:pointer;">카드번호 <span class="csort" data-k="last4"></span></th>
+        <th onclick="sortCards('expiry')" style="cursor:pointer;">유효기간 <span class="csort" data-k="expiry"></span></th>
+        <th>CVC</th>
+        <th onclick="sortCards('status')" style="cursor:pointer;">상태 <span class="csort" data-k="status"></span></th>
+        <th onclick="sortCards('services')" style="cursor:pointer;">사용중 서비스 <span class="csort" data-k="services"></span></th>
+        <th onclick="sortCards('manager')" style="cursor:pointer;">결제 담당자 <span class="csort" data-k="manager"></span></th>
+        <th onclick="sortCards('paybook')" style="cursor:pointer;">페이북 <span class="csort" data-k="paybook"></span></th>
+        <th onclick="sortCards('confirmed')" style="cursor:pointer;">확인 <span class="csort" data-k="confirmed"></span></th>
+        <th></th>
+      </tr></thead>
       <tbody id="cards-body"></tbody>
     </table>
   </div>
@@ -3034,6 +3045,24 @@ function resetCardFilters(){
   var s=document.getElementById('cards-search'); if(s) s.value='';
   renderCards();
 }
+var cardSort = { key:null, asc:true };
+function sortCards(key){
+  if(cardSort.key===key){ cardSort.asc=!cardSort.asc; } else { cardSort.key=key; cardSort.asc=true; }
+  renderCards();
+}
+function cardSortVal(c, key){
+  switch(key){
+    case 'user_name': return (c.user_name||'').toLowerCase();
+    case 'last4': return c.last4||'';
+    case 'expiry': { var i=cardExpInfo(c.expiry); return i ? (i.y*100+i.mo) : -1; }
+    case 'status': { var o={'사용중':0,'사용전':1,'해지':2}; return (o[c.status]!=null)?o[c.status]:9; }
+    case 'services': return cardServices(c.last4).length;
+    case 'manager': { var n=cardOwnerOf(c.last4); return ((KO_MAP[n]||n)||'').toLowerCase(); }
+    case 'paybook': return c.paybook?1:0;
+    case 'confirmed': return c.confirmed?1:0;
+    default: return '';
+  }
+}
 function renderCards(){
   var tb = document.getElementById('cards-body');
   if(!tb) return;
@@ -3057,6 +3086,17 @@ function renderCards(){
     }
     return true;
   });
+  if(cardSort.key){
+    rows.sort(function(a,b){
+      var va=cardSortVal(a,cardSort.key), vb=cardSortVal(b,cardSort.key);
+      if(va<vb) return cardSort.asc?-1:1;
+      if(va>vb) return cardSort.asc?1:-1;
+      return 0;
+    });
+  }
+  document.querySelectorAll('.csort').forEach(function(s){
+    s.textContent = (cardSort.key===s.dataset.k) ? (cardSort.asc?' ▲':' ▼') : '';
+  });
   var cnt = document.getElementById('cards-count');
   if(cnt) cnt.textContent = '총 '+CARDS.length+'개'+(rows.length!==CARDS.length?(' · 표시 '+rows.length):'');
   var revBtn = ' style="background:none;border:1px solid var(--border);border-radius:6px;padding:1px 6px;cursor:pointer;font-size:12px;"';
@@ -3067,9 +3107,9 @@ function renderCards(){
     var soon = cardExpirySoon(c.expiry);
     return '<tr>'+
       '<td>'+cesc(c.user_name||'-')+'</td>'+
-      '<td style="white-space:nowrap;"><span id="cn-'+c.id+'" style="font-family:var(--mono);">'+cesc(c.number)+'</span> <button onclick="revealCard('+c.id+')" title="보기/가리기"'+revBtn+'>🔓</button>'+(c.has_prev?' <span style="font-size:11px;color:var(--text3);">갱신전有</span>':'')+'</td>'+
+      '<td style="white-space:nowrap;"><span id="cn-'+c.id+'" style="font-family:var(--mono);">'+cesc(c.number)+'</span> <button onclick="revealCard('+c.id+')" title="전체 보기/가리기"'+revBtn+'>👁</button></td>'+
       '<td style="white-space:nowrap;'+(soon?'color:#a50e0e;font-weight:600;':'')+'">'+cesc(c.expiry||'-')+(soon?' ⚠️':'')+'</td>'+
-      '<td style="white-space:nowrap;"><span id="cv-'+c.id+'">'+cesc(c.cvc||'-')+'</span>'+(c.cvc?' <button onclick="revealCvc('+c.id+')" title="CVC 보기/가리기"'+revBtn+'>🔓</button>':'')+'</td>'+
+      '<td style="white-space:nowrap;"><span id="cv-'+c.id+'">'+cesc(c.cvc||'-')+'</span>'+(c.cvc?' <button onclick="revealCvc('+c.id+')" title="CVC 보기/가리기"'+revBtn+'>👁</button>':'')+'</td>'+
       '<td>'+cardStatusBadge(c.status)+'</td>'+
       '<td style="font-size:12px;max-width:230px;">'+svcTxt+'</td>'+
       '<td><input list="nick-datalist" data-card="'+cesc(c.last4)+'" value="'+nickInputValue(cur).replace(/"/g,'&quot;')+'" placeholder="지정" onchange="setCardManagerInput(this, this.dataset.card)" style="width:130px;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;background:var(--surface2);color:var(--text);"></td>'+

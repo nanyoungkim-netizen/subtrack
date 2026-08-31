@@ -33,7 +33,7 @@ export default async function handler(req, res){
     const rows = await sql`SELECT * FROM cards ORDER BY id ASC`;
     const cards = rows.map(function(c){ return {
       id:c.id, number: maskCard(c.last4), last4:c.last4,
-      cvc: c.cvc_enc ? '●●●' : '', expiry:c.expiry, user_name:c.user_name,
+      cvc: c.cvc_enc ? '***' : '', expiry:c.expiry, user_name:c.user_name,
       status:c.status, paybook:c.paybook, confirmed:c.confirmed, note:c.note,
       has_prev: !!c.prev_number_enc
     };});
