@@ -3043,19 +3043,30 @@ function resetCardFilters(){
   ['cards-f-status','cards-f-sub'].forEach(function(i){ var e=document.getElementById(i); if(e) e.value=''; });
   ['cards-f-paybook','cards-f-confirmed','cards-f-expiry'].forEach(function(i){ var e=document.getElementById(i); if(e) e.checked=false; });
   var s=document.getElementById('cards-search'); if(s) s.value='';
+  cardSort = { key:'default', asc:true };
   renderCards();
 }
-var cardSort = { key:null, asc:true };
+var cardSort = { key:'default', asc:true };   // 기본: 사용중 먼저 → 소유자순
 function sortCards(key){
   if(cardSort.key===key){ cardSort.asc=!cardSort.asc; } else { cardSort.key=key; cardSort.asc=true; }
   renderCards();
 }
+function statusOrder(s){ var o={'사용중':0,'사용전':1,'해지':2}; return (o[s]!=null)?o[s]:9; }
+// 소유자 표기: 닉네임 관리 매칭과 동일하게(예: mush → 머시 (Mush)). 매칭 안 되면 원문.
+function displayOwner(name){
+  name=(''+(name||'')).trim();
+  if(!name) return '-';
+  var r = resolveNick(name);
+  if(r && KO_MAP[r]) return KO_MAP[r]+' ('+r+')';
+  if(r) return r;
+  return name;
+}
 function cardSortVal(c, key){
   switch(key){
-    case 'user_name': return (c.user_name||'').toLowerCase();
+    case 'user_name': return displayOwner(c.user_name).toLowerCase();
     case 'last4': return c.last4||'';
     case 'expiry': { var i=cardExpInfo(c.expiry); return i ? (i.y*100+i.mo) : -1; }
-    case 'status': { var o={'사용중':0,'사용전':1,'해지':2}; return (o[c.status]!=null)?o[c.status]:9; }
+    case 'status': return statusOrder(c.status);
     case 'services': return cardServices(c.last4).length;
     case 'manager': { var n=cardOwnerOf(c.last4); return ((KO_MAP[n]||n)||'').toLowerCase(); }
     case 'paybook': return c.paybook?1:0;
@@ -3081,12 +3092,19 @@ function renderCards(){
     if(fConf && !c.confirmed) return false;
     if(fExp && !cardExpirySoon(c.expiry)) return false;
     if(q){
-      var hay = ((c.user_name||'')+' '+(c.last4||'')+' '+(c.status||'')+' '+svcs.join(' ')+' '+(cardOwnerOf(c.last4)||'')+' '+(KO_MAP[cardOwnerOf(c.last4)]||'')).toLowerCase();
+      var hay = ((c.user_name||'')+' '+displayOwner(c.user_name)+' '+(c.last4||'')+' '+(c.status||'')+' '+svcs.join(' ')+' '+(cardOwnerOf(c.last4)||'')+' '+(KO_MAP[cardOwnerOf(c.last4)]||'')).toLowerCase();
       if(hay.indexOf(q)<0) return false;
     }
     return true;
   });
-  if(cardSort.key){
+  if(cardSort.key==='default' || !cardSort.key){
+    rows.sort(function(a,b){
+      var d=statusOrder(a.status)-statusOrder(b.status);
+      if(d!==0) return d;
+      var oa=displayOwner(a.user_name).toLowerCase(), ob=displayOwner(b.user_name).toLowerCase();
+      return oa<ob?-1:(oa>ob?1:0);
+    });
+  } else {
     rows.sort(function(a,b){
       var va=cardSortVal(a,cardSort.key), vb=cardSortVal(b,cardSort.key);
       if(va<vb) return cardSort.asc?-1:1;
@@ -3106,7 +3124,7 @@ function renderCards(){
     var cur = cardOwnerOf(c.last4);
     var soon = cardExpirySoon(c.expiry);
     return '<tr>'+
-      '<td>'+cesc(c.user_name||'-')+'</td>'+
+      '<td>'+cesc(displayOwner(c.user_name))+'</td>'+
       '<td style="white-space:nowrap;"><span id="cn-'+c.id+'" style="font-family:var(--mono);">'+cesc(c.number)+'</span> <button onclick="revealCard('+c.id+')" title="전체 보기/가리기"'+revBtn+'>👁</button></td>'+
       '<td style="white-space:nowrap;'+(soon?'color:#a50e0e;font-weight:600;':'')+'">'+cesc(c.expiry||'-')+(soon?' ⚠️':'')+'</td>'+
       '<td style="white-space:nowrap;"><span id="cv-'+c.id+'">'+cesc(c.cvc||'-')+'</span>'+(c.cvc?' <button onclick="revealCvc('+c.id+')" title="CVC 보기/가리기"'+revBtn+'>👁</button>':'')+'</td>'+
