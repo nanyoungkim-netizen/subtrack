@@ -1286,9 +1286,10 @@ async function serverLogin(val){
   var okBtn = document.getElementById('pw-ok-btn');
   if(okBtn){ okBtn.disabled = true; okBtn.textContent = '확인 중…'; }
   try {
-    var r = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ password: val }) });
+    var r = await fetch('/api/login', { method:'POST', credentials:'include', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ password: val }) });
     var j = await r.json();
     if(j && j.ok){
+      if(j.token){ CARD_TOKEN = j.token; try{ sessionStorage.setItem('sub_token', j.token); }catch(e){} }
       document.getElementById('pw-overlay').classList.remove('open');
       enterAdmin();
     } else {
@@ -2988,6 +2989,15 @@ async function setCardManager(card, eng){
 var CARDS = [];
 var _revealed = {};
 var cardEditId = null;
+var CARD_TOKEN = (function(){ try{ return sessionStorage.getItem('sub_token') || ''; }catch(e){ return ''; } })();
+// 카드 API 요청: 쿠키(credentials) + 토큰(Authorization) 둘 다 실어보냄(iframe 제3자쿠키 차단 대비)
+function cardFetch(url, opts){
+  opts = opts || {};
+  opts.credentials = 'include';
+  opts.headers = opts.headers || {};
+  if(CARD_TOKEN) opts.headers['Authorization'] = 'Bearer ' + CARD_TOKEN;
+  return fetch(url, opts);
+}
 function cesc(v){ return (''+(v==null?'':v)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function cardStatusBadge(s){
   var col = s==='사용중'?['#e6f4ea','#137333'] : s==='해지'?['#fce8e6','#a50e0e'] : ['#eef0f2','#5f6368'];
@@ -2995,7 +3005,7 @@ function cardStatusBadge(s){
 }
 async function loadCards(){
   try {
-    var r = await fetch('/api/cards');
+    var r = await cardFetch('/api/cards');
     if(r.status === 401){
       document.getElementById('cards-auth-warn').style.display='block';
       document.getElementById('cards-body').innerHTML='';
@@ -3045,7 +3055,7 @@ async function revealCard(id){
     return;
   }
   try {
-    var r = await fetch('/api/cards?id='+id+'&reveal=1');
+    var r = await cardFetch('/api/cards?id='+id+'&reveal=1');
     if(r.status===401){ document.getElementById('cards-auth-warn').style.display='block'; return; }
     var j = await r.json(); var d=j.card;
     if(el) el.textContent = d.number || '';
@@ -3083,7 +3093,7 @@ async function openCardModal(id){
     setCardFlag('cf-paybook', !!c.paybook); setCardFlag('cf-confirmed', !!c.confirmed);
     document.getElementById('cf-note').value = c.note||'';
     try {
-      var r = await fetch('/api/cards?id='+id+'&reveal=1');
+      var r = await cardFetch('/api/cards?id='+id+'&reveal=1');
       if(r.ok){ var j=await r.json(); var d=j.card;
         document.getElementById('cf-number').value = d.number||'';
         document.getElementById('cf-cvc').value = d.cvc||'';
@@ -3112,7 +3122,7 @@ async function saveCard(){
     note: document.getElementById('cf-note').value.trim()
   };
   try {
-    var r = await fetch('/api/cards', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({item:item}) });
+    var r = await cardFetch('/api/cards', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({item:item}) });
     if(r.status===401){ closeCardModal(); reloginForCards(); return; }
     var j = await r.json();
     if(j.ok){ closeCardModal(); showToast('✓ 카드 저장 완료'); loadCards(); }
@@ -3123,7 +3133,7 @@ async function deleteCard(){
   if(!cardEditId) return;
   if(!confirm('이 카드를 삭제할까요? 되돌릴 수 없어요.')) return;
   try {
-    var r = await fetch('/api/cards?id='+cardEditId, { method:'DELETE' });
+    var r = await cardFetch('/api/cards?id='+cardEditId, { method:'DELETE' });
     if(r.status===401){ closeCardModal(); reloginForCards(); return; }
     closeCardModal(); showToast('✓ 삭제 완료'); loadCards();
   } catch(e){ showToast('⚠️ 삭제 중 오류'); }

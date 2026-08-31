@@ -1,9 +1,9 @@
 import { neon } from '@neondatabase/serverless';
-import { getSession, encrypt, decrypt, maskCard } from '../lib/secure.js';
+import { getAuth, encrypt, decrypt, maskCard } from '../lib/secure.js';
 
-// 법인카드 데이터. 관리자 세션 없으면 전부 401. (CORS 헤더 없음 → 동일 출처 전용)
+// 법인카드 데이터. 관리자 인증(쿠키 또는 Bearer 토큰) 없으면 전부 401.
 export default async function handler(req, res){
-  const s = getSession(req);
+  const s = getAuth(req);
   if(!s || s.role !== 'admin') return res.status(401).json({ ok:false, error:'unauthorized' });
 
   const sql = neon(process.env.DATABASE_URL);
