@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless';
+import { getAuth } from '../lib/secure.js';
 
 // 닉네임 매핑표(KO_MAP)를 Neon DB에 영속 저장한다.
 // app_settings(key,val) 키-값 테이블에 key='ko_map' 한 행으로 전체 맵을 JSON 문자열로 보관.
@@ -19,6 +20,10 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  const auth = getAuth(req);
+  if (!auth) return res.status(401).json({ ok: false, error: 'unauthorized' });
+  if (req.method !== 'GET' && auth.role !== 'admin') return res.status(403).json({ ok: false, error: 'forbidden' });
 
   const sql = neon(process.env.DATABASE_URL);
 

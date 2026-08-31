@@ -569,19 +569,17 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
       </div>
     </div>
     <div class="login-card">
-      <div class="login-card-title">접속 유형을 선택해주세요</div>
-      <div class="login-card-sub">관리자는 전체 기능을, 리서처는 조회 전용으로 이용합니다</div>
-      <div class="login-btns">
-        <div class="login-btn-item admin" id="admin-btn">
-          <div class="login-btn-icon">🔒</div>
-          <div class="login-btn-name">관리자용</div>
-          <div class="login-btn-desc">전체 수정 · 추가 · 삭제</div>
+      <div class="login-card-title">로그인</div>
+      <div class="login-card-sub">플랩풋볼 구글 워크스페이스 계정으로 로그인하세요</div>
+      <div class="login-btns" style="grid-template-columns:1fr;">
+        <div class="login-btn-item admin" id="google-btn">
+          <div class="login-btn-icon">🔓</div>
+          <div class="login-btn-name">구글 워크스페이스로 로그인</div>
+          <div class="login-btn-desc">@plabfootball.com · 관리자/리서처 자동 구분</div>
         </div>
-        <div class="login-btn-item" id="researcher-btn">
-          <div class="login-btn-icon">👀</div>
-          <div class="login-btn-name">리서처용</div>
-          <div class="login-btn-desc">구독 현황 조회 전용</div>
-        </div>
+      </div>
+      <div style="text-align:center;margin-top:16px;">
+        <button id="admin-btn" style="background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;text-decoration:underline;">관리자 비밀번호로 로그인</button>
       </div>
     </div>
   </div>
@@ -1157,7 +1155,7 @@ var editId = null;
 async function serverSave(){
   if(!IS_DEPLOYED) return true;
   try {
-    const res = await fetch('/api/data', {
+    const res = await apiFetch('/api/data', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({data:DATA})
     });
@@ -1170,7 +1168,7 @@ async function serverSave(){
 async function saveKoMap(){
   if(!IS_DEPLOYED) return true;
   try {
-    const res = await fetch('/api/nicknames', {
+    const res = await apiFetch('/api/nicknames', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({map:KO_MAP})
     });
@@ -1182,7 +1180,7 @@ async function saveKoMap(){
 async function loadKoMap(){
   if(!IS_DEPLOYED) return;
   try {
-    const res = await fetch('/api/nicknames');
+    const res = await apiFetch('/api/nicknames');
     const j = await res.json();
     if(j.ok && j.map && Object.keys(j.map).length){
       KO_MAP = j.map;               // 서버 저장분이 있으면 그것을 사용(권위)
@@ -1197,7 +1195,7 @@ async function serverPatch(item){
   try {
     var body = Object.assign({}, item);
     delete body.created_at; delete body.updated_at;
-    const res = await fetch('/api/data', {
+    const res = await apiFetch('/api/data', {
       method:'PATCH', headers:{'Content-Type':'application/json'},
       body:JSON.stringify(body)
     });
@@ -1211,7 +1209,7 @@ async function serverInsert(item){
   try {
     var body = Object.assign({}, item);
     delete body.created_at; delete body.updated_at;
-    const res = await fetch('/api/data', {
+    const res = await apiFetch('/api/data', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({item:body})
     });
@@ -1223,7 +1221,7 @@ async function serverInsert(item){
 async function serverDeleteItem(id){
   if(!IS_DEPLOYED) return true;
   try {
-    const res = await fetch('/api/data?id='+id, { method:'DELETE' });
+    const res = await apiFetch('/api/data?id='+id, { method:'DELETE' });
     const j = await res.json();
     if(!j.ok){ console.error('삭제 실패:', j.error); showToast('⚠ 삭제 실패 — 다시 시도해주세요'); return false; }
     return true;
@@ -1240,9 +1238,24 @@ document.getElementById('admin-btn').onclick = function(){
   document.getElementById('pw-overlay').classList.add('open');
   setTimeout(function(){document.getElementById('pw-input').focus();}, 100);
 };
-document.getElementById('researcher-btn').onclick = function(){
-  enterResearcher();
-};
+document.getElementById('google-btn').onclick = function(){ googleLogin(); };
+function googleLogin(){
+  // 포털 iframe이면 구글 로그인창이 iframe에서 안 뜨므로 새 탭/팝업으로, 아니면 현재 창 리디렉트
+  var inIframe = false; try { inIframe = (window.self !== window.top); } catch(e){ inIframe = true; }
+  if(inIframe){
+    window.open('/api/auth/login?popup=1', 'subtrack_login', 'width=480,height=640');
+  } else {
+    window.location.href = '/api/auth/login';
+  }
+}
+// 팝업(새 탭) 로그인 완료 시 토큰 수신
+window.addEventListener('message', function(ev){
+  if(ev && ev.data && ev.data.subtrackSession){
+    SESSION_TOKEN = ev.data.subtrackSession;
+    try{ sessionStorage.setItem('sub_token', SESSION_TOKEN); }catch(e){}
+    checkSession();
+  }
+});
 document.getElementById('pw-cancel-btn').onclick = function(){
   document.getElementById('pw-overlay').classList.remove('open');
 };
@@ -1292,12 +1305,12 @@ async function serverLogin(val){
   var okBtn = document.getElementById('pw-ok-btn');
   if(okBtn){ okBtn.disabled = true; okBtn.textContent = '확인 중…'; }
   try {
-    var r = await fetch('/api/login', { method:'POST', credentials:'include', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ password: val }) });
+    var r = await apiFetch('/api/login', { method:'POST', credentials:'include', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ password: val }) });
     var j = await r.json();
     if(j && j.ok){
-      if(j.token){ CARD_TOKEN = j.token; try{ sessionStorage.setItem('sub_token', j.token); }catch(e){} }
+      if(j.token){ SESSION_TOKEN = j.token; try{ sessionStorage.setItem('sub_token', j.token); }catch(e){} }
       document.getElementById('pw-overlay').classList.remove('open');
-      enterAdmin();
+      checkSession();
     } else {
       showPwErr('비밀번호가 올바르지 않습니다');
     }
@@ -1326,9 +1339,39 @@ function enterResearcher(){
 }
 function logoutToLogin(){
   APP_MODE = null;
+  SESSION_TOKEN = '';
+  try{ sessionStorage.removeItem('sub_token'); }catch(e){}
+  try{ apiFetch('/api/auth/logout', {method:'POST'}); }catch(e){}
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('researcher-view').style.display = 'none';
   document.getElementById('app').style.display = 'none';
+}
+// 로드/로그인 후 세션 확인 → 역할에 따라 진입
+async function checkSession(){
+  try {
+    if(location.hash && location.hash.indexOf('sess=')>=0){
+      var m = location.hash.match(/sess=([^&]+)/);
+      if(m){ SESSION_TOKEN = decodeURIComponent(m[1]); try{ sessionStorage.setItem('sub_token', SESSION_TOKEN); }catch(e){} }
+      history.replaceState(null, '', location.pathname + location.search);
+    }
+  } catch(e){}
+  var showLogin = function(){
+    document.getElementById('login-screen').style.display='flex';
+    document.getElementById('app').style.display='none';
+    document.getElementById('researcher-view').style.display='none';
+  };
+  if(!IS_DEPLOYED){ showLogin(); return; }
+  try {
+    var j = await apiFetch('/api/auth/me').then(function(r){return r.json();});
+    if(j && j.authed){
+      window.APP_EMAIL = j.email;
+      window.APP_ROLE = j.role;
+      await loadAppData();                 // DATA·맵 로드(세션 확인 후)
+      if(j.role==='admin') enterAdmin(); else enterResearcher();
+      return;
+    }
+  } catch(e){}
+  showLogin();
 }
 
 // ── 탭 ───────────────────────────────────────
@@ -2007,7 +2050,7 @@ async function sendManualAlert(id){
   if(!confirm('"'+d.s+'" 알림을 담당자 '+who+'님에게 지금 보낼까요?')) return;
   showZpToast('📨 발송 중…');
   try{
-    var res=await fetch('/api/cron-notify?sendId='+id);
+    var res=await apiFetch('/api/cron-notify?sendId='+id);
     var j=await res.json();
     if(j.ok && j.sent){ showZpToast('✅ '+who+'님에게 알림을 보냈어요'); if(typeof renderNotifyHistory==='function') renderNotifyHistory(); }
     else showZpToast('⚠️ 발송 실패: '+(j.error||j.err||'알 수 없음'));
@@ -2097,7 +2140,7 @@ function saveModal(){
     // pending → 구독중 확정 처리
     var finalizeApprove = function(){
       if(zpItem){
-        fetch('/api/data',{
+        apiFetch('/api/data',{
           method:'PATCH',
           headers:{'Content-Type':'application/json'},
           body:JSON.stringify(Object.assign({},zpItem,{status:'구독중',source:'zapier'}))
@@ -2119,9 +2162,9 @@ function saveModal(){
   if(window._zpUpgradeFrom){
     var upId = window._zpUpgradeFrom;
     window._zpUpgradeFrom = null;
-    fetch('/api/data?id='+upId).then(function(r){return r.json();}).then(function(j){
+    apiFetch('/api/data?id='+upId).then(function(r){return r.json();}).then(function(j){
       var pit=j.data; if(!pit) return null;
-      return fetch('/api/data',{method:'PATCH',headers:{'Content-Type':'application/json'},
+      return apiFetch('/api/data',{method:'PATCH',headers:{'Content-Type':'application/json'},
         body:JSON.stringify(Object.assign({},pit,{status:'업그레이드반영'}))});
     }).then(function(){
       DATA = DATA.filter(function(x){return x.id!==upId;});
@@ -2451,10 +2494,13 @@ async function initApp(){
   // 날짜 표시
   var todayEl = document.getElementById('today-lbl');
   if(todayEl) todayEl.textContent = TODAY.getFullYear()+'.'+(TODAY.getMonth()+1)+'.'+TODAY.getDate();
-
+  await checkSession();
+}
+// 로그인(세션) 확인 후에만 데이터 로드 — 로그인 전 401 방지
+async function loadAppData(){
   if(IS_DEPLOYED){
     try {
-      var res = await fetch('/api/data');
+      var res = await apiFetch('/api/data');
       var json = await res.json();
       if(json.ok && Array.isArray(json.data) && json.data.length > 0){
         DATA = json.data;
@@ -2476,7 +2522,7 @@ async function initApp(){
   // 자피어 pending 건수 확인
   if(IS_DEPLOYED){
     try {
-      var zr = await fetch('/api/data?source=zapier&status=pending');
+      var zr = await apiFetch('/api/data?source=zapier&status=pending');
       var zj = await zr.json();
       var zapItems = (zj.data||[]);
       if(zapItems.length>0){
@@ -2526,7 +2572,7 @@ function switchZpTab(t) {
 }
 
 async function loadZapierPending() {
-  const res = await fetch('/api/data?status=pending&source=zapier');
+  const res = await apiFetch('/api/data?status=pending&source=zapier');
   const json = await res.json();
   if(!json.ok) return;
   const items = (json.data||[]).slice().reverse();
@@ -2575,7 +2621,7 @@ async function loadZapierPending() {
 }
 
 async function loadZpDone() {
-  const res = await fetch('/api/data?source=zapier');
+  const res = await apiFetch('/api/data?source=zapier');
   const json = await res.json();
   const allZapier = json.ok ? (json.data||[]) : [];
   // 처리된 항목: zapier source이면서 pending이 아닌 것
@@ -2608,7 +2654,7 @@ async function loadZpDone() {
 }
 
 function zpOpenEdit(id) {
-  fetch('/api/data?id='+id)
+  apiFetch('/api/data?id='+id)
     .then(r=>r.json())
     .then(json=>{
       const item = json.data;
@@ -2628,9 +2674,9 @@ function zpOpenEdit(id) {
 async function zpReject(id) {
   if(!confirm('이 항목을 거절할까요? ("처리됨" 탭에 거절됨으로 남아요)')) return;
   var item;
-  try { const r=await fetch('/api/data?id='+id); item=(await r.json()).data; } catch(e){}
+  try { const r=await apiFetch('/api/data?id='+id); item=(await r.json()).data; } catch(e){}
   if(!item){ showZpToast('⚠️ 항목을 찾을 수 없어요'); return; }
-  const res = await fetch('/api/data', {method:'PATCH', headers:{'Content-Type':'application/json'},
+  const res = await apiFetch('/api/data', {method:'PATCH', headers:{'Content-Type':'application/json'},
     body:JSON.stringify(Object.assign({}, item, {status:'거절'}))});
   const json = await res.json();
   if(json.ok){
@@ -2645,7 +2691,7 @@ async function zpReject(id) {
 // ── 워크플로 → 기존 구독 업그레이드 반영 ──────────────
 var _zpUpgradeItem=null;
 function zpUpgrade(id){
-  fetch('/api/data?id='+id).then(function(r){return r.json();}).then(function(json){
+  apiFetch('/api/data?id='+id).then(function(r){return r.json();}).then(function(json){
     var it=json.data; if(!it){ alert('항목을 찾을 수 없어요.'); return; }
     _zpUpgradeItem=it;
     document.getElementById('zp-upgrade-src').innerHTML=
@@ -2748,7 +2794,7 @@ async function exportExcel() {
     // 최신 데이터 (pending 제외). 서버 실패 시 메모리 DATA 사용
     var data;
     try {
-      const res = await fetch('/api/data');
+      const res = await apiFetch('/api/data');
       const json = await res.json();
       data = (json.data||[]).filter(function(d){return d.status==='구독중'||d.status==='구독종료';});
     } catch(_) {
@@ -2812,7 +2858,7 @@ function slackIdOf(eng){ if(!eng) return ''; return SLACK_ID_OVERRIDE[eng] || SL
 async function loadSlackIds(){
   if(!IS_DEPLOYED) return;
   try {
-    const res = await fetch('/api/settings?key=slack_ids');
+    const res = await apiFetch('/api/settings?key=slack_ids');
     const j = await res.json();
     if(j.ok && j.value && typeof j.value==='object' && !Array.isArray(j.value)) SLACK_ID_OVERRIDE = j.value;
   } catch(e){ console.warn('슬랙ID 로드 실패', e); }
@@ -2820,7 +2866,7 @@ async function loadSlackIds(){
 async function saveSlackIds(){
   if(!IS_DEPLOYED) return true;
   try {
-    const res = await fetch('/api/settings', {
+    const res = await apiFetch('/api/settings', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({key:'slack_ids', value:SLACK_ID_OVERRIDE})
     });
@@ -2838,7 +2884,7 @@ var CARD_MANAGERS = {};   // { "3728": "Cus", ... } 카드 → 담당자(영문 
 async function loadCardManagers(){
   if(!IS_DEPLOYED) return;
   try {
-    const res = await fetch('/api/settings?key=card_managers');
+    const res = await apiFetch('/api/settings?key=card_managers');
     const j = await res.json();
     if(j.ok && j.value && typeof j.value==='object' && !Array.isArray(j.value)) CARD_MANAGERS = j.value;
   } catch(e){ console.warn('결제 담당자 로드 실패', e); }
@@ -2846,7 +2892,7 @@ async function loadCardManagers(){
 async function saveCardManagers(){
   if(!IS_DEPLOYED) return true;
   try {
-    const res = await fetch('/api/settings', {
+    const res = await apiFetch('/api/settings', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({key:'card_managers', value:CARD_MANAGERS})
     });
@@ -2994,13 +3040,13 @@ async function setCardManager(card, eng){
 var CARDS = [];
 var _revN = {}, _revC = {};
 var cardEditId = null;
-var CARD_TOKEN = (function(){ try{ return sessionStorage.getItem('sub_token') || ''; }catch(e){ return ''; } })();
+var SESSION_TOKEN = (function(){ try{ return sessionStorage.getItem('sub_token') || ''; }catch(e){ return ''; } })();
 // 카드 API 요청: 쿠키(credentials) + 토큰(Authorization) 둘 다 실어보냄(iframe 제3자쿠키 차단 대비)
-function cardFetch(url, opts){
+function apiFetch(url, opts){
   opts = opts || {};
   opts.credentials = 'include';
   opts.headers = opts.headers || {};
-  if(CARD_TOKEN) opts.headers['Authorization'] = 'Bearer ' + CARD_TOKEN;
+  if(SESSION_TOKEN) opts.headers['Authorization'] = 'Bearer ' + SESSION_TOKEN;
   return fetch(url, opts);
 }
 function cesc(v){ return (''+(v==null?'':v)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -3010,7 +3056,7 @@ function cardStatusBadge(s){
 }
 async function loadCards(){
   try {
-    var r = await cardFetch('/api/cards');
+    var r = await apiFetch('/api/cards');
     if(r.status === 401){
       document.getElementById('cards-auth-warn').style.display='block';
       document.getElementById('cards-body').innerHTML='';
@@ -3141,7 +3187,7 @@ async function revealCard(id){
   var el=document.getElementById('cn-'+id); var c=CARDS.find(function(x){return x.id===id;});
   if(_revN[id]){ _revN[id]=false; if(el&&c) el.textContent=c.number; return; }
   try {
-    var r=await cardFetch('/api/cards?id='+id+'&reveal=1');
+    var r=await apiFetch('/api/cards?id='+id+'&reveal=1');
     if(r.status===401){ document.getElementById('cards-auth-warn').style.display='block'; return; }
     var j=await r.json();
     if(el) el.textContent=(j.card&&j.card.number)||'';
@@ -3153,7 +3199,7 @@ async function revealCvc(id){
   var el=document.getElementById('cv-'+id); var c=CARDS.find(function(x){return x.id===id;});
   if(_revC[id]){ _revC[id]=false; if(el&&c) el.textContent=c.cvc||'-'; return; }
   try {
-    var r=await cardFetch('/api/cards?id='+id+'&reveal=1');
+    var r=await apiFetch('/api/cards?id='+id+'&reveal=1');
     if(r.status===401){ document.getElementById('cards-auth-warn').style.display='block'; return; }
     var j=await r.json();
     if(el) el.textContent=(j.card&&j.card.cvc)||'-';
@@ -3187,7 +3233,7 @@ async function openCardModal(id){
     setCardFlag('cf-paybook', !!c.paybook); setCardFlag('cf-confirmed', !!c.confirmed);
     document.getElementById('cf-note').value = c.note||'';
     try {
-      var r = await cardFetch('/api/cards?id='+id+'&reveal=1');
+      var r = await apiFetch('/api/cards?id='+id+'&reveal=1');
       if(r.ok){ var j=await r.json(); var d=j.card;
         document.getElementById('cf-number').value = d.number||'';
         document.getElementById('cf-cvc').value = d.cvc||'';
@@ -3216,7 +3262,7 @@ async function saveCard(){
     note: document.getElementById('cf-note').value.trim()
   };
   try {
-    var r = await cardFetch('/api/cards', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({item:item}) });
+    var r = await apiFetch('/api/cards', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({item:item}) });
     if(r.status===401){ closeCardModal(); reloginForCards(); return; }
     var j = await r.json();
     if(j.ok){ closeCardModal(); showToast('✓ 카드 저장 완료'); loadCards(); }
@@ -3227,7 +3273,7 @@ async function deleteCard(){
   if(!cardEditId) return;
   if(!confirm('이 카드를 삭제할까요? 되돌릴 수 없어요.')) return;
   try {
-    var r = await cardFetch('/api/cards?id='+cardEditId, { method:'DELETE' });
+    var r = await apiFetch('/api/cards?id='+cardEditId, { method:'DELETE' });
     if(r.status===401){ closeCardModal(); reloginForCards(); return; }
     closeCardModal(); showToast('✓ 삭제 완료'); loadCards();
   } catch(e){ showToast('⚠️ 삭제 중 오류'); }
@@ -3241,7 +3287,7 @@ async function renderNotifyHistory(){
   var hist=[];
   if(IS_DEPLOYED){
     try {
-      var res=await fetch('/api/settings?key=notify_history');
+      var res=await apiFetch('/api/settings?key=notify_history');
       var j=await res.json();
       if(j.ok && Array.isArray(j.value)) hist=j.value;
     } catch(e){ console.warn('발송 이력 로드 실패', e); }
@@ -3288,7 +3334,7 @@ function isRetired(eng){ return RETIRED.indexOf(eng) >= 0; }
 async function loadRetired(){
   if(!IS_DEPLOYED) return;
   try {
-    const res = await fetch('/api/settings?key=retired_nicks');
+    const res = await apiFetch('/api/settings?key=retired_nicks');
     const j = await res.json();
     if(j.ok && Array.isArray(j.value)) RETIRED = j.value;
   } catch(e){ console.warn('퇴사자 로드 실패', e); }
@@ -3296,7 +3342,7 @@ async function loadRetired(){
 async function saveRetired(){
   if(!IS_DEPLOYED) return true;
   try {
-    const res = await fetch('/api/settings', {
+    const res = await apiFetch('/api/settings', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({key:'retired_nicks', value:RETIRED})
     });

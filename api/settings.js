@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless';
+import { getAuth } from '../lib/secure.js';
 
 // 범용 키-값 설정 저장 (app_settings 테이블 재사용).
 // 예) key='card_managers' → 카드별 결제 담당자 매핑 JSON
@@ -19,6 +20,11 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  // 인증: 읽기는 로그인 필요, 쓰기는 관리자만
+  const auth = getAuth(req);
+  if (!auth) return res.status(401).json({ ok: false, error: 'unauthorized' });
+  if (req.method !== 'GET' && auth.role !== 'admin') return res.status(403).json({ ok: false, error: 'forbidden' });
 
   const sql = neon(process.env.DATABASE_URL);
 

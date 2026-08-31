@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless';
+import { getAuth } from '../lib/secure.js';
 
 // 워크플로 스레드에 처리 결과 답글
 function slackReply(token, channel, ts, text){
@@ -29,6 +30,11 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  // 인증: 읽기는 로그인 필요, 쓰기는 관리자만
+  const auth = getAuth(req);
+  if (!auth) return res.status(401).json({ ok: false, error: 'unauthorized' });
+  if (req.method !== 'GET' && auth.role !== 'admin') return res.status(403).json({ ok: false, error: 'forbidden' });
 
   const sql = neon(process.env.DATABASE_URL);
   await ensureSchema(sql);
