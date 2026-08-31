@@ -578,9 +578,6 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
           <div class="login-btn-desc">@plabfootball.com · 관리자/리서처 자동 구분</div>
         </div>
       </div>
-      <div style="text-align:center;margin-top:16px;">
-        <button id="admin-btn" style="background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;text-decoration:underline;">관리자 비밀번호로 로그인</button>
-      </div>
     </div>
   </div>
 </div>
@@ -1229,15 +1226,6 @@ async function serverDeleteItem(id){
 }
 
 // ── 로그인 ───────────────────────────────────
-document.getElementById('admin-btn').onclick = function(){
-  PW_MODE = 'login';
-  document.getElementById('pw-title').textContent = '🔒 관리자 로그인';
-  document.getElementById('pw-sub').textContent = '관리자 비밀번호를 입력하세요';
-  document.getElementById('pw-input').value = '';
-  document.getElementById('pw-err').style.display = 'none';
-  document.getElementById('pw-overlay').classList.add('open');
-  setTimeout(function(){document.getElementById('pw-input').focus();}, 100);
-};
 document.getElementById('google-btn').onclick = function(){ googleLogin(); };
 function googleLogin(){
   // 포털 iframe이면 구글 로그인창이 iframe에서 안 뜨므로 새 탭/팝업으로, 아니면 현재 창 리디렉트
@@ -3208,13 +3196,8 @@ async function revealCvc(id){
   } catch(e){}
 }
 function reloginForCards(){
-  PW_MODE='login';
-  document.getElementById('pw-title').textContent='🔒 관리자 로그인';
-  document.getElementById('pw-sub').textContent='세션이 만료됐어요. 다시 로그인해주세요';
-  document.getElementById('pw-input').value='';
-  document.getElementById('pw-err').style.display='none';
-  document.getElementById('pw-overlay').classList.add('open');
-  setTimeout(function(){document.getElementById('pw-input').focus();},100);
+  alert('세션이 만료됐어요. 구글로 다시 로그인해주세요.');
+  googleLogin();
 }
 function toggleCardFlag(id){ var b=document.getElementById(id); if(b) b.classList.toggle('sel'); }
 function setCardFlag(id, on){ var b=document.getElementById(id); if(b){ if(on) b.classList.add('sel'); else b.classList.remove('sel'); } }
