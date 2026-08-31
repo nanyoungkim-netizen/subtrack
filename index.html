@@ -1236,14 +1236,33 @@ function googleLogin(){
     window.location.href = '/api/auth/login';
   }
 }
-// 팝업(새 탭) 로그인 완료 시 토큰 수신
+// 포털 '신뢰 패스' 토큰 → 자동로그인 (다른 앱과 동일)
+function ssoLogin(token){
+  if(!token) return;
+  fetch('/api/auth/sso?token=' + encodeURIComponent(token))
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(d && d.ok && d.session){
+        SESSION_TOKEN = d.session;
+        try{ sessionStorage.setItem('sub_token', SESSION_TOKEN); }catch(e){}
+        checkSession();
+      }
+    })
+    .catch(function(){});
+}
+// 팝업(새 탭) 로그인 완료 시 토큰 수신 + 포털 SSO 토큰 수신
 window.addEventListener('message', function(ev){
   if(ev && ev.data && ev.data.subtrackSession){
     SESSION_TOKEN = ev.data.subtrackSession;
     try{ sessionStorage.setItem('sub_token', SESSION_TOKEN); }catch(e){}
     checkSession();
   }
+  if(ev && ev.data && ev.data.type === 'plab-sso' && ev.data.token){
+    ssoLogin(ev.data.token);
+  }
 });
+// 포털(부모)에 토큰 요청 (데스크톱 iframe에서 자동로그인)
+try{ if(window.parent && window.parent !== window) window.parent.postMessage({ type:'plab-sso-ready' }, '*'); }catch(e){}
 document.getElementById('pw-cancel-btn').onclick = function(){
   document.getElementById('pw-overlay').classList.remove('open');
 };
@@ -3657,8 +3676,10 @@ function applyRvSearch() {
 /* 포털에서 모바일로 열렸을 때 상단 '포털로' 바 (정적 앱이라 직접 주입) */
 (function () {
   try {
-    if (/[#&]sso=/.test(location.hash)) {
+    var __ssoM = location.hash.match(/[#&]sso=([^&]+)/);
+    if (__ssoM) {
       sessionStorage.setItem('plabPortal', '1');
+      try{ if(typeof ssoLogin === 'function') ssoLogin(decodeURIComponent(__ssoM[1])); }catch(e){}
       history.replaceState(null, '', location.pathname + location.search);
     }
     if (
