@@ -730,13 +730,16 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
     <button class="nav-btn" id="nav-cardusers" onclick="showTab('cardusers',this)">
       <span class="nav-icon">💳</span> 카드 사용자
     </button>
+    <button class="nav-btn" id="nav-cards" onclick="showTab('cards',this)">
+      <span class="nav-icon">🔐</span> 법인카드
+    </button>
     <button class="nav-btn" id="nav-managers" onclick="showTab('managers',this)">
       <span class="nav-icon">🧑‍💼</span> 결제 담당자
     </button>
   </nav>
   <div class="sidebar-foot">
     <button class="add-main-btn" onclick="openModal(null)">+ 구독 추가</button>
-    <button class="pw-change-btn" id="pw-change-btn">🔑 비밀번호 변경</button>
+    <button class="pw-change-btn" id="pw-change-btn" style="display:none;">🔑 비밀번호 변경</button>
     <button class="logout-btn" id="admin-logout-btn">← 로그아웃</button>
   </div>
 </div>
@@ -912,6 +915,27 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
   </div>
 </div>
 
+<div id="tab-cards" style="display:none;">
+  <div style="margin-bottom:16px;">
+    <div class="pg-title">법인카드 <span id="cards-count" style="font-size:14px;color:var(--blue);font-weight:600;margin-left:6px;"></span></div>
+    <div class="pg-sub" style="margin-bottom:0;">전체 카드번호·유효기간·CVC를 <b>암호화 보관</b>해요. 기본은 가려져 있고, 🔓 버튼을 눌러야 잠깐 보입니다(15초 후 자동으로 다시 가려짐). 로그인한 관리자만 볼 수 있어요.</div>
+  </div>
+  <div id="cards-auth-warn" style="display:none;background:#fbeaea;border:1px solid #e24b4a;color:#a32d2d;padding:12px 14px;border-radius:var(--radius);margin-bottom:12px;font-size:13px;">
+    세션이 만료됐어요. 다시 로그인해야 카드 정보를 볼 수 있어요.
+    <button onclick="reloginForCards()" style="margin-left:8px;background:#e24b4a;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;">다시 로그인</button>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;">
+    <input id="cards-search" oninput="renderCards()" placeholder="🔍 사용자 · 끝4자리 · 상태 검색" style="flex:1;min-width:220px;max-width:360px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface2);color:var(--text);">
+    <button onclick="openCardModal(null)" style="background:var(--blue);color:#fff;border:none;border-radius:var(--radius);padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">+ 카드 추가</button>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>사용자</th><th>카드번호</th><th>유효기간</th><th>CVC</th><th>상태</th><th>페이북</th><th>확인</th><th></th></tr></thead>
+      <tbody id="cards-body"></tbody>
+    </table>
+  </div>
+</div>
+
 <div id="tab-managers" style="display:none;">
   <div style="margin-bottom:16px;">
     <div class="pg-title">결제 담당자 <span id="managers-count" style="font-size:14px;color:var(--blue);font-weight:600;margin-left:6px;"></span></div>
@@ -1017,6 +1041,52 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
     <div class="mfooter">
       <button class="btn-cancel" onclick="skipMemberRegister()">등록 없이 승인</button>
       <button class="btn-ok" onclick="submitMemberRegister()">등록하고 승인</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 법인카드 추가/수정 모달 ─────────────────────── -->
+<div class="overlay" id="card-overlay">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="card-modal-title">카드 추가</span>
+      <button class="close-x" onclick="closeCardModal()">×</button>
+    </div>
+    <div class="row2">
+      <div class="field"><label>사용자</label><input id="cf-user" placeholder="예: mush / 신용카드"></div>
+      <div class="field"><label>상태</label>
+        <select id="cf-status" style="width:100%;padding:9px 12px;border-radius:var(--radius);border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;">
+          <option value="사용중">사용중</option>
+          <option value="사용전">사용전</option>
+          <option value="해지">해지</option>
+        </select>
+      </div>
+    </div>
+    <div class="field"><label>카드번호</label><input id="cf-number" placeholder="5xxx-xxxx-xxxx-xxxx" style="font-family:monospace;"></div>
+    <div class="row2">
+      <div class="field"><label>유효기간</label><input id="cf-expiry" placeholder="예: 31년 08월"></div>
+      <div class="field"><label>CVC</label><input id="cf-cvc" placeholder="3자리"></div>
+    </div>
+    <details style="margin-bottom:12px;">
+      <summary style="font-size:12px;color:var(--text3);cursor:pointer;">갱신 전(이전) 카드 정보</summary>
+      <div class="row2" style="margin-top:8px;">
+        <div class="field"><label>(갱신전) 카드번호</label><input id="cf-pnumber" style="font-family:monospace;"></div>
+        <div class="field"><label>(갱신전) CVC</label><input id="cf-pcvc"></div>
+      </div>
+    </details>
+    <div class="row2">
+      <div class="field"><label>페이북</label>
+        <div class="cy-row"><button type="button" class="cy-btn" id="cf-paybook" onclick="toggleCardFlag('cf-paybook')">등록</button></div>
+      </div>
+      <div class="field"><label>확인</label>
+        <div class="cy-row"><button type="button" class="cy-btn" id="cf-confirmed" onclick="toggleCardFlag('cf-confirmed')">확인완료💙</button></div>
+      </div>
+    </div>
+    <div class="field"><label>비고</label><input id="cf-note" placeholder="메모"></div>
+    <div class="mfooter">
+      <button class="btn-danger" id="card-del-btn" onclick="deleteCard()" style="display:none;">삭제</button>
+      <button class="btn-cancel" onclick="closeCardModal()">취소</button>
+      <button class="btn-ok" onclick="saveCard()">저장</button>
     </div>
   </div>
 </div>
@@ -1203,9 +1273,31 @@ function checkPw(){
     document.getElementById('pw-overlay').classList.remove('open');
     showToast('✓ 비밀번호가 변경됐어요');
   } else {
-    if(val.trim().toLowerCase() !== ADMIN_PW.toLowerCase()){showPwErr('비밀번호가 올바르지 않습니다'); return;}
-    document.getElementById('pw-overlay').classList.remove('open');
-    enterAdmin();
+    serverLogin(val);
+  }
+}
+// 서버 인증 로그인(카드 등 민감 데이터 접근용 세션 쿠키 발급). 미배포 환경은 기존 방식 폴백.
+async function serverLogin(val){
+  if(typeof IS_DEPLOYED !== 'undefined' && !IS_DEPLOYED){
+    if(val.trim() === ADMIN_PW){ document.getElementById('pw-overlay').classList.remove('open'); enterAdmin(); }
+    else showPwErr('비밀번호가 올바르지 않습니다');
+    return;
+  }
+  var okBtn = document.getElementById('pw-ok-btn');
+  if(okBtn){ okBtn.disabled = true; okBtn.textContent = '확인 중…'; }
+  try {
+    var r = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ password: val }) });
+    var j = await r.json();
+    if(j && j.ok){
+      document.getElementById('pw-overlay').classList.remove('open');
+      enterAdmin();
+    } else {
+      showPwErr('비밀번호가 올바르지 않습니다');
+    }
+  } catch(e){
+    showPwErr('로그인 중 오류가 발생했어요. 잠시 후 다시 시도해주세요.');
+  } finally {
+    if(okBtn){ okBtn.disabled = false; okBtn.textContent = '확인'; }
   }
 }
 function showPwErr(msg){
@@ -1254,6 +1346,7 @@ function showTab(t, btn) {
     renderCardUsers();
     Promise.all([loadCardManagers(), loadSlackIds()]).then(function(){ renderCardUsers(); });
   }
+  if(t==='cards') loadCards();
   if(t==='managers'){
     renderManagers();   // 현재 상태로 즉시 표시
     // 서버에서 최신 카드사용자·슬랙ID 다시 불러와 재렌더(로드 타이밍 문제 방지)
@@ -2889,6 +2982,151 @@ async function setCardManager(card, eng){
   renderManagers();
   var ok=await saveCardManagers();
   showZpToast(ok?('✅ '+card+' 사용자 저장됐어요'):('⚠️ 저장 실패 — 다시 시도해주세요'));
+}
+
+// ── 법인카드(암호화 저장, 서버 인증 필요) ──────────────
+var CARDS = [];
+var _revealed = {};
+var cardEditId = null;
+function cesc(v){ return (''+(v==null?'':v)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function cardStatusBadge(s){
+  var col = s==='사용중'?['#e6f4ea','#137333'] : s==='해지'?['#fce8e6','#a50e0e'] : ['#eef0f2','#5f6368'];
+  return '<span style="background:'+col[0]+';color:'+col[1]+';padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">'+cesc(s||'-')+'</span>';
+}
+async function loadCards(){
+  try {
+    var r = await fetch('/api/cards');
+    if(r.status === 401){
+      document.getElementById('cards-auth-warn').style.display='block';
+      document.getElementById('cards-body').innerHTML='';
+      var cc=document.getElementById('cards-count'); if(cc) cc.textContent='';
+      return;
+    }
+    document.getElementById('cards-auth-warn').style.display='none';
+    var j = await r.json();
+    CARDS = (j && j.cards) || [];
+    _revealed = {};
+    renderCards();
+  } catch(e){ console.warn('카드 로드 실패', e); }
+}
+function renderCards(){
+  var tb = document.getElementById('cards-body');
+  if(!tb) return;
+  var q = ((document.getElementById('cards-search')||{}).value||'').trim().toLowerCase();
+  var rows = CARDS.filter(function(c){
+    if(!q) return true;
+    return ((c.user_name||'')+' '+(c.last4||'')+' '+(c.status||'')).toLowerCase().indexOf(q) >= 0;
+  });
+  var cnt = document.getElementById('cards-count');
+  if(cnt) cnt.textContent = '총 '+CARDS.length+'개';
+  tb.innerHTML = rows.map(function(c){
+    return '<tr>'+
+      '<td>'+cesc(c.user_name||'-')+'</td>'+
+      '<td style="white-space:nowrap;"><span id="cn-'+c.id+'" style="font-family:var(--mono);">'+cesc(c.number)+'</span>'+
+        ' <button onclick="revealCard('+c.id+')" title="보기/가리기" style="background:none;border:1px solid var(--border);border-radius:6px;padding:1px 6px;cursor:pointer;font-size:12px;">🔓</button>'+
+        (c.has_prev?' <span style="font-size:11px;color:var(--text3);">갱신전有</span>':'')+'</td>'+
+      '<td>'+cesc(c.expiry||'-')+'</td>'+
+      '<td id="cv-'+c.id+'">'+cesc(c.cvc||'-')+'</td>'+
+      '<td>'+cardStatusBadge(c.status)+'</td>'+
+      '<td style="text-align:center;">'+(c.paybook?'✅':'')+'</td>'+
+      '<td style="text-align:center;">'+(c.confirmed?'💙':'')+'</td>'+
+      '<td><button onclick="openCardModal('+c.id+')" title="수정" style="background:none;border:none;cursor:pointer;font-size:14px;">✏️</button></td>'+
+    '</tr>';
+  }).join('');
+}
+async function revealCard(id){
+  var el = document.getElementById('cn-'+id);
+  var cv = document.getElementById('cv-'+id);
+  var c = CARDS.find(function(x){return x.id===id;});
+  if(_revealed[id]){   // 다시 가리기
+    _revealed[id]=false;
+    if(el&&c) el.textContent=c.number;
+    if(cv&&c) cv.textContent=c.cvc||'-';
+    return;
+  }
+  try {
+    var r = await fetch('/api/cards?id='+id+'&reveal=1');
+    if(r.status===401){ document.getElementById('cards-auth-warn').style.display='block'; return; }
+    var j = await r.json(); var d=j.card;
+    if(el) el.textContent = d.number || '';
+    if(cv) cv.textContent = d.cvc || '-';
+    _revealed[id]=true;
+    setTimeout(function(){
+      if(_revealed[id]){ _revealed[id]=false; var cc=CARDS.find(function(x){return x.id===id;});
+        if(el&&cc) el.textContent=cc.number; if(cv&&cc) cv.textContent=cc.cvc||'-'; }
+    }, 15000);
+  } catch(e){}
+}
+function reloginForCards(){
+  PW_MODE='login';
+  document.getElementById('pw-title').textContent='🔒 관리자 로그인';
+  document.getElementById('pw-sub').textContent='세션이 만료됐어요. 다시 로그인해주세요';
+  document.getElementById('pw-input').value='';
+  document.getElementById('pw-err').style.display='none';
+  document.getElementById('pw-overlay').classList.add('open');
+  setTimeout(function(){document.getElementById('pw-input').focus();},100);
+}
+function toggleCardFlag(id){ var b=document.getElementById(id); if(b) b.classList.toggle('sel'); }
+function setCardFlag(id, on){ var b=document.getElementById(id); if(b){ if(on) b.classList.add('sel'); else b.classList.remove('sel'); } }
+async function openCardModal(id){
+  cardEditId = id;
+  document.getElementById('card-modal-title').textContent = id ? '카드 수정' : '카드 추가';
+  document.getElementById('card-del-btn').style.display = id ? '' : 'none';
+  ['cf-user','cf-number','cf-expiry','cf-cvc','cf-pnumber','cf-pcvc','cf-note'].forEach(function(f){ document.getElementById(f).value=''; });
+  document.getElementById('cf-status').value='사용중';
+  setCardFlag('cf-paybook', false); setCardFlag('cf-confirmed', false);
+  if(id){
+    var c = CARDS.find(function(x){return x.id===id;}) || {};
+    document.getElementById('cf-user').value = c.user_name||'';
+    document.getElementById('cf-expiry').value = c.expiry||'';
+    document.getElementById('cf-status').value = c.status||'사용중';
+    setCardFlag('cf-paybook', !!c.paybook); setCardFlag('cf-confirmed', !!c.confirmed);
+    document.getElementById('cf-note').value = c.note||'';
+    try {
+      var r = await fetch('/api/cards?id='+id+'&reveal=1');
+      if(r.ok){ var j=await r.json(); var d=j.card;
+        document.getElementById('cf-number').value = d.number||'';
+        document.getElementById('cf-cvc').value = d.cvc||'';
+        document.getElementById('cf-pnumber').value = d.prev_number||'';
+        document.getElementById('cf-pcvc').value = d.prev_cvc||'';
+      } else if(r.status===401){ closeCardModal(); reloginForCards(); return; }
+    } catch(e){}
+  }
+  document.getElementById('card-overlay').classList.add('open');
+}
+function closeCardModal(){ document.getElementById('card-overlay').classList.remove('open'); }
+async function saveCard(){
+  var num = document.getElementById('cf-number').value.trim();
+  if(!num && !document.getElementById('cf-user').value.trim()){ showToast('⚠️ 카드번호 또는 사용자를 입력해주세요'); return; }
+  var item = {
+    id: cardEditId || undefined,
+    number: num,
+    cvc: document.getElementById('cf-cvc').value.trim(),
+    expiry: document.getElementById('cf-expiry').value.trim(),
+    user_name: document.getElementById('cf-user').value.trim(),
+    status: document.getElementById('cf-status').value,
+    paybook: document.getElementById('cf-paybook').classList.contains('sel')?'등록':'',
+    confirmed: document.getElementById('cf-confirmed').classList.contains('sel')?'확인완료💙':'',
+    prev_number: document.getElementById('cf-pnumber').value.trim(),
+    prev_cvc: document.getElementById('cf-pcvc').value.trim(),
+    note: document.getElementById('cf-note').value.trim()
+  };
+  try {
+    var r = await fetch('/api/cards', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({item:item}) });
+    if(r.status===401){ closeCardModal(); reloginForCards(); return; }
+    var j = await r.json();
+    if(j.ok){ closeCardModal(); showToast('✓ 카드 저장 완료'); loadCards(); }
+    else showToast('⚠️ 저장 실패');
+  } catch(e){ showToast('⚠️ 저장 중 오류'); }
+}
+async function deleteCard(){
+  if(!cardEditId) return;
+  if(!confirm('이 카드를 삭제할까요? 되돌릴 수 없어요.')) return;
+  try {
+    var r = await fetch('/api/cards?id='+cardEditId, { method:'DELETE' });
+    if(r.status===401){ closeCardModal(); reloginForCards(); return; }
+    closeCardModal(); showToast('✓ 삭제 완료'); loadCards();
+  } catch(e){ showToast('⚠️ 삭제 중 오류'); }
 }
 
 // 슬랙 발송 이력 조회
