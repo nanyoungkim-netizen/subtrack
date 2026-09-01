@@ -26,8 +26,15 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 /* ── 로그인 화면 ─────────────────────────── */
 #login-screen{
   position:fixed;inset:0;background:var(--bg);z-index:10000;
-  display:flex;align-items:center;justify-content:center;
+  display:none;align-items:center;justify-content:center;
 }
+/* 자동로그인(포털) 진행 중 오버레이 — 로그인 화면 번쩍임 방지 */
+#sso-loading{
+  position:fixed;inset:0;background:var(--bg);z-index:10001;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+}
+#sso-loading .sp{width:30px;height:30px;border:3px solid #e5e8eb;border-top-color:#3182f6;border-radius:50%;animation:ssospin .8s linear infinite;}
+@keyframes ssospin{to{transform:rotate(360deg);}}
 .login-wrap{width:420px;}
 .login-logo{display:flex;align-items:center;gap:10px;margin-bottom:32px;}
 .login-logo-mark{
@@ -558,6 +565,11 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
 </head>
 <body>
 
+<!-- ── 자동로그인 진행 오버레이 ──────────────────── -->
+<div id="sso-loading">
+  <div class="sp"></div>
+  <div style="font-size:14px;color:var(--text3);">로그인 중…</div>
+</div>
 <!-- ── 로그인 화면 ──────────────────────────────── -->
 <div id="login-screen">
   <div class="login-wrap">
@@ -1236,6 +1248,18 @@ function googleLogin(){
     window.location.href = '/api/auth/login';
   }
 }
+// 포털 자동로그인 오버레이 제어
+var SSO_TIMEOUT = false;
+function portalPending(){
+  try{ if(sessionStorage.getItem('plabPortal') === '1') return true; }catch(e){}
+  return window.parent !== window || /[#&]sso=/.test(location.hash);
+}
+function hideOverlay(){ var o=document.getElementById('sso-loading'); if(o) o.style.display='none'; }
+function showOverlay(){ var o=document.getElementById('sso-loading'); if(o) o.style.display='flex'; }
+// 포털이 아니면 오버레이 즉시 숨김 / 포털이면 4.5초 후에도 로그인 안 되면 로그인 화면 폴백
+if(!portalPending()){ try{ hideOverlay(); }catch(e){} }
+else { setTimeout(function(){ SSO_TIMEOUT = true; try{ checkSession(); }catch(e){ hideOverlay(); } }, 4500); }
+
 // 포털 '신뢰 패스' 토큰 → 자동로그인 (다른 앱과 동일)
 function ssoLogin(token){
   if(!token) return;
@@ -1363,6 +1387,7 @@ async function checkSession(){
     }
   } catch(e){}
   var showLogin = function(){
+    hideOverlay();
     document.getElementById('login-screen').style.display='flex';
     document.getElementById('app').style.display='none';
     document.getElementById('researcher-view').style.display='none';
@@ -1371,6 +1396,7 @@ async function checkSession(){
   try {
     var j = await apiFetch('/api/auth/me').then(function(r){return r.json();});
     if(j && j.authed){
+      hideOverlay();
       window.APP_EMAIL = j.email;
       window.APP_ROLE = j.role;
       await loadAppData();                 // DATA·맵 로드(세션 확인 후)
@@ -1378,6 +1404,8 @@ async function checkSession(){
       return;
     }
   } catch(e){}
+  // 포털 자동로그인 진행 중이면 로그인 화면 대신 오버레이 유지(번쩍임 방지)
+  if(portalPending() && !SSO_TIMEOUT){ showOverlay(); return; }
   showLogin();
 }
 
