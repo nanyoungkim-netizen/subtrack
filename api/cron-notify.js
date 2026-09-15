@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless';
+import { loadTemplates, render } from '../lib/msgtpl.js';
 
 // 연결제 갱신 임박(15일 이내) 구독을, 카드 담당자에게 개인 DM으로 알림.
 // - 발송 수단: Slack Bot Token(chat.postMessage). 개인 DM은 conversations.open 후 전송.
@@ -6,7 +7,7 @@ import { neon } from '@neondatabase/serverless';
 // - 토큰/시크릿은 환경변수(SLACK_BOT_TOKEN, CRON_SECRET)로만 받는다.
 
 // 닉네임 → 슬랙 ID 기본값 (프론트 SLACK_ID_MAP과 동일). override는 app_settings(slack_ids)로 병합.
-const BASE_SLACK_ID = {"Q":"UGNKU8WLD","IRON":"UGP8ENQ3V","Yello":"UGPBD81HA","Cus":"UGP9X2D3L","MacGook":"UJD690FCM","Minu":"UGNL59LJC","Sante":"U0180UXLD2Q","Rilla":"U01SLNUA155","HODOO":"U0261145X18","Lark":"U027F6SG8AC","Sian":"U027WL6H93N","Rokoon":"U0288AXGGCW","Stone":"U02D6CDKQ3W","Chovy":"U02CX5SQNSZ","Pucca":"U02K890UPK3","Zerry":"U033U995K53","Mush":"U03JQ5FHP5Z","dDubi":"U03QQ53099N","DDao":"U03TC2CQEVD","Burns":"U04ATHK9S84","SALT":"U04GTSZ93T7","Rooney":"U04NX77SNJ1","Hero":"U04SUG1K22D","Moomin":"U04T8FN2ZCZ","Rami":"U04SYARM2MS","Junta":"U04TN658A84","Woz":"U054RK2GKK8","Peach":"U0645BVMJES","Aqoo":"U066F6AA6KD","Hook":"U069A4EC72S","Teddy":"U069GP8MWDQ","Pire":"U06CFJYUGQZ","MewTwo":"U070M3N25LP","Endo":"U071QDWFQNL","YAMUCHI":"U072B0P4R6Y","Beaver":"U05DQHV6XAT","Turkey":"U05EUR1CCN4","Pepe":"U05DQHVDS5D","Jeongnam":"D07LNQ9GMHV","Aki":"U07S5FBLPK7","Kikr":"U08990X2ZNH","Lime":"U0A3JQ8SGHG","Funky":"U08RUG330D9","Newjin":"U0A07QF0URW"};
+const BASE_SLACK_ID = {"Q":"UGNKU8WLD","IRON":"UGP8ENQ3V","Yello":"UGPBD81HA","Cus":"UGP9X2D3L","MacGook":"UJD690FCM","Minu":"UGNL59LJC","Sante":"U0180UXLD2Q","Rilla":"U01SLNUA155","HODOO":"U0261145X18","Lark":"U027F6SG8AC","Sian":"U027WL6H93N","Rokoon":"U0288AXGGCW","Stone":"U02D6CDKQ3W","Chovy":"U02CX5SQNSZ","Pucca":"U02K890UPK3","Zerry":"U033U995K53","Mush":"U03JQ5FHP5Z","dDubi":"U03QQ53099N","DDao":"U03TC2CQEVD","Burns":"U04ATHK9S84","SALT":"U04GTSZ93T7","Rooney":"U04NX77SNJ1","Hero":"U04SUG1K22D","Moomin":"U04T8FN2ZCZ","Rami":"U04SYARM2MS","Junta":"U04TN658A84","Woz":"U054RK2GKK8","Peach":"U0645BVMJES","Aqoo":"U066F6AA6KD","Hook":"U069A4EC72S","Teddy":"U069GP8MWDQ","Pire":"U06CFJYUGQZ","MewTwo":"U070M3N25LP","Endo":"U071QDWFQNL","YAMUCHI":"U072B0P4R6Y","Beaver":"U05DQHV6XAT","Turkey":"U05EUR1CCN4","Pepe":"U05DQHVDS5D","Jeongnam":"U07M4U01X3J","Aki":"U07S5FBLPK7","Kikr":"U08990X2ZNH","Lime":"U0A3JQ8SGHG","Funky":"U08RUG330D9","Newjin":"U0A07QF0URW"};
 
 const NOTIFY_WINDOW_DAYS = 15;   // 갱신 며칠 이내면 알림
 
@@ -22,15 +23,8 @@ function nextRenewal(sd, today, pd){
 }
 function daysBetween(a, b){ return Math.round((b - a)/86400000); }
 
-function buildMsg(koName, tool, renewalStr, days, amount, card){
-  return '👋 '+koName+' 안녕하세요!\n\n' +
-    '담당하고 계신 *'+tool+'* 연결제 갱신일이 곧 다가와요 📅\n' +
-    '• 갱신 예정일: *'+renewalStr+'* (D-'+days+')\n' +
-    '• 금액: *'+(amount||'-')+'* / 카드 끝자리 '+card+'\n\n' +
-    '사용여부를 확인해주시고 아래 절차대로 진행해주세요.\n' +
-    '• 사용 O → 갱신 후 결제 내용을 공유해주세요\n' +
-    '• 사용 X → 갱신 전에 해지 처리해주세요\n\n' +
-    '감사합니다 😊';
+function buildMsg(T, koName, tool, renewalStr, days, amount, card){
+  return render(T.renewal, { '이름':koName, '서비스':tool, '갱신일':renewalStr, '디데이':'D-'+days, '금액':(amount||'-'), '카드':card });
 }
 
 // 인상 승인 종료일: 전용 필드 hu 우선, 없으면 제목 (~M/D까지) 파싱
@@ -45,24 +39,13 @@ function hikeStrOf(d, today){
   if(daysBetween(today, new Date(str)) < -183) str = mk(today.getUTCFullYear()+1);
   return str;
 }
-function buildGenericMsg(koName, tool, amount, card){
-  return '👋 '+koName+' 안녕하세요!\n\n' +
-    '담당하고 계신 *'+tool+'* 구독 관련해서 확인 부탁드려요 📌\n' +
-    (amount ? ('• 금액: *'+amount+'*\n') : '') +
-    '• 카드 끝자리 '+card+'\n\n' +
-    '계속 사용/해지 여부 확인 후 처리 부탁드리고, 완료되면 알려주세요 🙏\n\n감사합니다 😊';
+function buildGenericMsg(T, koName, tool, amount, card){
+  return render(T.generic, { '이름':koName, '서비스':tool, '금액':amount, '카드':card });
 }
-function buildHikeMsg(koName, tool, hikeStr, days, ha, a){
+function buildHikeMsg(T, koName, tool, hikeStr, days, ha, a){
   const dd = days<0 ? ('D+'+(-days)) : ('D-'+days);
-  const head = days<0 ? '요금 인상 승인 기간이 *지났어요*' : '요금 인상 승인 기간이 *곧 끝나요*';
-  const amtLine = ha ? ('• 현재(인상) 금액: *'+ha+'*'+(a?' / 원래 '+a:'')+'\n') : '';
-  return '👋 '+koName+' 안녕하세요!\n\n' +
-    '*'+tool+'* '+head+' 📌\n' +
-    '• 인상 승인 종료일: *'+hikeStr+'* ('+dd+')\n' +
-    amtLine + '\n' +
-    '승인 기간이 끝나면 원래 요금제로 낮추거나 해지가 필요해요.\n' +
-    '확인해서 처리 부탁드리고, 완료되면 알려주세요 🙏\n\n' +
-    '감사합니다 😊';
+  return render(T.hike, { '이름':koName, '서비스':tool, '상태':(days<0?'지났어요':'곧 끝나요'),
+    '종료일':hikeStr, '디데이':dd, '인상금액':ha, '원금액':a });
 }
 
 async function sendDM(token, userId, text){
@@ -106,6 +89,7 @@ export default async function handler(req, res){
     } catch(_){}
     return null;
   }
+  const T = await loadTemplates(sql);
   const slackOverride = (await getSetting('slack_ids')) || {};
   const slackIdOf = (nick)=> (nick && (slackOverride[nick] || BASE_SLACK_ID[nick])) || null;
 
@@ -145,9 +129,9 @@ export default async function handler(req, res){
     const koName = koMap[nick] || nick;
     let text, kind;
     const hs = hikeStrOf(one, kstToday);
-    if(hs){ const hd = daysBetween(kstToday, new Date(hs)); text = buildHikeMsg(koName, one.s, hs, hd, one.ha, one.a); kind='인상만료'; }
-    else if(one.c==='연결제' && one.sd){ const rn = nextRenewal(one.sd, kstToday, one.pd); const rd = daysBetween(kstToday, rn); text = buildMsg(koName, one.s, ymd(rn), rd, one.a, card); kind='갱신'; }
-    else { text = buildGenericMsg(koName, one.s, one.a, card); kind='구독확인'; }
+    if(hs){ const hd = daysBetween(kstToday, new Date(hs)); text = buildHikeMsg(T, koName, one.s, hs, hd, one.ha, one.a); kind='인상만료'; }
+    else if(one.c==='연결제' && one.sd){ const rn = nextRenewal(one.sd, kstToday, one.pd); const rd = daysBetween(kstToday, rn); text = buildMsg(T, koName, one.s, ymd(rn), rd, one.a, card); kind='갱신'; }
+    else { text = buildGenericMsg(T, koName, one.s, one.a, card); kind='구독확인'; }
     if(preview) text = '🧪 *[미리보기]* 원래 받는 사람: *'+koName+'*\n\n' + text;
     const dest = (previewTo || testTo) ? (previewTo || testTo) : slackId;
     if(dry) return res.status(200).json({ ok:true, dry:true, to:slackId, nick, koName, kind, text });
@@ -187,7 +171,7 @@ export default async function handler(req, res){
     if(!preview && newLog[logKey]){ results.push({ id:d.id, s:d.s, skip:'이미 발송됨' }); continue; }
     if(!preview && isWeekend){ results.push({ id:d.id, s:d.s, skip:'주말(영업일 대기)' }); continue; }
     const koName = koMap[nick] || nick;
-    let text = buildMsg(koName, d.s, renewalStr, days, d.a, card);
+    let text = buildMsg(T, koName, d.s, renewalStr, days, d.a, card);
     if(preview) text = '🧪 *[미리보기]* 원래 받는 사람: *'+koName+'*\n\n' + text;
     if(dry){ results.push({ id:d.id, s:d.s, nick, to:slackId, would_send:true }); continue; }
     const dest = preview ? previewTo : slackId;
@@ -214,7 +198,7 @@ export default async function handler(req, res){
     const slackId = slackIdOf(nick);
     if(!slackId){ results.push({ id:d.id, s:d.s, nick, hike:hs, kind:'hike', skip:'슬랙ID 없음' }); continue; }
     const koName = koMap[nick] || nick;
-    let text = buildHikeMsg(koName, d.s, hs, hdays, d.ha, d.a);
+    let text = buildHikeMsg(T, koName, d.s, hs, hdays, d.ha, d.a);
     if(preview) text = '🧪 *[미리보기]* 원래 받는 사람: *'+koName+'*\n\n' + text;
     if(dry){ results.push({ id:d.id, s:d.s, nick, to:slackId, kind:'hike', would_send:true }); continue; }
     const dest = preview ? previewTo : slackId;

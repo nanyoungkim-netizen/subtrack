@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless';
+import { loadTemplates, render } from '../lib/msgtpl.js';
 
 const SITE_URL = 'https://subtrack-sage.vercel.app';
 
@@ -9,14 +10,13 @@ function slackPost(token, payload){
   }).then(r=>r.json());
 }
 // 워크플로 스레드에 답글(채널+ts 있으면). 없으면 관리자 DM으로 폴백.
-async function notifyPurchase(info, thread){
+async function notifyPurchase(info, thread, T){
   const token = process.env.SLACK_BOT_TOKEN;
   const adminId = process.env.ADMIN_SLACK_ID || 'U03JQ5FHP5Z';
   if(!token) return;
-  const header = { type:'section', text:{ type:'mrkdwn', text:
-    '🆕 *새 구독 결제 워크플로가 올라왔어요!*\n<@'+adminId+'> 확인해서 등록/반영 부탁드려요 🙏' } };
+  const header = { type:'section', text:{ type:'mrkdwn', text: render(T.workflow, { '관리자':'<@'+adminId+'>', '서비스':info.service }) } };
   const button = { type:'actions', elements:[
-    { type:'button', text:{ type:'plain_text', text:'반영하기', emoji:true }, url: SITE_URL, style:'primary' }
+    { type:'button', text:{ type:'plain_text', text:(T.workflow_button||'반영하기'), emoji:true }, url: SITE_URL, style:'primary' }
   ] };
   // DM 폴백용 2열 그리드 필드(스레드 답글엔 원본이 위에 있어 생략)
   const won = (v)=> (v && /^[\d,]+$/.test(String(v).trim())) ? (String(v).trim()+'원') : (v||'');
@@ -134,7 +134,8 @@ export default async function handler(req, res) {
     `;
 
     // 워크플로 스레드(또는 관리자 DM 폴백)로 즉시 알림. 실패해도 웹훅 응답엔 영향 없음.
-    await notifyPurchase({ service, user, amount, payment, cycle: cycle||'월결제', start_date, description }, thread);
+    const T = await loadTemplates(sql);
+    await notifyPurchase({ service, user, amount, payment, cycle: cycle||'월결제', start_date, description }, thread, T);
 
     return res.status(200).json({ ok: true, id: newId, service, user, payment });
   } catch(e) {

@@ -1,5 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 import { getAuth } from '../lib/secure.js';
+import { loadTemplates, render } from '../lib/msgtpl.js';
 
 // 워크플로 스레드에 처리 결과 답글
 function slackReply(token, channel, ts, text){
@@ -80,10 +81,11 @@ export default async function handler(req, res) {
       // pending → 처리완료 전환이면 워크플로 스레드에 결과 답글(1회)
       try {
         const token = process.env.SLACK_BOT_TOKEN;
-        const LABEL = { '구독중':'✅ *신규 구독으로 등록했어요*', '거절':'🚫 *거절 처리했어요*', '업그레이드반영':'🔁 *기존 구독에 반영했어요*' };
-        if (token && prev && prev.status === 'pending' && LABEL[status] && prev.thch && prev.tts && !prev.thdone) {
+        const TKEY = { '구독중':'result_approved', '거절':'result_rejected', '업그레이드반영':'result_upgraded' };
+        if (token && prev && prev.status === 'pending' && TKEY[status] && prev.thch && prev.tts && !prev.thdone) {
+          const T = await loadTemplates(sql);
           const svc = (rows[0] && rows[0].s) || s || '';
-          const msg = LABEL[status] + (svc ? ' — *' + svc + '*' : '');
+          const msg = render(T[TKEY[status]], { '서비스': svc });
           await slackReply(token, prev.thch, prev.tts, msg);
           try { await sql`UPDATE subscriptions SET thdone='1' WHERE id=${id}`; } catch (_) {}
         }
