@@ -3176,8 +3176,8 @@ async function testSendMsg(k){
   var btnEl=document.getElementById('mt-workflow_button');
   if(st) st.textContent='테스트 발송 중…';
   try{
-    var j=await apiFetch('/api/msgtest',{ method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ key:k, text:text, buttonText:(btnEl?btnEl.value:'') }) }).then(function(r){return r.json();});
+    var j=await apiFetch('/api/msgtpl',{ method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ action:'test', key:k, text:text, buttonText:(btnEl?btnEl.value:'') }) }).then(function(r){return r.json();});
     if(j && j.ok){ if(st) st.textContent='✓ 내 슬랙 DM으로 테스트 발송했어요'; showToast('✓ 테스트 발송 완료 — 슬랙 DM을 확인해보세요'); }
     else { if(st) st.textContent='⚠️ 발송 실패'+((j&&j.error)?(' ('+j.error+')'):''); }
   }catch(e){ if(st) st.textContent='⚠️ 발송 중 오류'; }
