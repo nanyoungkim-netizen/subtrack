@@ -955,7 +955,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
 <div id="tab-msgs" style="display:none;">
   <div style="margin-bottom:16px;">
     <div class="pg-title">알림 문구</div>
-    <div class="pg-sub" style="margin-bottom:0;">슬랙으로 나가는 메시지 문구를 직접 고치고 미리 볼 수 있어요. <b>{중괄호}</b>는 실제 값으로 자동 치환되고, 값이 없는 줄은 자동으로 빠집니다. 저장하면 <b>다음 발송부터</b> 적용돼요.</div>
+    <div class="pg-sub" style="margin-bottom:0;">슬랙으로 나가는 메시지 문구를 직접 고치고 미리 볼 수 있어요. <b>{중괄호}</b>는 실제 값으로 자동 치환되고, 값이 없는 줄은 자동으로 빠집니다. 저장하면 <b>다음 발송부터</b> 적용돼요. <b>🧪 테스트 발송</b>을 누르면 저장 전 문구 그대로 <b>내 슬랙 DM</b>으로 보내서 실제 모습을 확인할 수 있어요.</div>
   </div>
   <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap;">
     <button onclick="saveMsgTpl()" style="background:var(--blue);color:#fff;border:none;border-radius:var(--radius);padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;">저장</button>
@@ -3095,7 +3095,7 @@ var MSGTPL_META = {
   hike:           { label:'요금 인상 만료 임박 알림',   desc:'매일 자동 · 인상 승인 종료일 임박 → 담당자에게 슬랙 DM' },
   generic:        { label:'수동 단건 알림',            desc:'구독 수정창의 🔔 담당자 알림 버튼으로 보낼 때' },
   workflow:       { label:'워크플로 제출 알림',         desc:'#구매-요청에 워크플로가 올라오면 그 스레드에 답글' },
-  workflow_button:{ label:'└ 버튼 문구',               desc:'위 답글에 붙는 초록 버튼 텍스트', short:true },
+  workflow_button:{ label:'└ 버튼 문구',               desc:'위 답글에 붙는 초록 버튼 텍스트 (테스트는 위 워크플로 알림에서 함께 확인)', short:true, noTest:true },
   result_approved:{ label:'처리 결과 · 신규 승인',      desc:'승인 처리하면 워크플로 스레드에 답글', short:true },
   result_upgraded:{ label:'처리 결과 · 기존 반영',      desc:'기존 구독에 반영하면 스레드에 답글', short:true },
   result_rejected:{ label:'처리 결과 · 거절',          desc:'거절 처리하면 스레드에 답글', short:true }
@@ -3140,7 +3140,10 @@ function renderMsgTpl(){
       '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;flex-wrap:wrap;">'+
         '<b style="font-size:14px;">'+cesc(meta.label)+'</b>'+
         (edited?'<span style="font-size:11px;background:var(--blue-l);color:var(--blue);padding:1px 8px;border-radius:10px;font-weight:600;">수정됨</span>':'')+
-        '<button onclick="resetMsgTpl(\''+k+'\')" style="margin-left:auto;background:none;border:1px solid var(--border);border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer;color:var(--text3);">기본값으로</button>'+
+        '<span style="margin-left:auto;display:flex;gap:6px;">'+
+          (meta.noTest?'':'<button onclick="testSendMsg(\''+k+'\')" style="background:none;border:1px solid var(--blue-b);border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer;color:var(--blue);font-weight:600;">🧪 테스트 발송</button>')+
+          '<button onclick="resetMsgTpl(\''+k+'\')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer;color:var(--text3);">기본값으로</button>'+
+        '</span>'+
       '</div>'+
       '<div style="font-size:12px;color:var(--text3);margin-bottom:8px;">'+cesc(meta.desc)+'</div>'+
       (chips?('<div style="font-size:11px;color:var(--text3);margin-bottom:8px;">치환자 '+chips+'</div>'):'')+
@@ -3163,6 +3166,22 @@ function updateMsgPreview(k){
   pv.innerHTML = slackToHtml(tplRender(ta.value, sample)) || '<span style="color:var(--text3);">(빈 문구)</span>';
 }
 function resetMsgTpl(k){ MSGTPL.cur[k]=MSGTPL.defaults[k]||''; renderMsgTpl(); }
+// 지금 편집 중인 문구 그대로(저장 안 해도) 관리자 본인 슬랙 DM으로 테스트 발송
+async function testSendMsg(k){
+  var ta=document.getElementById('mt-'+k); if(!ta) return;
+  var st=document.getElementById('msgtpl-status');
+  var sample=Object.assign({}, MSGTPL_SAMPLE, (MSGTPL_SAMPLE_BY[k]||{}));
+  var text=tplRender(ta.value, sample);
+  if(!text.trim()){ if(st) st.textContent='⚠️ 문구가 비어 있어요'; return; }
+  var btnEl=document.getElementById('mt-workflow_button');
+  if(st) st.textContent='테스트 발송 중…';
+  try{
+    var j=await apiFetch('/api/msgtest',{ method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ key:k, text:text, buttonText:(btnEl?btnEl.value:'') }) }).then(function(r){return r.json();});
+    if(j && j.ok){ if(st) st.textContent='✓ 내 슬랙 DM으로 테스트 발송했어요'; showToast('✓ 테스트 발송 완료 — 슬랙 DM을 확인해보세요'); }
+    else { if(st) st.textContent='⚠️ 발송 실패'+((j&&j.error)?(' ('+j.error+')'):''); }
+  }catch(e){ if(st) st.textContent='⚠️ 발송 중 오류'; }
+}
 async function saveMsgTpl(){
   var st=document.getElementById('msgtpl-status'); if(st) st.textContent='저장 중…';
   Object.keys(MSGTPL_META).forEach(function(k){ var ta=document.getElementById('mt-'+k); if(ta) MSGTPL.cur[k]=ta.value; });
