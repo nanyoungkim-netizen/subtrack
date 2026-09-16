@@ -2898,19 +2898,15 @@ async function exportExcel() {
     // 백업/복원이 100% 되도록 저장되는 모든 필드를 넣는다(+읽기용 '다음 결제일')
     const headers = ['ID','서비스명','내용','사용자','상태','금액','결제수단(카드)','결제주기',
       '구독시작일','구독종료일','결제일','다음 결제일','인상 승인 종료일','인상 금액','결제 담당자','유입경로','비고'];
-    const _d2s = function(dt){
-      if(!dt) return '';
-      try { return dt.getFullYear()+'-'+('0'+(dt.getMonth()+1)).slice(-2)+'-'+('0'+dt.getDate()).slice(-2); }
-      catch(e){ return ''; }
-    };
     const rows = data.map(function(d){
-      var nx=null; try{ nx = calcNext(d); }catch(e){}
+      // calcNext는 'YYYY-MM-DD' 문자열을 돌려준다(Date 아님)
+      var nx=''; try{ nx = calcNext(d) || ''; }catch(e){ nx=''; }
       return {
         'ID': d.id, '서비스명': d.s||'', '내용': d.d||'', '사용자': d.u||'',
         '상태': d.status||'', '금액': d.a||'', '결제수단(카드)': d.m||'',
         '결제주기': d.c||'', '구독시작일': d.sd||'', '구독종료일': d.ed||'',
         '결제일': (d.pd==null||d.pd==='') ? '' : d.pd,
-        '다음 결제일': _d2s(nx),
+        '다음 결제일': nx,
         '인상 승인 종료일': d.hu||'', '인상 금액': d.ha||'',
         '결제 담당자': d.mgr||'', '유입경로': d.source||'',
         '비고': d.note||''
