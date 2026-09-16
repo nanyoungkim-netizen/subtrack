@@ -766,9 +766,6 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
     <button class="nav-btn" id="nav-managers" onclick="showTab('managers',this)">
       <span class="nav-icon">🧑‍💼</span> 결제 담당자
     </button>
-    <button class="nav-btn" id="nav-msgs" onclick="showTab('msgs',this)">
-      <span class="nav-icon">✏️</span> 알림 문구
-    </button>
   </nav>
   <div class="sidebar-foot">
     <button class="add-main-btn" onclick="openModal(null)">+ 구독 추가</button>
@@ -799,6 +796,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
       <div class="pg-sub" style="margin-bottom:0;">항목 클릭 → 수정 · 삭제</div>
     </div>
     <div style="display:flex;gap:8px;">
+      <button class="add-main-btn" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);white-space:nowrap;" onclick="openNormalizeModal()" title="같은 것을 다르게 적은 서비스명·인상 금액 표기를 한 번에 맞춥니다">🧹 표기 통일</button>
       <button class="add-main-btn" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);white-space:nowrap;" onclick="exportExcel()">📥 엑셀 추출</button>
       <button class="add-main-btn" style="white-space:nowrap;" onclick="openModal(null)">+ 구독 추가</button>
     </div>
@@ -861,8 +859,24 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
   <div class="pg-title">결제 알림</div>
   <div class="pg-sub">담당자에게 나갈 예정인 알림과 지난 발송 내역을 확인하세요</div>
 
-  <div class="pg-title" style="font-size:16px;margin-top:8px;">📅 알림 예정 <span id="annual-count" style="font-size:13px;color:var(--text3);font-weight:500;margin-left:6px;"></span></div>
-  <div class="pg-sub" style="font-size:12px;">연결제 갱신(15일 전)·요금 인상 만료(3일 전)에 담당자에게 자동 발송돼요.</div>
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-top:8px;flex-wrap:wrap;">
+    <div>
+      <div class="pg-title" style="font-size:16px;margin:0;">📅 알림 예정 <span id="annual-count" style="font-size:13px;color:var(--text3);font-weight:500;margin-left:6px;"></span></div>
+      <div class="pg-sub" style="font-size:12px;margin-bottom:0;">연결제 갱신(15일 전)·요금 인상 만료(3일 전)에 담당자에게 자동 발송돼요.</div>
+    </div>
+    <button id="msgtpl-toggle" onclick="toggleMsgTpl()" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text);white-space:nowrap;">✏️ 알림 문구</button>
+  </div>
+
+  <div id="annual-msgs-panel" style="display:none;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);padding:16px;margin:14px 0;">
+    <div class="pg-sub" style="margin-bottom:12px;font-size:12px;">슬랙으로 나가는 메시지 문구를 직접 고치고 미리 볼 수 있어요. <b>{중괄호}</b>는 실제 값으로 자동 치환되고, 값이 없는 줄은 자동으로 빠집니다. 저장하면 <b>다음 발송부터</b> 적용돼요. <b>🧪 테스트 발송</b>을 누르면 저장 전 문구 그대로 <b>내 슬랙 DM</b>으로 보내서 실제 모습을 확인할 수 있어요.</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap;">
+      <button onclick="saveMsgTpl()" style="background:var(--blue);color:#fff;border:none;border-radius:var(--radius);padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;">저장</button>
+      <button onclick="loadMsgTpl()" style="background:none;border:1px solid var(--border);border-radius:var(--radius);padding:9px 14px;font-size:13px;cursor:pointer;color:var(--text2);">저장본 다시 불러오기</button>
+      <span id="msgtpl-status" style="font-size:12px;color:var(--text3);"></span>
+    </div>
+    <div id="msgtpl-list"></div>
+  </div>
+
   <div id="annual-content"></div>
 
   <div style="display:flex;align-items:center;justify-content:space-between;margin:28px 0 12px;">
@@ -977,19 +991,6 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
       <tbody id="cards-body"></tbody>
     </table>
   </div>
-</div>
-
-<div id="tab-msgs" style="display:none;">
-  <div style="margin-bottom:16px;">
-    <div class="pg-title">알림 문구</div>
-    <div class="pg-sub" style="margin-bottom:0;">슬랙으로 나가는 메시지 문구를 직접 고치고 미리 볼 수 있어요. <b>{중괄호}</b>는 실제 값으로 자동 치환되고, 값이 없는 줄은 자동으로 빠집니다. 저장하면 <b>다음 발송부터</b> 적용돼요. <b>🧪 테스트 발송</b>을 누르면 저장 전 문구 그대로 <b>내 슬랙 DM</b>으로 보내서 실제 모습을 확인할 수 있어요.</div>
-  </div>
-  <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap;">
-    <button onclick="saveMsgTpl()" style="background:var(--blue);color:#fff;border:none;border-radius:var(--radius);padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;">저장</button>
-    <button onclick="loadMsgTpl()" style="background:none;border:1px solid var(--border);border-radius:var(--radius);padding:9px 14px;font-size:13px;cursor:pointer;color:var(--text2);">저장본 다시 불러오기</button>
-    <span id="msgtpl-status" style="font-size:12px;color:var(--text3);"></span>
-  </div>
-  <div id="msgtpl-list"></div>
 </div>
 
 <div id="tab-managers" style="display:none;">
@@ -1483,7 +1484,6 @@ function showTab(t, btn) {
   }
   if(t==='zapier') loadZapierPending();
   if(t==='nickname') renderNicknameList();
-  if(t==='msgs') loadMsgTpl();
   if(t==='cards'){
     buildNickDatalist();
     Promise.all([loadCardManagers(), loadSlackIds()]).then(function(){ loadCards(); });
@@ -3207,6 +3207,149 @@ async function rvRevealCard(id){
         if(el&&cc) el.textContent=cc.number; if(cv&&cc) cv.textContent=cc.cvc||'-'; }
     },15000);
   }catch(e){}
+}
+
+// ── 알림 문구 패널 열기/닫기 (결제 알림 탭 안) ──────
+function toggleMsgTpl(){
+  var p=document.getElementById('annual-msgs-panel'), b=document.getElementById('msgtpl-toggle');
+  if(!p) return;
+  var open = (p.style.display==='none' || !p.style.display);
+  p.style.display = open ? 'block' : 'none';
+  if(b) b.textContent = open ? '✕ 알림 문구 닫기' : '✏️ 알림 문구';
+  if(open){
+    if(!p.dataset.loaded){ p.dataset.loaded='1'; loadMsgTpl(); }
+    p.scrollIntoView({behavior:'smooth', block:'nearest'});
+  }
+}
+
+// ── 표기 통일(일괄 정규화) ─────────────────────────
+// 같은 걸 다르게 적은 서비스명·인상 금액을 한 표기로 맞춘다. 미리보기 → 확인 후 적용.
+function normHikeAmt(v){
+  var t=String(v==null?'':v).trim(); if(!t) return null;
+  var m=t.replace(/,/g,'').match(/\d+(?:\.\d+)?/);
+  return m ? (m[0]+' 달러') : null;
+}
+function _nkey(v){ return String(v==null?'':v).trim().toLowerCase().replace(/\s+/g,' '); }
+function _esc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+var NORM_RULES = [
+  { key:'claude', on:true, field:'s', to:'클로드',
+    label:'클로드 표기 통일',
+    desc:'Claude · claude · Claude AI · 클로드 AI → <b>클로드</b>',
+    test:function(v){ var t=_nkey(v); return t==='claude'||t==='claude ai'||t==='클로드'||t==='클로드 ai'; } },
+  { key:'claude_plan', on:false, field:'s', to:'클로드',
+    label:'클로드 요금제/제품명까지 합치기',
+    desc:'클로드 코드 · 클로드 코드(max) · Claude Max (5x) → <b>클로드</b><br><span style="color:var(--amber);">⚠️ 합치면 Code·Max 요금제 구분이 사라져요</span>',
+    test:function(v){ var t=_nkey(v); return t==='클로드 코드'||t==='클로드 코드(max)'||t==='claude max (5x)'||t==='claude code'; } },
+  { key:'claude_plabton', on:false, field:'s', to:'클로드',
+    label:'[플랩톤] 클로드도 합치기',
+    desc:'[플랩톤] 클로드 → <b>클로드</b><br><span style="color:var(--amber);">⚠️ 플랩톤 프로젝트 구분이 사라져요 (3건 모두 구독종료)</span>',
+    test:function(v){ return /^\[플랩톤\]\s*클로드$/.test(String(v==null?'':v).trim()); } },
+  { key:'gpt', on:true, field:'s', to:'ChatGPT',
+    label:'ChatGPT 표기 통일',
+    desc:'chatGPT · CHATGPT → <b>ChatGPT</b><br><span style="color:var(--text3);">OPEN AI는 API 사용료(구독 아님)라 제외했어요</span>',
+    test:function(v){ return _nkey(v)==='chatgpt'; } },
+  { key:'hike', on:true, field:'ha', to:null, conv:normHikeAmt,
+    label:'인상 금액 표기 통일',
+    desc:'110 · $110 · 110달러 → <b>110 달러</b>',
+    test:function(v){ return !!String(v==null?'':v).trim(); } }
+];
+
+var NORM_PLAN = [];
+
+function buildNormPlan(){
+  var items = DATA.filter(function(d){ return d.status==='구독중'||d.status==='구독종료'; });
+  return NORM_RULES.map(function(r){
+    var hits=[];
+    items.forEach(function(d){
+      var from = (d[r.field]==null) ? '' : String(d[r.field]);
+      if(!r.test(from)) return;
+      var to = r.conv ? r.conv(from) : r.to;
+      if(to==null || to===from) return;          // 바뀔 게 없으면 제외
+      hits.push({ id:d.id, from:from, to:to, svc:d.s||'', card:d.m||'', status:d.status||'' });
+    });
+    return { key:r.key, on:r.on, field:r.field, label:r.label, desc:r.desc, hits:hits };
+  });
+}
+
+function openNormalizeModal(){
+  NORM_PLAN = buildNormPlan();
+  var total = NORM_PLAN.reduce(function(a,r){ return a + r.hits.length; }, 0);
+  var body = NORM_PLAN.map(function(r){
+    var dis = r.hits.length ? '' : 'opacity:.45;';
+    var rows = r.hits.map(function(h){
+      return '<div style="display:flex;gap:8px;align-items:baseline;padding:3px 0;font-size:12px;border-top:1px dashed var(--border);">'
+        + '<span style="color:var(--text3);min-width:46px;">ID'+_esc(h.id)+'</span>'
+        + '<span style="color:var(--text2);text-decoration:line-through;">'+_esc(h.from)+'</span>'
+        + '<span style="color:var(--text3);">→</span>'
+        + '<span style="font-weight:700;">'+_esc(h.to)+'</span>'
+        + '<span style="margin-left:auto;color:var(--text3);">'+_esc(h.svc)+(h.card?(' · '+_esc(h.card)):'')+' · '+_esc(h.status)+'</span>'
+        + '</div>';
+    }).join('');
+    return '<div style="border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:10px;background:var(--surface2);'+dis+'">'
+      + '<label style="display:flex;gap:9px;align-items:flex-start;cursor:'+(r.hits.length?'pointer':'default')+';">'
+      + '<input type="checkbox" id="norm-ck-'+r.key+'" '+(r.on&&r.hits.length?'checked':'')+' '+(r.hits.length?'':'disabled')+' style="margin-top:3px;">'
+      + '<span style="flex:1;"><b style="font-size:13px;">'+r.label+'</b>'
+      + ' <span style="color:var(--blue);font-weight:700;font-size:12px;">'+r.hits.length+'건</span>'
+      + '<div style="font-size:12px;color:var(--text2);margin-top:3px;line-height:1.55;">'+r.desc+'</div></span></label>'
+      + (rows?('<div style="margin-top:8px;max-height:190px;overflow:auto;">'+rows+'</div>'):'')
+      + '</div>';
+  }).join('');
+
+  var ov=document.createElement('div');
+  ov.id='norm-overlay';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px;';
+  ov.innerHTML =
+    '<div style="background:var(--surface);border-radius:14px;max-width:760px;width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(0,0,0,.28);">'
+    + '<div style="padding:18px 20px 12px;border-bottom:1px solid var(--border);">'
+    +   '<div class="pg-title" style="margin:0;font-size:18px;">🧹 표기 통일</div>'
+    +   '<div class="pg-sub" style="margin:4px 0 0;font-size:12px;">같은 걸 다르게 적은 항목을 한 표기로 맞춥니다. 체크된 규칙만 적용돼요. <b>되돌리기가 없으니 걱정되면 먼저 📥 엑셀 추출로 백업</b>해두세요.</div>'
+    + '</div>'
+    + '<div style="padding:14px 20px;overflow:auto;flex:1;">'+ (total ? body : '<div style="padding:30px;text-align:center;color:var(--text3);">이미 모두 통일돼 있어요 ✨</div>') +'</div>'
+    + '<div style="padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center;">'
+    +   '<span id="norm-status" style="font-size:12px;color:var(--text3);flex:1;"></span>'
+    +   '<button onclick="closeNormalizeModal()" style="background:none;border:1px solid var(--border);border-radius:var(--radius);padding:9px 16px;font-size:13px;cursor:pointer;color:var(--text2);">취소</button>'
+    +   (total ? '<button id="norm-apply" onclick="applyNormalize()" style="background:var(--blue);color:#fff;border:none;border-radius:var(--radius);padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;">적용하기</button>' : '')
+    + '</div></div>';
+  ov.addEventListener('click', function(e){ if(e.target===ov) closeNormalizeModal(); });
+  document.body.appendChild(ov);
+}
+function closeNormalizeModal(){
+  var ov=document.getElementById('norm-overlay'); if(ov) ov.remove();
+}
+
+async function applyNormalize(){
+  // 한 항목에 여러 규칙이 걸릴 수 있으니 ID로 묶어 1회만 저장한다
+  var byId={}, cnt=0;
+  NORM_PLAN.forEach(function(r){
+    var ck=document.getElementById('norm-ck-'+r.key);
+    if(!ck || !ck.checked) return;
+    r.hits.forEach(function(h){
+      (byId[h.id]=byId[h.id]||[]).push({field:r.field, to:h.to}); cnt++;
+    });
+  });
+  var ids=Object.keys(byId);
+  if(!cnt){ alert('선택된 규칙이 없어요.'); return; }
+  if(!confirm(ids.length+'개 항목의 '+cnt+'건을 바꿉니다. 계속할까요?')) return;
+
+  var btn=document.getElementById('norm-apply'); if(btn){ btn.disabled=true; btn.style.opacity='.5'; }
+  var st=document.getElementById('norm-status');
+  var okc=0, failc=0;
+  for(var i=0;i<ids.length;i++){
+    var id=ids[i];
+    var d=DATA.find(function(x){ return String(x.id)===String(id); });
+    if(!d){ failc++; continue; }
+    var before={};
+    byId[id].forEach(function(j){ before[j.field]=d[j.field]; d[j.field]=j.to; });
+    if(st) st.textContent='적용 중… '+(i+1)+'/'+ids.length;
+    var ok=await serverPatch(d);
+    if(ok===false){ Object.keys(before).forEach(function(k){ d[k]=before[k]; }); failc++; }
+    else okc++;
+  }
+  closeNormalizeModal();
+  try{ initMsUser(); initMsCard(); }catch(e){}
+  applyAll(); renderDash();
+  showZpToast(failc ? ('⚠️ '+okc+'건 완료 · '+failc+'건 실패') : ('✅ '+okc+'개 항목 표기 통일 완료'));
 }
 
 // ── 알림 문구 템플릿 편집 ──────────────────────────
