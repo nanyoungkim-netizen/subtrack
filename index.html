@@ -772,6 +772,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
   </nav>
   <div class="sidebar-foot">
     <button class="add-main-btn" onclick="openModal(null)">+ 구독 추가</button>
+    <button class="pw-change-btn" onclick="enterResearcherPreview()">👀 리서처 화면 미리보기</button>
     <button class="pw-change-btn" id="pw-change-btn" style="display:none;">🔑 비밀번호 변경</button>
     <button class="logout-btn" id="admin-logout-btn">← 로그아웃</button>
   </div>
@@ -946,7 +947,6 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
   <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
     <input id="cards-search" oninput="renderCards()" placeholder="🔍 소유자 · 끝4자리 · 서비스 · 담당자 검색" style="flex:1;min-width:220px;max-width:340px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface2);color:var(--text);">
     <button onclick="openCardModal(null)" style="background:var(--blue);color:#fff;border:none;border-radius:var(--radius);padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">+ 카드 추가</button>
-    <button onclick="enterResearcherPreview()" style="background:none;border:1px solid var(--border);border-radius:var(--radius);padding:8px 14px;font-size:13px;cursor:pointer;color:var(--text2);white-space:nowrap;">👀 리서처 화면 미리보기</button>
   </div>
   <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center;font-size:12px;color:var(--text2);">
     <select id="cards-f-status" onchange="renderCards()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;background:var(--surface2);color:var(--text);">
@@ -1410,13 +1410,12 @@ function enterResearcherPreview(){
   PREVIEW_AS_RESEARCHER = true;
   var bar=document.getElementById('rv-preview-bar'); if(bar) bar.style.display='flex';
   enterResearcher();
-  rvShowCards();                      // 카드 화면부터 보여주기
+  rvGoScreen('lookup');               // 리서처가 처음 보는 화면부터
 }
 function exitResearcherPreview(){
   PREVIEW_AS_RESEARCHER = false;
   var bar=document.getElementById('rv-preview-bar'); if(bar) bar.style.display='none';
-  enterAdmin();
-  showTab('cards', document.getElementById('nav-cards'));
+  enterAdmin();               // 보던 탭 그대로 복귀
 }
 function enterResearcher(){
   APP_MODE = 'researcher';
