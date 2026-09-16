@@ -9,7 +9,10 @@ import { nickOfEmail, isOwnCard } from '../lib/people.js';
 export default async function handler(req, res){
   const s = getAuth(req);
   if(!s) return res.status(401).json({ ok:false, error:'unauthorized' });
-  const isAdmin = s.role === 'admin';
+  const isAdminReal = s.role === 'admin';
+  // 관리자가 ?as=researcher 로 부르면 '리서처 화면 미리보기' — 실제 리서처와 동일하게 응답
+  const preview = isAdminReal && String((req.query && req.query.as) || '') === 'researcher';
+  const isAdmin = isAdminReal && !preview;
   const myNick = isAdmin ? '' : nickOfEmail(s.email);
 
   const sql = neon(process.env.DATABASE_URL);
@@ -50,7 +53,7 @@ export default async function handler(req, res){
     return res.status(200).json({ ok:true, cards: cards });
   }
 
-  if((req.method === 'POST' || req.method === 'DELETE') && !isAdmin){
+  if((req.method === 'POST' || req.method === 'DELETE') && !isAdminReal){
     return res.status(403).json({ ok:false, error:'forbidden' });
   }
 

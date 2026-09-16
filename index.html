@@ -620,6 +620,10 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
     </div>
     <button class="rv-logout" id="rv-logout-btn">← 나가기</button>
   </div>
+  <div id="rv-preview-bar" style="display:none;background:var(--amber-l);border-bottom:1px solid var(--amber-b);color:#8a5a00;padding:9px 16px;font-size:13px;align-items:center;gap:10px;flex-wrap:wrap;">
+    <b>👀 리서처 화면 미리보기</b> — 구성원에게 이렇게 보입니다.
+    <button onclick="exitResearcherPreview()" style="margin-left:auto;background:#fff;border:1px solid var(--amber-b);border-radius:8px;padding:4px 12px;font-size:12px;cursor:pointer;color:#8a5a00;font-weight:600;">← 관리자 화면으로</button>
+  </div>
   <div class="rv-body" id="rv-body">
 
   <!-- ① 처음 화면 -->
@@ -942,6 +946,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
   <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
     <input id="cards-search" oninput="renderCards()" placeholder="🔍 소유자 · 끝4자리 · 서비스 · 담당자 검색" style="flex:1;min-width:220px;max-width:340px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface2);color:var(--text);">
     <button onclick="openCardModal(null)" style="background:var(--blue);color:#fff;border:none;border-radius:var(--radius);padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">+ 카드 추가</button>
+    <button onclick="enterResearcherPreview()" style="background:none;border:1px solid var(--border);border-radius:var(--radius);padding:8px 14px;font-size:13px;cursor:pointer;color:var(--text2);white-space:nowrap;">👀 리서처 화면 미리보기</button>
   </div>
   <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center;font-size:12px;color:var(--text2);">
     <select id="cards-f-status" onchange="renderCards()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;background:var(--surface2);color:var(--text);">
@@ -1398,6 +1403,20 @@ function enterAdmin(){
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('researcher-view').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
+}
+var PREVIEW_AS_RESEARCHER = false;
+function rvAsParam(sep){ return PREVIEW_AS_RESEARCHER ? (sep+'as=researcher') : ''; }
+function enterResearcherPreview(){
+  PREVIEW_AS_RESEARCHER = true;
+  var bar=document.getElementById('rv-preview-bar'); if(bar) bar.style.display='flex';
+  enterResearcher();
+  rvShowCards();                      // 카드 화면부터 보여주기
+}
+function exitResearcherPreview(){
+  PREVIEW_AS_RESEARCHER = false;
+  var bar=document.getElementById('rv-preview-bar'); if(bar) bar.style.display='none';
+  enterAdmin();
+  showTab('cards', document.getElementById('nav-cards'));
 }
 function enterResearcher(){
   APP_MODE = 'researcher';
@@ -3119,7 +3138,7 @@ async function rvShowCards(){
   var tb=document.getElementById('rv-cards-tbody');
   if(tb) tb.innerHTML='<tr><td colspan="7" style="color:var(--text3);padding:14px;">불러오는 중…</td></tr>';
   try{
-    var r = await apiFetch('/api/cards');
+    var r = await apiFetch('/api/cards'+rvAsParam('?'));
     if(!r.ok){
       if(tb) tb.innerHTML='<tr><td colspan="7" style="color:var(--text3);padding:14px;">카드 정보를 불러올 수 없어요. 다시 로그인해 주세요.</td></tr>';
       return;
@@ -3168,7 +3187,7 @@ async function rvRevealCard(id){
   var c=RVCARDS.find(function(x){return x.id===id;});
   if(_rvRev[id]){ _rvRev[id]=false; if(el&&c) el.textContent=c.number; if(cv&&c) cv.textContent=c.cvc||'-'; return; }
   try{
-    var r=await apiFetch('/api/cards?id='+id+'&reveal=1');
+    var r=await apiFetch('/api/cards?id='+id+'&reveal=1'+rvAsParam('&'));
     if(r.status===403){ alert('본인 카드만 전체 번호를 볼 수 있어요.'); return; }
     if(!r.ok) return;
     var j=await r.json();
