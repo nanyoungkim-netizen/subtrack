@@ -1,5 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 import { loadTemplates, render } from '../lib/msgtpl.js';
+import crypto from 'crypto';
 
 // 연결제 갱신 임박(15일 이내) 구독을, 카드 담당자에게 개인 DM으로 알림.
 // - 발송 수단: Slack Bot Token(chat.postMessage). 개인 DM은 conversations.open 후 전송.
@@ -48,7 +49,7 @@ function buildHikeMsg(T, koName, tool, hikeStr, days, ha, a){
     '종료일':hikeStr, '디데이':dd, '인상금액':ha, '원금액':a });
 }
 
-async function sendDM(token, userId, text){
+async function sendDM(token, userId, text, blocks){
   try {
     const open = await fetch('https://slack.com/api/conversations.open', {
       method:'POST',
@@ -56,17 +57,124 @@ async function sendDM(token, userId, text){
       body: JSON.stringify({ users: userId })
     }).then(r=>r.json());
     const channel = (open && open.ok && open.channel && open.channel.id) ? open.channel.id : userId;
+    const payload = { channel, text, unfurl_links:false };
+    if(blocks) payload.blocks = blocks;
     const post = await fetch('https://slack.com/api/chat.postMessage', {
       method:'POST',
       headers:{ 'Authorization':'Bearer '+token, 'Content-Type':'application/json; charset=utf-8' },
-      body: JSON.stringify({ channel, text })
+      body: JSON.stringify(payload)
     }).then(r=>r.json());
     return post;
   } catch(e){ return { ok:false, error:e.message }; }
 }
 
+// ── 슬랙 Events API: 머시봇에 온 DM 답장을 관리자에게 전달 ──────────
+// 이 함수(cron-notify)의 POST를 슬랙 Event Request URL로 쓴다.
+// 새 서버리스 함수를 못 만들어서(Hobby 12개 제한) 여기에 얹었다.
+// 서명 검증을 위해 bodyParser를 끄므로, POST 본문은 직접 읽는다.
+export const config = { api: { bodyParser: false } };
+
+function readRawBody(req){
+  return new Promise(function(resolve, reject){
+    const chunks = [];
+    req.on('data', function(c){ chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)); });
+    req.on('end', function(){ resolve(Buffer.concat(chunks)); });
+    req.on('error', reject);
+  });
+}
+
+// 슬랙 서명 검증(v0). SLACK_SIGNING_SECRET 없으면 전부 거부.
+function verifySlackSig(req, raw){
+  const secret = process.env.SLACK_SIGNING_SECRET;
+  if(!secret) return false;
+  const ts = req.headers['x-slack-request-timestamp'];
+  const sig = req.headers['x-slack-signature'];
+  if(!ts || !sig) return false;
+  if(Math.abs(Math.floor(Date.now()/1000) - Number(ts)) > 300) return false;  // 리플레이 방지
+  const mine = 'v0=' + crypto.createHmac('sha256', secret)
+    .update('v0:' + ts + ':' + raw.toString('utf8')).digest('hex');
+  try {
+    const a = Buffer.from(mine), b = Buffer.from(String(sig));
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+  } catch(_){ return false; }
+}
+
+function kstStamp(tsSec){
+  const d = new Date((Number(tsSec) || (Date.now()/1000)) * 1000 + 9*3600*1000);
+  const p = (n)=> n<10 ? '0'+n : ''+n;
+  return (d.getUTCMonth()+1)+'/'+d.getUTCDate()+' '+p(d.getUTCHours())+':'+p(d.getUTCMinutes());
+}
+
+async function handleSlackEvent(req, res, sql){
+  let raw;
+  try { raw = await readRawBody(req); } catch(_){ return res.status(400).json({ ok:false }); }
+  if(!verifySlackSig(req, raw)) return res.status(401).json({ ok:false, error:'bad_signature' });
+
+  let body;
+  try { body = JSON.parse(raw.toString('utf8')); } catch(_){ return res.status(400).json({ ok:false }); }
+
+  // 슬랙이 Request URL 저장할 때 보내는 확인 요청
+  if(body.type === 'url_verification'){
+    res.setHeader('Content-Type', 'text/plain');
+    return res.status(200).send(body.challenge || '');
+  }
+  if(body.type !== 'event_callback') return res.status(200).json({ ok:true });
+
+  const ev = body.event || {};
+  const adminId = process.env.ADMIN_SLACK_ID || 'U03JQ5FHP5Z';
+  const isDM = ev.channel_type === 'im' || String(ev.channel||'').charAt(0) === 'D';
+
+  // 사람이 봇에게 직접 보낸 DM만. 봇 메시지·수정/삭제·머시 본인(무한루프)은 패스.
+  if(ev.type !== 'message' || !isDM) return res.status(200).json({ ok:true, skip:'not_dm' });
+  if(ev.bot_id || ev.app_id) return res.status(200).json({ ok:true, skip:'bot' });
+  if(ev.subtype && ev.subtype !== 'file_share') return res.status(200).json({ ok:true, skip:ev.subtype });
+  // 머시 본인 DM은 무한루프 방지로 제외. 단 '테스트'로 시작하면 본인 확인용으로 전달.
+  const selfTest = (ev.user === adminId) && /^\s*(테스트|test)/i.test(String(ev.text||''));
+  if(!ev.user || (ev.user === adminId && !selfTest)) return res.status(200).json({ ok:true, skip:'self' });
+
+  const token = process.env.SLACK_BOT_TOKEN;
+  if(!token) return res.status(200).json({ ok:false, error:'no_token' });
+
+  // 재시도/중복 방지 (최근 200건 event_id 기억)
+  const eid = body.event_id || (ev.channel + ':' + ev.ts);
+  let seen = [];
+  try {
+    const rows = await sql`SELECT val FROM app_settings WHERE key='bot_reply_seen' LIMIT 1`;
+    if(rows[0] && rows[0].val){ const v = JSON.parse(rows[0].val); if(Array.isArray(v)) seen = v; }
+  } catch(_){}
+  if(seen.indexOf(eid) >= 0) return res.status(200).json({ ok:true, skip:'dup' });
+
+  const text = String(ev.text || '').slice(0, 2500);
+  const nFiles = Array.isArray(ev.files) ? ev.files.length : 0;
+  const quoted = text
+    ? text.split('\n').map(function(l){ return '> ' + l; }).join('\n')
+    : '> _(텍스트 없음)_';
+
+  const blocks = [
+    { type:'section', text:{ type:'mrkdwn', text:'💬 <@'+ev.user+'> 님이 *머시봇*에게 답장했어요' } },
+    { type:'section', text:{ type:'mrkdwn', text: quoted + (nFiles ? ('\n📎 첨부 '+nFiles+'개') : '') } },
+    { type:'context', elements:[ { type:'mrkdwn',
+        text:'🕑 '+kstStamp(ev.ts)+'  ·  답하려면 <@'+ev.user+'> 에게 직접 DM 주세요 — *여기에 쓰면 전달되지 않아요*' } ] }
+  ];
+  const fallback = '💬 머시봇에 온 답장: ' + (text || '(첨부)');
+
+  const r = await sendDM(token, adminId, fallback, blocks);
+
+  try {
+    seen.unshift(eid);
+    await sql`INSERT INTO app_settings (key,val,updated_at) VALUES ('bot_reply_seen', ${JSON.stringify(seen.slice(0,200))}, now())
+      ON CONFLICT (key) DO UPDATE SET val=EXCLUDED.val, updated_at=now()`;
+  } catch(_){}
+
+  return res.status(200).json({ ok: !!(r && r.ok) });
+}
+
 export default async function handler(req, res){
   const sql = neon(process.env.DATABASE_URL);
+
+  // 슬랙 Events API는 POST로 온다 (CRON_SECRET 인증 대상 아님 — 서명으로 검증)
+  if(req.method === 'POST') return handleSlackEvent(req, res, sql);
+
   const token = process.env.SLACK_BOT_TOKEN;
   const secret = process.env.CRON_SECRET;
   const dry = req.query.dryRun==='1' || req.query.dry==='1';
