@@ -1302,7 +1302,7 @@ function hideOverlay(){ var o=document.getElementById('sso-loading'); if(o) o.st
 function showOverlay(){ var o=document.getElementById('sso-loading'); if(o) o.style.display='flex'; }
 // 포털이 아니면 오버레이 즉시 숨김 / 포털이면 4.5초 후에도 로그인 안 되면 로그인 화면 폴백
 if(!portalPending()){ try{ hideOverlay(); }catch(e){} }
-else { setTimeout(function(){ SSO_TIMEOUT = true; try{ checkSession(); }catch(e){ hideOverlay(); } }, 4500); }
+else { setTimeout(function(){ SSO_TIMEOUT = true; if(__ssoDone) return; /* 이미 자동로그인 끝났으면 다시 안 불러옴 */ try{ checkSession(); }catch(e){ hideOverlay(); } }, 4500); }
 
 // 포털 '신뢰 패스' 토큰 → 자동로그인 (다른 앱과 동일)
 var __ssoBusy = false, __ssoDone = false;
