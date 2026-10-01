@@ -1233,8 +1233,8 @@ async function saveKoMap(){
 async function loadKoMap(){
   if(!IS_DEPLOYED) return;
   try {
-    const res = await apiFetch('/api/nicknames');
-    const j = await res.json();
+    var pre = takePrimed('ko_map');
+    const j = (pre !== undefined) ? { ok:true, map: pre } : await (await apiFetch('/api/nicknames')).json();
     if(j.ok && j.map && Object.keys(j.map).length){
       KO_MAP = j.map;               // 서버 저장분이 있으면 그것을 사용(권위)
     } else {
@@ -1457,8 +1457,9 @@ async function checkSession(){
   };
   if(!IS_DEPLOYED){ showLogin(); return; }
   try {
-    var j = await apiFetch('/api/auth/me').then(function(r){return r.json();});
+    var j = await apiFetch('/api/auth/me?bundle=1').then(function(r){return r.json();});
     if(j && j.authed){
+      __BUNDLE = (j.bundle && Array.isArray(j.bundle.data)) ? j.bundle : null;
       hideOverlay();
       window.APP_EMAIL = j.email;
       window.APP_ROLE = j.role;
@@ -2599,8 +2600,9 @@ async function initApp(){
 async function loadAppData(){
   if(IS_DEPLOYED){
     try {
-      var res = await apiFetch('/api/data');
-      var json = await res.json();
+      var json;
+      if(__BUNDLE){ json = { ok:true, data: __BUNDLE.data }; }
+      else { var res = await apiFetch('/api/data'); json = await res.json(); }
       if(json.ok && Array.isArray(json.data) && json.data.length > 0){
         DATA = json.data;
         nextId = Math.max.apply(null, DATA.map(function(d){return d.id;})) + 1;
@@ -2621,8 +2623,10 @@ async function loadAppData(){
   // 자피어 pending 건수 확인
   if(IS_DEPLOYED){
     try {
-      var zr = await apiFetch('/api/data?source=zapier&status=pending');
-      var zj = await zr.json();
+      var zj;
+      if(__BUNDLE && Array.isArray(__BUNDLE.zapier)){ zj = { ok:true, data: __BUNDLE.zapier }; }
+      else { var zr = await apiFetch('/api/data?source=zapier&status=pending'); zj = await zr.json(); }
+      __BUNDLE = null; // 처음 로드 끝 — 이후 호출은 예전처럼 서버에서
       var zapItems = (zj.data||[]);
       if(zapItems.length>0){
         zapItems.forEach(function(zi){if(!DATA.find(function(d){return d.id===zi.id;}))DATA.push(zi);});
@@ -2966,8 +2970,8 @@ function slackIdOf(eng){ if(!eng) return ''; return SLACK_ID_OVERRIDE[eng] || SL
 async function loadSlackIds(){
   if(!IS_DEPLOYED) return;
   try {
-    const res = await apiFetch('/api/settings?key=slack_ids');
-    const j = await res.json();
+    var pre = takePrimed('slack_ids');
+    const j = (pre !== undefined) ? { ok:true, value: pre } : await (await apiFetch('/api/settings?key=slack_ids')).json();
     if(j.ok && j.value && typeof j.value==='object' && !Array.isArray(j.value)) SLACK_ID_OVERRIDE = j.value;
   } catch(e){ console.warn('슬랙ID 로드 실패', e); }
 }
@@ -2992,8 +2996,8 @@ var CARD_MANAGERS = {};   // { "3728": "Cus", ... } 카드 → 담당자(영문 
 async function loadCardManagers(){
   if(!IS_DEPLOYED) return;
   try {
-    const res = await apiFetch('/api/settings?key=card_managers');
-    const j = await res.json();
+    var pre = takePrimed('card_managers');
+    const j = (pre !== undefined) ? { ok:true, value: pre } : await (await apiFetch('/api/settings?key=card_managers')).json();
     if(j.ok && j.value && typeof j.value==='object' && !Array.isArray(j.value)) CARD_MANAGERS = j.value;
   } catch(e){ console.warn('결제 담당자 로드 실패', e); }
 }
@@ -3473,6 +3477,13 @@ var _revN = {}, _revC = {};
 var cardEditId = null;
 var SESSION_TOKEN = (function(){ try{ return sessionStorage.getItem('sub_token') || ''; }catch(e){ return ''; } })();
 // 카드 API 요청: 쿠키(credentials) + 토큰(Authorization) 둘 다 실어보냄(iframe 제3자쿠키 차단 대비)
+// 세션 확인(/api/auth/me?bundle=1) 때 같이 받은 초기 데이터. 처음 로드에서 한 번씩만 꺼내 쓰고
+// (takePrimed) 비워서, 탭 전환 등 그 뒤의 호출은 예전처럼 서버에서 새로 받는다.
+var __BUNDLE = null;
+function takePrimed(key){
+  if(!__BUNDLE || !__BUNDLE.settings || !(key in __BUNDLE.settings)) return undefined;
+  var v = __BUNDLE.settings[key]; delete __BUNDLE.settings[key]; return v;
+}
 function apiFetch(url, opts){
   opts = opts || {};
   opts.credentials = 'include';
@@ -3760,8 +3771,8 @@ function isRetired(eng){ return RETIRED.indexOf(eng) >= 0; }
 async function loadRetired(){
   if(!IS_DEPLOYED) return;
   try {
-    const res = await apiFetch('/api/settings?key=retired_nicks');
-    const j = await res.json();
+    var pre = takePrimed('retired_nicks');
+    const j = (pre !== undefined) ? { ok:true, value: pre } : await (await apiFetch('/api/settings?key=retired_nicks')).json();
     if(j.ok && Array.isArray(j.value)) RETIRED = j.value;
   } catch(e){ console.warn('퇴사자 로드 실패', e); }
 }
