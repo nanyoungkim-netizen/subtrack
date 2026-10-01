@@ -1309,7 +1309,7 @@ var __ssoBusy = false, __ssoDone = false;
 function ssoLogin(token){
   // 포털은 토큰을 두 번 보낸다(iframe 로드 때 + 준비 신호 답). 둘 다 처리하면 로그인·세션·
   // 데이터 요청이 전부 두 번씩 나가 느려졌다(2026-10-01 서버 기록) → 진행 중이거나 끝났으면 무시.
-  if(!token || __ssoBusy || __ssoDone) return;
+  if(!token || __ssoBusy || __ssoDone || window.APP_EMAIL) return; // 이미 로그인(쿠키)돼 있으면 다시 안 함
   __ssoBusy = true;
   fetch('/api/auth/sso?token=' + encodeURIComponent(token))
     .then(function(r){ return r.json(); })
