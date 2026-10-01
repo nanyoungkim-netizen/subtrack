@@ -99,6 +99,20 @@ function verifySlackSig(req, raw){
   } catch(_){ return false; }
 }
 
+// 지정 채널(+스레드)에 메시지 전송
+async function postMsg(token, channel, text, blocks, threadTs){
+  try {
+    const payload = { channel, text, unfurl_links:false };
+    if(blocks) payload.blocks = blocks;
+    if(threadTs) payload.thread_ts = threadTs;
+    return await fetch('https://slack.com/api/chat.postMessage', {
+      method:'POST',
+      headers:{ 'Authorization':'Bearer '+token, 'Content-Type':'application/json; charset=utf-8' },
+      body: JSON.stringify(payload)
+    }).then(r=>r.json());
+  } catch(e){ return { ok:false, error:e.message }; }
+}
+
 function kstStamp(tsSec){
   const d = new Date((Number(tsSec) || (Date.now()/1000)) * 1000 + 9*3600*1000);
   const p = (n)=> n<10 ? '0'+n : ''+n;
@@ -124,13 +138,11 @@ async function handleSlackEvent(req, res, sql){
   const adminId = process.env.ADMIN_SLACK_ID || 'U03JQ5FHP5Z';
   const isDM = ev.channel_type === 'im' || String(ev.channel||'').charAt(0) === 'D';
 
-  // 사람이 봇에게 직접 보낸 DM만. 봇 메시지·수정/삭제·머시 본인(무한루프)은 패스.
+  // 사람이 봇에게 직접 보낸 DM만. 봇 메시지·수정/삭제는 패스.
   if(ev.type !== 'message' || !isDM) return res.status(200).json({ ok:true, skip:'not_dm' });
   if(ev.bot_id || ev.app_id) return res.status(200).json({ ok:true, skip:'bot' });
   if(ev.subtype && ev.subtype !== 'file_share') return res.status(200).json({ ok:true, skip:ev.subtype });
-  // 머시 본인 DM은 무한루프 방지로 제외. 단 '테스트'로 시작하면 본인 확인용으로 전달.
-  const selfTest = (ev.user === adminId) && /^\s*(테스트|test)/i.test(String(ev.text||''));
-  if(!ev.user || (ev.user === adminId && !selfTest)) return res.status(200).json({ ok:true, skip:'self' });
+  if(!ev.user) return res.status(200).json({ ok:true, skip:'no_user' });
 
   const token = process.env.SLACK_BOT_TOKEN;
   if(!token) return res.status(200).json({ ok:false, error:'no_token' });
@@ -143,28 +155,75 @@ async function handleSlackEvent(req, res, sql){
     if(rows[0] && rows[0].val){ const v = JSON.parse(rows[0].val); if(Array.isArray(v)) seen = v; }
   } catch(_){}
   if(seen.indexOf(eid) >= 0) return res.status(200).json({ ok:true, skip:'dup' });
+  async function markSeen(){
+    try {
+      seen.unshift(eid);
+      await sql`INSERT INTO app_settings (key,val,updated_at) VALUES ('bot_reply_seen', ${JSON.stringify(seen.slice(0,200))}, now())
+        ON CONFLICT (key) DO UPDATE SET val=EXCLUDED.val, updated_at=now()`;
+    } catch(_){}
+  }
 
   const text = String(ev.text || '').slice(0, 2500);
   const nFiles = Array.isArray(ev.files) ? ev.files.length : 0;
-  const quoted = text
-    ? text.split('\n').map(function(l){ return '> ' + l; }).join('\n')
-    : '> _(텍스트 없음)_';
+  const quote = (t)=> t ? t.split('\n').map(function(l){ return '> ' + l; }).join('\n') : '> _(텍스트 없음)_';
 
+  // ── (A) 머시가 전달 메시지에 *스레드 답글* → 원래 보낸 사람에게 머시봇이 대신 전달 ──
+  if(ev.user === adminId && ev.thread_ts && ev.thread_ts !== ev.ts){
+    await markSeen();
+    let relay = {};
+    try {
+      const rows = await sql`SELECT val FROM app_settings WHERE key='relay_map' LIMIT 1`;
+      if(rows[0] && rows[0].val){ const v = JSON.parse(rows[0].val); if(v && typeof v === 'object') relay = v; }
+    } catch(_){}
+    const target = relay[ev.thread_ts];
+    if(!target){
+      await postMsg(token, ev.channel, '⚠️ 누구에게 보낼지 못 찾았어요. 너무 오래된 전달 메시지는 중계가 안 돼요 — 그분께 직접 DM 부탁드려요.', null, ev.thread_ts);
+      return res.status(200).json({ ok:true, skip:'no_target' });
+    }
+    if(!text){
+      await postMsg(token, ev.channel, '⚠️ 글로 적어주셔야 전달돼요. (파일·이미지는 중계되지 않아요)', null, ev.thread_ts);
+      return res.status(200).json({ ok:true, skip:'empty' });
+    }
+    const relayBlocks = [
+      { type:'section', text:{ type:'mrkdwn', text:'💬 <@'+adminId+'> 님의 답장이에요' } },
+      { type:'section', text:{ type:'mrkdwn', text: quote(text) } }
+    ];
+    const rr = await sendDM(token, target, '💬 답장: '+text, relayBlocks);
+    await postMsg(token, ev.channel,
+      (rr && rr.ok) ? ('✅ <@'+target+'> 님에게 보냈어요') : ('❌ 전송 실패 — 직접 DM 부탁드려요'),
+      null, ev.thread_ts);
+    return res.status(200).json({ ok: !!(rr && rr.ok), relayed:true });
+  }
+
+  // ── (B) 머시 본인의 일반 DM은 무한루프 방지로 제외(단 '테스트'는 확인용 전달) ──
+  const selfTest = (ev.user === adminId) && /^\s*(테스트|test)/i.test(text);
+  if(ev.user === adminId && !selfTest) return res.status(200).json({ ok:true, skip:'self' });
+
+  // ── (C) 다른 사람이 머시봇에 보낸 DM → 머시에게 전달 ──
   const blocks = [
     { type:'section', text:{ type:'mrkdwn', text:'💬 <@'+ev.user+'> 님이 *머시봇*에게 답장했어요' } },
-    { type:'section', text:{ type:'mrkdwn', text: quoted + (nFiles ? ('\n📎 첨부 '+nFiles+'개') : '') } },
+    { type:'section', text:{ type:'mrkdwn', text: quote(text) + (nFiles ? ('\n📎 첨부 '+nFiles+'개') : '') } },
     { type:'context', elements:[ { type:'mrkdwn',
-        text:'🕑 '+kstStamp(ev.ts)+'  ·  답하려면 <@'+ev.user+'> 에게 직접 DM 주세요 — *여기에 쓰면 전달되지 않아요*' } ] }
+        text:'🕑 '+kstStamp(ev.ts)+'  ·  ↩️ *이 메시지에 스레드로 답글*을 달면 머시봇이 <@'+ev.user+'> 님에게 대신 보내드려요' } ] }
   ];
   const fallback = '💬 머시봇에 온 답장: ' + (text || '(첨부)');
 
   const r = await sendDM(token, adminId, fallback, blocks);
+  await markSeen();
 
-  try {
-    seen.unshift(eid);
-    await sql`INSERT INTO app_settings (key,val,updated_at) VALUES ('bot_reply_seen', ${JSON.stringify(seen.slice(0,200))}, now())
-      ON CONFLICT (key) DO UPDATE SET val=EXCLUDED.val, updated_at=now()`;
-  } catch(_){}
+  // 전달 메시지 ts → 보낸 사람 매핑 저장(스레드 답글 중계용, 최근 300건)
+  if(r && r.ok && r.ts){
+    try {
+      const rows = await sql`SELECT val FROM app_settings WHERE key='relay_map' LIMIT 1`;
+      let relay = {};
+      if(rows[0] && rows[0].val){ const v = JSON.parse(rows[0].val); if(v && typeof v === 'object') relay = v; }
+      const entries = [[r.ts, ev.user]].concat(Object.keys(relay).map(function(k){ return [k, relay[k]]; }));
+      const next = {};
+      entries.slice(0, 300).forEach(function(e){ if(!(e[0] in next)) next[e[0]] = e[1]; });
+      await sql`INSERT INTO app_settings (key,val,updated_at) VALUES ('relay_map', ${JSON.stringify(next)}, now())
+        ON CONFLICT (key) DO UPDATE SET val=EXCLUDED.val, updated_at=now()`;
+    } catch(_){}
+  }
 
   return res.status(200).json({ ok: !!(r && r.ok) });
 }
