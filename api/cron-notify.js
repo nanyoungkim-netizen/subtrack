@@ -135,6 +135,26 @@ async function handleSlackEvent(req, res, sql){
   if(body.type !== 'event_callback') return res.status(200).json({ ok:true });
 
   const ev = body.event || {};
+
+  // 재고 관리 앱(plab-inventory): #구매-요청 새 글은 그 앱으로 그대로 넘긴다(머시봇 Event URL 공유).
+  // 원본 본문·서명 헤더를 그대로 보내서 받는 앱이 직접 서명을 확인한다. DM 처리와는 겹치지 않는다.
+  const invChannels = (process.env.INVENTORY_SLACK_CHANNELS || 'C02FUHFGLGN').split(',').map(function(s){ return s.trim(); });
+  if(ev.type === 'message' && !ev.thread_ts && invChannels.indexOf(ev.channel) >= 0){
+    try {
+      await fetch('https://plab-inventory.vercel.app/api/slack/events', {
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'x-slack-request-timestamp': String(req.headers['x-slack-request-timestamp'] || ''),
+          'x-slack-signature': String(req.headers['x-slack-signature'] || ''),
+        },
+        body: raw,
+        signal: AbortSignal.timeout(2500),
+      });
+    } catch(_){}
+    return res.status(200).json({ ok:true, forwarded:'inventory' });
+  }
+
   const adminId = process.env.ADMIN_SLACK_ID || 'U03JQ5FHP5Z';
   const isDM = ev.channel_type === 'im' || String(ev.channel||'').charAt(0) === 'D';
 
