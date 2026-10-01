@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { neon } from '@neondatabase/serverless';
 import { signSession } from '../../lib/secure.js';
 
 // 포털(plab-account) '신뢰 패스' 토큰(body.sig, HMAC-SHA256 / SSO_BRIDGE_SECRET) 검증
@@ -21,6 +22,13 @@ function verifyPortalToken(token){
 
 // 포털 토큰 → subtrack 세션 발급 (자동로그인)
 export default async function handler(req, res){
+  // 포털의 "안 잠들게" 신호(?warm=1): 이 함수와 DB(select 1)만 깨운다. 로그인·데이터 변경 없음.
+  // (Hobby 함수 12개 한도가 꽉 차서 새 함수 대신 여기에 둠)
+  if(req.query && req.query.warm){
+    try{ if(process.env.DATABASE_URL) await neon(process.env.DATABASE_URL)`select 1`; }catch(_){}
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(204).end();
+  }
   let token = (req.query && req.query.token) || '';
   if(!token && req.body){ token = (typeof req.body === 'string' ? '' : req.body.token) || ''; }
   const p = verifyPortalToken(token);
