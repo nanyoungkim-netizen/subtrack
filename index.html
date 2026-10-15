@@ -562,21 +562,209 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
 
-/* ── 휴대폰(2026-10-15) ─────────────────────
-   왼쪽 메뉴(220px)가 화면 절반을 차지해 본문이 찌그러졌다 →
-   760px 이하에선 메뉴를 위쪽 가로줄(옆으로 밀기)로, 본문은 전체 폭. PC는 그대로. */
+/* 포털 '‹ 포털로' 고정 바(아래 스크립트가 붙임) — 휴대폰(760px 이하)에선 새 위쪽 바의 ‹ 로 대신 */
+body.has-portal-bar{padding-top:46px;}
+
+/* ── 휴대폰 화면(2026-10-15 개편) ─────────────────────
+   760px 이하에서만 적용. PC(761px 이상)는 예전 그대로.
+   위쪽 바(‹ 포털 · 구독 관리 · 검색) + 탭 칩 줄 + 카드형 본문 + 아래 고정 '구독 추가'. */
+@media(min-width:761px){
+  .m-only{display:none !important;}
+}
+.m-fab{display:none;}
+.m-sheet-ov{display:none;}
 @media(max-width:760px){
-  #app{flex-direction:column;}
-  .sidebar{width:auto;height:auto;position:static;border-right:none;border-bottom:1px solid var(--border);}
-  .sidebar-logo{display:none;}
-  .sidebar-nav{flex:none;display:flex;gap:4px;overflow-x:auto;padding:8px;-webkit-overflow-scrolling:touch;}
-  .nav-btn{width:auto;flex-shrink:0;white-space:nowrap;margin-bottom:0;padding:8px 12px;}
-  .sidebar-foot{flex-direction:row;gap:6px;overflow-x:auto;padding:6px 8px 8px;border-top:none;}
-  .sidebar-foot button{width:auto;flex-shrink:0;white-space:nowrap;padding:7px 12px;}
-  .main{padding:16px 14px 60px;max-height:none;overflow:visible;}
-  .stat-grid{grid-template-columns:repeat(2,1fr);}
+  .pc-only{display:none !important;}
+  body{background:#F2F4F6;}
+  #portal-bar{display:none !important;}
+  body.has-portal-bar{padding-top:0;}
+  /* 로그인 화면이 떠 있을 땐 돌아갈 버튼이 없으므로 예전 바를 그대로 보여줌 */
+  body.has-portal-bar:has(#login-screen[style*="flex"]) #portal-bar{display:flex !important;}
+  body.has-portal-bar:has(#login-screen[style*="flex"]){padding-top:46px;}
+  .login-wrap{width:auto;max-width:420px;padding:0 16px;}
+  .pw-modal{width:auto;max-width:calc(100vw - 32px);}
+
+  #app{flex-direction:column;overflow-x:clip;}
+  #researcher-view{overflow-x:clip;}
+  .sidebar{display:none;}
+
+  /* 위쪽 바 */
+  .m-top{position:sticky;top:0;z-index:60;background:#FFFFFF;border-bottom:1px solid #E5E8EB;}
+  .m-bar{height:56px;display:flex;align-items:center;gap:4px;padding:0 8px;}
+  .m-back,.m-icon{width:44px;height:44px;flex:none;border:none;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#191F28;padding:0;border-radius:10px;}
+  .m-icon{color:#4E5968;}
+  .m-bar-title{flex:1;min-width:0;font-size:18px;font-weight:700;color:#191F28;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .m-chips{display:flex;gap:8px;padding:4px 16px 12px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  .m-chips::-webkit-scrollbar{display:none;}
+  .m-chip{flex:none;height:36px;padding:0 14px;border-radius:18px;border:1px solid #E5E8EB;background:#FFFFFF;color:#4E5968;font-size:14px;font-family:inherit;white-space:nowrap;cursor:pointer;position:relative;}
+  #app[data-tab="dash"] .m-chip[data-t="dash"],
+  #app[data-tab="list"] .m-chip[data-t="list"],
+  #app[data-tab="annual"] .m-chip[data-t="annual"],
+  #app[data-tab="cards"] .m-chip[data-t="cards"],
+  #app[data-tab="nickname"] .m-chip[data-t="nickname"],
+  #app[data-tab="zapier"] .m-chip[data-t="more"],
+  #app[data-tab="managers"] .m-chip[data-t="more"]{background:#191F28;border-color:#191F28;color:#FFFFFF;font-weight:700;}
+
+  /* 아래 고정 '구독 추가'(대시보드·전체 목록에서만) */
+  #app[data-tab="dash"] .m-fab,#app[data-tab="list"] .m-fab{display:flex;}
+  .m-fab{position:fixed;left:16px;right:16px;bottom:calc(16px + env(safe-area-inset-bottom, 0px));z-index:90;height:54px;border:none;border-radius:14px;background:#2563EB;color:#FFFFFF;font-size:17px;font-weight:700;font-family:inherit;align-items:center;justify-content:center;gap:6px;cursor:pointer;box-shadow:0 4px 16px rgba(37,99,235,.28);white-space:nowrap;}
+  #toast{bottom:calc(86px + env(safe-area-inset-bottom, 0px));max-width:calc(100vw - 32px);}
+  .zp-toast{left:16px;right:16px;bottom:calc(86px + env(safe-area-inset-bottom, 0px));}
+
+  /* 더보기 시트 */
+  .m-sheet-ov.open{display:flex;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.35);align-items:flex-end;}
+  .m-sheet{width:100%;background:#FFFFFF;border-radius:16px 16px 0 0;padding:8px 16px calc(16px + env(safe-area-inset-bottom, 0px));}
+  .m-sheet-handle{width:40px;height:4px;border-radius:2px;background:#E5E8EB;margin:4px auto 8px;}
+  .m-sheet-item{width:100%;min-height:52px;display:flex;align-items:center;gap:10px;border:none;border-bottom:1px solid #F2F4F6;background:transparent;font-size:16px;font-weight:600;color:#191F28;font-family:inherit;text-align:left;cursor:pointer;padding:0 4px;}
+  .m-sheet-item.danger{color:#D92D20;}
+  .m-sheet-item .m-sheet-ic{width:24px;text-align:center;}
+  .m-sheet-close{width:100%;height:48px;margin-top:10px;border:none;border-radius:12px;background:#F2F4F6;color:#4E5968;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;}
+
+  /* 본문 */
+  .main{padding:16px 16px 100px;max-height:none;overflow:visible;}
+  .pg-title{font-size:18px;font-weight:700;}
+  .pg-sub{font-size:13px;color:#6B7684;margin-bottom:16px;}
+  #tab-dash > .pg-title,#tab-dash > .pg-sub{display:none;}
   [id^="tab-"] > div:first-child{flex-wrap:wrap !important;gap:10px !important;}
   th,td{word-break:keep-all;}
+  th{font-size:12px;}
+  table{font-size:13px;}
+  .tbl-wrap{border-radius:16px;box-shadow:none;}
+
+  /* 대시보드: 알림 카드 */
+  .m-al{padding:16px;border-radius:16px;background:#FFFFFF;display:flex;flex-direction:column;gap:4px;margin-bottom:12px;}
+  .m-al-head{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+  .m-al-dot{width:8px;height:8px;border-radius:4px;flex:none;}
+  .m-al-title{font-size:16px;font-weight:700;color:#191F28;}
+  .m-al-cnt{margin-left:auto;font-size:14px;font-weight:700;white-space:nowrap;}
+  .m-al-sub{font-size:13px;color:#6B7684;margin-bottom:6px;}
+  .m-al-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid #F2F4F6;cursor:pointer;}
+  .m-al-row:last-child{padding-bottom:0;}
+  .m-al-d{width:48px;flex:none;font-size:14px;font-weight:800;white-space:nowrap;}
+  .m-al-info{flex:1;min-width:0;}
+  .m-al-name{font-size:15px;font-weight:700;color:#191F28;word-break:keep-all;overflow-wrap:anywhere;}
+  .m-al-meta{font-size:13px;color:#6B7684;}
+  .m-al-amt{flex:none;font-size:15px;font-weight:700;color:#191F28;text-align:right;white-space:nowrap;}
+
+  /* 대시보드: 요약·일자별 결제 */
+  .stat-grid{grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px;}
+  .sc{border:none;border-top:none;border-radius:16px;box-shadow:none;padding:14px 16px;}
+  .sc-l{font-size:13px;font-weight:600;color:#6B7684;text-transform:none;letter-spacing:0;margin-bottom:4px;}
+  .sc-v{font-size:24px;}
+  .sc-s{font-size:12px;color:#6B7684;}
+  .sec-label{font-size:13px;color:#6B7684;text-transform:none;letter-spacing:0;margin:8px 0 10px;}
+  .dg{border:none;border-radius:16px;box-shadow:none;margin-bottom:12px;}
+  .dg.urg,.dg.warn{border:none;}
+  .dg-head{background:#FFFFFF !important;border-bottom:1px solid #F2F4F6 !important;padding:14px 16px 10px;}
+  .dg-head-title{font-size:16px;font-weight:700;}
+  .dg-head-cnt{font-size:13px;margin-left:auto;font-family:var(--sans);}
+  .dp{font-size:13px;padding:3px 10px;font-family:var(--sans);white-space:nowrap;}
+  .dp.urg{background:#FEE4E2;color:#B42318;border-color:#FEE4E2;}
+  .dp.warn{background:#FEF3E2;color:#B54708;border-color:#FEF3E2;}
+  .dp.norm{background:#F2F4F6;color:#4E5968;border-color:#F2F4F6;}
+  .pay-row{padding:12px 16px;border-bottom:1px solid #F2F4F6;gap:12px;min-height:56px;}
+  .pay-info{min-width:0;}
+  .pay-name{font-size:15px;font-weight:700;}
+  .pay-user{font-size:13px;color:#6B7684;}
+  .pay-amt{font-size:15px;font-family:var(--sans);color:#191F28;white-space:nowrap;}
+
+  /* 전체 목록 */
+  .filter-bar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+  .filter-bar .srch{grid-column:1 / -1;width:100%;height:44px;font-size:15px;border-radius:12px;}
+  .filter-bar .reset-all.show{grid-column:1 / -1;margin-left:0;}
+  .ms-trigger{min-width:0;height:40px;font-size:13px;font-family:var(--sans);border-radius:12px;}
+  .ms-trigger > span:first-child{overflow:hidden;text-overflow:ellipsis;}
+  .ms-dropdown{max-width:calc(100vw - 32px);}
+  #ms-card .ms-dropdown{left:auto;right:0;}
+  .ms-item{font-size:14px;min-height:40px;}
+  .ms-search{font-size:14px;}
+  .ms-clear,.ms-count{font-size:13px;}
+  .chips{flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px;}
+  .chip,.sort-btn,.sort-lbl,.reset-all,.list-count,.ms-clear,.ms-count{font-size:13px;white-space:nowrap;font-family:var(--sans);}
+  .chip{flex:none;padding:6px 12px;}
+  .sort-btn{padding:6px 10px;}
+  .reset-all{font-size:13px;}
+  #tab-list .tbl-wrap,#rv-screen-result .tbl-wrap,#rv-screen-all .tbl-wrap{display:none;}
+  .list-count{font-size:13px;}
+  .m-cards{display:flex;flex-direction:column;gap:8px;}
+  .m-item{background:#FFFFFF;border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;}
+  .m-item[data-tap]{cursor:pointer;}
+  .m-item.ended{opacity:.6;}
+  .m-item.ended .m-item-name{text-decoration:line-through;color:#6B7684;}
+  .m-item-top{display:flex;align-items:flex-start;gap:12px;}
+  .m-item-name{flex:1;min-width:0;font-size:16px;font-weight:700;color:#191F28;word-break:keep-all;overflow-wrap:anywhere;}
+  .m-item-amt{flex:none;max-width:50%;text-align:right;font-size:15px;font-weight:700;color:#191F28;overflow-wrap:anywhere;}
+  .m-item-sub{font-size:13px;color:#6B7684;line-height:1.5;word-break:keep-all;overflow-wrap:anywhere;}
+  .m-item-desc{font-size:13px;color:#6B7684;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .m-item-foot{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;}
+  .m-badge{display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:6px;font-size:12px;font-weight:700;white-space:nowrap;}
+  .m-badge.on{background:#E7F6EC;color:#067647;}
+  .m-badge.off{background:#F2F4F6;color:#6B7684;}
+  .m-badge.cy{background:#EBF3FF;color:#1D4ED8;}
+  .m-next{font-size:13px;color:#4E5968;white-space:nowrap;}
+  .m-next.soon{color:#D92D20;font-weight:700;}
+  .m-item-foot .status-btn{margin-left:auto;height:36px;padding:0 12px;font-size:13px;font-family:var(--sans);border-radius:10px;white-space:nowrap;}
+  .m-empty{background:#FFFFFF;border-radius:16px;padding:24px;text-align:center;color:#6B7684;font-size:14px;}
+
+  /* 기타 탭: 글자 크기·버튼만 맞춤(표는 옆으로 밀어 보기) */
+  .tag,.status-btn,.edit-btn{font-size:12px;}
+  .new-badge{font-size:12px;}
+  .ann-card{border-radius:16px;box-shadow:none;border:none;gap:12px;flex-wrap:wrap;}
+  .ann-card > div:first-child{flex:1 1 200px;min-width:0;}
+  .ann-pill{font-size:13px;}
+  .zp-card{flex-wrap:wrap;border-radius:16px;box-shadow:none;}
+  .zp-actions{width:100%;flex-wrap:wrap;}
+  .zp-approve,.zp-reject{min-height:44px;font-size:14px;flex:1;}
+  .zp-tabn{font-size:14px;min-height:40px;}
+  .zp-meta,.zp-desc,.zp-sub{font-size:13px;}
+  .zp-done-meta{font-size:12px;}
+  .zp-done-badge{font-size:12px;}
+  #tab-zapier [style*="font-size:11px"] code{word-break:break-all;}
+
+  /* 인라인으로 10~11px 지정된 작은 글씨 → 12px(휴대폰 최소) */
+  #app [style*="font-size:9px"],#app [style*="font-size:10px"],#app [style*="font-size:11px"],
+  #researcher-view [style*="font-size:9px"],#researcher-view [style*="font-size:10px"],#researcher-view [style*="font-size:11px"],
+  .overlay [style*="font-size:9px"],.overlay [style*="font-size:10px"],.overlay [style*="font-size:11px"]{font-size:12px !important;}
+
+  /* 모달: 한 줄에 칸 하나, 누르기 쉬운 높이 */
+  .overlay{padding:16px 12px;}
+  .modal{padding:20px 16px;border-radius:16px;}
+  .row2{grid-template-columns:1fr;gap:0;}
+  .field label{font-size:12px;letter-spacing:0;}
+  .field input,.field textarea{font-size:15px;min-height:44px;}
+  .cy-btn{min-height:44px;font-size:14px;}
+  .mfooter{flex-wrap:wrap;}
+  .mfooter button{min-height:44px;font-size:14px;white-space:nowrap;}
+  .modal-title{font-size:17px;}
+  .close-x{width:44px;height:44px;}
+
+  /* 리서처 화면 */
+  .rv-header{height:56px;padding:0 8px;box-shadow:none;gap:8px;}
+  .rv-header-left{gap:4px;min-width:0;}
+  .rv-logo-mark{display:none;}
+  .rv-title{font-size:18px;font-weight:700;letter-spacing:0;white-space:nowrap;}
+  .rv-badge{font-size:12px;font-family:var(--sans);white-space:nowrap;margin-left:4px;}
+  .rv-logout{height:40px;padding:0 12px;font-size:14px;font-family:var(--sans);white-space:nowrap;flex:none;}
+  .rv-body{padding:16px 16px 40px;}
+  #rv-screen-lookup{background:#FFFFFF;border-radius:16px;overflow:hidden;}
+  #rv-screen-lookup > div:first-child{padding:32px 16px 16px !important;min-height:0 !important;}
+  #rv-screen-lookup > div:first-child > div:nth-child(2){text-align:center;word-break:keep-all;}
+  #rv-screen-lookup > div:first-child > div:nth-child(3){font-size:13px !important;text-align:center;margin-bottom:20px !important;}
+  #rv-name-input{min-width:0;height:48px;font-size:15px !important;}
+  #rv-screen-lookup button{min-height:48px;font-size:15px !important;white-space:nowrap;}
+  #rv-screen-lookup > div:nth-child(2){flex-direction:column;align-items:stretch !important;gap:8px;padding:12px 16px 16px !important;background:#FFFFFF !important;border-top:1px solid #F2F4F6 !important;}
+  #rv-screen-lookup > div:nth-child(2) button{justify-content:center;border-radius:12px !important;}
+  #rv-screen-result > div:first-child,#rv-screen-all > div:first-child{background:transparent !important;border-bottom:none !important;padding:0 0 12px !important;flex-wrap:wrap;}
+  #rv-screen-result > div:first-child button,#rv-screen-all > div:first-child button,#rv-screen-cards > div:first-child button{min-height:40px;font-size:13px !important;font-family:var(--sans) !important;white-space:nowrap;}
+  #rv-result-title{font-size:16px !important;word-break:keep-all;}
+  #rv-screen-all > div:nth-child(2){padding:0 0 8px !important;}
+  #rv-screen-all > div:nth-child(2) > div{flex-wrap:wrap;}
+  #rv-screen-all > div:nth-child(2) button{min-height:36px;font-size:14px !important;white-space:nowrap;}
+  #rv-search{min-width:0;height:44px;font-size:15px;border-radius:12px;}
+  #rv-ms-user .ms-dropdown{left:auto;right:0;}
+  #rv-cards-search{max-width:none !important;height:44px;font-size:15px !important;}
+  /* 고정폭(mono) 글꼴은 한글 간격이 벌어져 보임 → 리서처 화면 안내 글씨는 기본 글꼴로(카드번호 칸 제외) */
+  #researcher-view [style*="var(--mono)"]:not([id^="rvcn"]){font-family:var(--sans) !important;}
 }
 /* 아이폰: 16px 미만 입력칸을 누르면 화면이 자동 확대됨 → 아이폰에서만 16px */
 @supports (-webkit-touch-callout: none){
@@ -633,6 +821,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
 <div id="researcher-view">
   <div class="rv-header">
     <div class="rv-header-left">
+      <button type="button" class="m-back m-only" onclick="mGoPortal()" aria-label="포털로"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
       <div class="rv-logo-mark">🛠️</div>
       <div>
         <div class="rv-title">구독 관리</div>
@@ -679,6 +868,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
         <tbody id="rv-result-tbody"></tbody>
       </table>
     </div>
+    <div class="m-cards m-only" id="rv-result-cards"></div>
   </div>
 
   <!-- ③ 전체 보기 -->
@@ -726,6 +916,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
         <tbody id="rv-tbody"></tbody>
       </table>
     </div>
+    <div class="m-cards m-only" id="rv-all-cards"></div>
   
 
 </div><!-- /rv-screen-all -->
@@ -756,7 +947,23 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
 </div><!-- /researcher-view -->
 
 <!-- ── 관리자 앱 ──────────────────────────────── -->
-<div id="app">
+<div id="app" data-tab="dash">
+<!-- 휴대폰 전용 위쪽 바 + 탭 칩 (760px 이하에서만 보임) -->
+<div class="m-top m-only">
+  <div class="m-bar">
+    <button type="button" class="m-back" onclick="mGoPortal()" aria-label="포털로"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <div class="m-bar-title">구독 관리</div>
+    <button type="button" class="m-icon" onclick="mOpenSearch()" aria-label="검색"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button>
+  </div>
+  <div class="m-chips">
+    <button type="button" class="m-chip" data-t="dash" onclick="mTab('dash')">대시보드</button>
+    <button type="button" class="m-chip" data-t="list" onclick="mTab('list')">전체 목록</button>
+    <button type="button" class="m-chip" data-t="annual" onclick="mTab('annual')">결제 알림</button>
+    <button type="button" class="m-chip" data-t="cards" onclick="mTab('cards')">법인카드</button>
+    <button type="button" class="m-chip" data-t="nickname" onclick="mTab('nickname')">닉네임</button>
+    <button type="button" class="m-chip" data-t="more" onclick="mOpenMore()">더보기</button>
+  </div>
+</div>
 <div class="sidebar">
   <div class="sidebar-logo">
     <div class="sidebar-logo-mark">🛠️</div>
@@ -819,7 +1026,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
     <div style="display:flex;gap:8px;">
       <button class="add-main-btn" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);white-space:nowrap;" onclick="openNormalizeModal()" title="같은 것을 다르게 적은 서비스명·인상 금액 표기를 한 번에 맞춥니다">🧹 표기 통일</button>
       <button class="add-main-btn" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);white-space:nowrap;" onclick="exportExcel()">📥 엑셀 추출</button>
-      <button class="add-main-btn" style="white-space:nowrap;" onclick="openModal(null)">+ 구독 추가</button>
+      <button class="add-main-btn pc-only" style="white-space:nowrap;" onclick="openModal(null)">+ 구독 추가</button>
     </div>
   </div>
   <div class="filter-bar">
@@ -872,6 +1079,7 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
       <tbody id="list-body"></tbody>
     </table>
   </div>
+  <div class="m-cards m-only" id="list-cards"></div>
   <div class="list-count" id="list-count"></div>
 </div>
 
@@ -1029,7 +1237,22 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
   </div>
 </div>
 </div><!-- /main -->
+<!-- 휴대폰 전용: 아래 고정 '구독 추가' (대시보드·전체 목록에서만) -->
+<button type="button" class="m-fab" onclick="openModal(null)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>구독 추가</button>
 </div><!-- /app -->
+
+<!-- 휴대폰 전용: 더보기 시트 (자피어 연동·결제 담당자·리서처 미리보기·비밀번호·로그아웃) -->
+<div class="m-sheet-ov" id="m-more" onclick="if(event.target===this)mCloseMore()">
+  <div class="m-sheet">
+    <div class="m-sheet-handle"></div>
+    <button type="button" class="m-sheet-item" onclick="mMore('zapier')"><span class="m-sheet-ic" id="m-more-zp">●</span>자피어 연동</button>
+    <button type="button" class="m-sheet-item" onclick="mMore('managers')"><span class="m-sheet-ic">🧑‍💼</span>결제 담당자</button>
+    <button type="button" class="m-sheet-item" onclick="mMore('preview')"><span class="m-sheet-ic">👀</span>리서처 화면 미리보기</button>
+    <button type="button" class="m-sheet-item" id="m-more-pw" style="display:none;" onclick="mMore('pw')"><span class="m-sheet-ic">🔑</span>비밀번호 변경</button>
+    <button type="button" class="m-sheet-item danger" onclick="mMore('logout')"><span class="m-sheet-ic">←</span>로그아웃</button>
+    <button type="button" class="m-sheet-close" onclick="mCloseMore()">닫기</button>
+  </div>
+</div>
 
 <!-- ── 수정/추가 모달 ─────────────────────────── -->
 <div class="overlay" id="modal-overlay">
@@ -1503,6 +1726,7 @@ function showTab(t, btn) {
   // 네비 버튼 active 처리
   document.querySelectorAll('.nav-btn').forEach(function(b){ b.classList.remove('active'); });
   if(btn) btn.classList.add('active');
+  var _appEl=document.getElementById('app'); if(_appEl) _appEl.setAttribute('data-tab', t);   // 휴대폰 탭 칩·아래 버튼 표시용
   // 탭별 렌더링
   if(t==='list'){ document.getElementById('cat-chips').innerHTML=''; renderList(); }
   if(t==='annual'){
@@ -1639,10 +1863,25 @@ function renderYearlyAlert(){
       '<span style="margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--text3);white-space:nowrap;">'+it.next+' 갱신</span>' +
     '</div>';
   }).join('');
+  // 휴대폰용 카드(시안: D-day · 이름 · 날짜 갱신 · 금액)
+  var mRows = items.map(function(it){
+    var dc = it.days<=7 ? '#D92D20' : it.days<=15 ? '#B54708' : '#4E5968';
+    var users = it.d.u ? ' · '+mUsersText(it.d.u) : '';
+    return '<div class="m-al-row" onclick="openModal('+it.d.id+')">' +
+      '<span class="m-al-d" style="color:'+dc+';">D-'+it.days+'</span>' +
+      '<div class="m-al-info"><div class="m-al-name">'+it.d.s+'</div><div class="m-al-meta">'+mMD(it.next)+' 갱신'+users+'</div></div>' +
+      '<div class="m-al-amt">'+amountCell(it.d)+'</div>' +
+    '</div>';
+  }).join('');
   el.style.display = 'block';
-  el.innerHTML = '<div style="background:var(--surface);border:1px solid var(--amber);border-left:4px solid var(--amber);border-radius:var(--radius);padding:14px 18px;margin-bottom:20px;">' +
+  el.innerHTML = '<div class="pc-only" style="background:var(--surface);border:1px solid var(--amber);border-left:4px solid var(--amber);border-radius:var(--radius);padding:14px 18px;margin-bottom:20px;">' +
     '<div style="display:flex;align-items:center;gap:8px;font-weight:700;color:var(--amber);margin-bottom:4px;">🔔 다가오는 연결제 갱신 '+items.length+'건 <span style="font-size:11px;font-weight:500;color:var(--text3);">(90일 이내 · 큰 금액 주의)</span></div>' +
     rowsHtml +
+  '</div>' +
+  '<div class="m-al m-only">' +
+    '<div class="m-al-head"><span class="m-al-dot" style="background:#F79009;"></span><div class="m-al-title">다가오는 연결제 갱신</div><span class="m-al-cnt" style="color:#B54708;">'+items.length+'건</span></div>' +
+    '<div class="m-al-sub">90일 이내 · 큰 금액 주의</div>' +
+    mRows +
   '</div>';
 }
 
@@ -1666,10 +1905,26 @@ function renderHikeAlert(){
       '<span style="color:var(--text3);font-size:12px;">~'+it.h.label+' 종료'+who+'</span>'+
     '</div>';
   }).join('');
+  // 휴대폰용 카드(시안: D-day · 이름 · 날짜 종료 · 사용자)
+  var mRows=items.map(function(it){
+    var exp=it.h.expired;
+    var dTxt=exp?('D+'+(-it.h.days)):('D-'+it.h.days);
+    var dc=(exp||it.h.days===0)?'#D92D20':'#B54708';
+    var who=it.d.u?' · '+mUsersText(it.d.u):'';
+    return '<div class="m-al-row" onclick="openModal('+it.d.id+')">'+
+      '<span class="m-al-d" style="color:'+dc+';">'+dTxt+'</span>'+
+      '<div class="m-al-info"><div class="m-al-name">'+it.d.s+'</div><div class="m-al-meta">'+it.h.label+(exp?' 만료':' 종료')+who+'</div></div>'+
+    '</div>';
+  }).join('');
   el.style.display='block';
-  el.innerHTML='<div style="background:var(--surface);border:1px solid var(--red,#e53e3e);border-left:4px solid var(--red,#e53e3e);border-radius:var(--radius);padding:14px 18px;margin-bottom:20px;">'+
+  el.innerHTML='<div class="pc-only" style="background:var(--surface);border:1px solid var(--red,#e53e3e);border-left:4px solid var(--red,#e53e3e);border-radius:var(--radius);padding:14px 18px;margin-bottom:20px;">'+
     '<div style="display:flex;align-items:center;gap:8px;font-weight:700;color:var(--red,#e53e3e);margin-bottom:4px;">🚨 요금 인상 기간 만료·임박 '+items.length+'건 <span style="font-size:11px;font-weight:500;color:var(--text3);">(만료 시 해지/원복 검토)</span></div>'+
     rows+
+  '</div>'+
+  '<div class="m-al m-only">'+
+    '<div class="m-al-head"><span class="m-al-dot" style="background:#D92D20;"></span><div class="m-al-title">요금 인상 기간 만료 임박</div><span class="m-al-cnt" style="color:#D92D20;">'+items.length+'건</span></div>'+
+    '<div class="m-al-sub">만료되면 해지하거나 원래 요금으로 돌릴지 검토하세요</div>'+
+    mRows+
   '</div>';
 }
 
@@ -1879,6 +2134,27 @@ function renderList(){
       '<td><button class="edit-btn" onclick="event.stopPropagation();openModal('+d.id+')">수정</button></td>' +
     '</tr>';
   }).join('');
+
+  // 휴대폰용 카드 목록(같은 rows·같은 동작: 누르면 수정창, 상태 버튼은 toggleStatus)
+  var mList = document.getElementById('list-cards');
+  if(mList){
+    mList.innerHTML = rows.length ? rows.map(function(d){
+      var next = calcNext(d);
+      var isSoon = d.status==='구독중'&&next&&daysUntil(next)>=0&&daysUntil(next)<=7;
+      var on = d.status==='구독중';
+      var sub = [mUsersText(d.u), d.m||'', d.c||''].filter(Boolean).join(' · ');
+      return '<div class="m-item'+(on?'':' ended')+'" data-tap="1" onclick="openModal('+d.id+')">' +
+        '<div class="m-item-top"><div class="m-item-name">'+d.s+(d.source==='zapier'?'<span class="new-badge">NEW</span>':'')+hikeBadge(d)+'</div>' +
+        '<div class="m-item-amt">'+amountCell(d)+'</div></div>' +
+        (sub?'<div class="m-item-sub">'+sub+'</div>':'') +
+        '<div class="m-item-foot">' +
+          '<span class="m-badge '+(on?'on':'off')+'">'+(d.status||'')+'</span>' +
+          (next?'<span class="m-next'+(isSoon?' soon':'')+'">'+(on?'다음 결제 ':'종료 ')+next+'</span>':'') +
+          '<button class="status-btn '+(on?'off':'on')+'" onclick="event.stopPropagation();toggleStatus('+d.id+')">'+(on?'종료하기':'다시 구독')+'</button>' +
+        '</div>' +
+      '</div>';
+    }).join('') : '<div class="m-empty">조건에 맞는 구독이 없어요</div>';
+  }
 
   document.getElementById('list-count').textContent = '총 '+rows.length+'건';
 
@@ -2479,6 +2755,8 @@ function rvLookup(){
     "</tr>";
   }).join("");
   if(!rows.length) tbody.innerHTML="<tr><td colspan=\"6\" style=\"text-align:center;padding:24px;color:var(--text3);\">구독 내역이 없어요</td></tr>";
+  var mRes=document.getElementById("rv-result-cards");
+  if(mRes) mRes.innerHTML=rows.length?rows.map(mRvCard).join(""):"<div class=\"m-empty\">구독 내역이 없어요</div>";
 }
 
 function rvShowDesc(e,el){
@@ -2501,7 +2779,7 @@ function toggleRVChipArea(){
   var area=document.getElementById('rv-chip-area');
   var btn=document.getElementById('rv-chip-toggle');
   if(area) area.style.display=_rvChipOpen?'block':'none';
-  if(btn) btn.textContent=_rvChipOpen?'▼ 접기':'▶ 팡치기';
+  if(btn) btn.textContent=_rvChipOpen?'▼ 접기':'▶ 펼치기';
   updateRVChipResetBtn();
 }
 
@@ -2609,6 +2887,8 @@ function renderRV(){
       '<td style="font-family:var(--mono);font-size:12px;">'+(d.sd||'')+'</td>'+
     '</tr>';
   }).join('');
+  var mAll=document.getElementById('rv-all-cards');
+  if(mAll) mAll.innerHTML=rows.length?rows.map(mRvCard).join(''):'<div class="m-empty">조건에 맞는 구독이 없어요</div>';
 }
 
 async function initApp(){
@@ -4127,6 +4407,63 @@ function applyRvSearch() {
   renderRV();
 }
 
+// ── 휴대폰 화면 도우미(화면 전용 · 데이터/로그인 로직 없음) ─────────────
+// '‹' = 예전 '포털로' 바와 같은 동작
+function mGoPortal(){
+  if (history.length > 1) history.back();
+  else location.href = 'https://plab-account.vercel.app';
+}
+function mTab(t){
+  showTab(t, document.getElementById('nav-'+t));
+  try{ window.scrollTo(0,0); }catch(e){}
+}
+function mOpenSearch(){
+  mTab('list');
+  var s=document.getElementById('g-search');
+  if(s){ try{ s.focus(); }catch(e){} }
+}
+function mOpenMore(){
+  var ov=document.getElementById('m-more'); if(!ov) return;
+  var zp=document.getElementById('m-more-zp'), nd=document.getElementById('zapier-dot-nav');
+  if(zp && nd){ zp.textContent=nd.textContent||'●'; zp.style.color=nd.style.color||''; }
+  var pw=document.getElementById('pw-change-btn'), mpw=document.getElementById('m-more-pw');
+  if(mpw) mpw.style.display=(pw && pw.style.display!=='none')?'':'none';
+  ov.classList.add('open');
+}
+function mCloseMore(){
+  var ov=document.getElementById('m-more'); if(ov) ov.classList.remove('open');
+}
+function mMore(a){
+  mCloseMore();
+  if(a==='zapier'||a==='managers') mTab(a);
+  else if(a==='preview') enterResearcherPreview();
+  else if(a==='pw'){ var pw=document.getElementById('pw-change-btn'); if(pw) pw.click(); }
+  else if(a==='logout'){ var lo=document.getElementById('admin-logout-btn'); if(lo) lo.click(); }
+}
+// 'YYYY-MM-DD' -> 'M/D'
+function mMD(str){
+  var p=(''+(str||'')).split('-');
+  if(p.length<3) return str||'';
+  return parseInt(p[1],10)+'/'+parseInt(p[2],10);
+}
+// 사용자 -> '첫사람' 또는 '첫사람 외 N명'(한글 닉네임)
+function mUsersText(uStr){
+  if(!uStr) return '';
+  var list=(''+uStr).split(',').map(function(u){return u.trim();}).filter(Boolean);
+  if(!list.length) return '';
+  var first=koName(list[0]);
+  return list.length>1 ? first+' 외 '+(list.length-1)+'명' : first;
+}
+// 리서처 화면 카드 한 장(표와 같은 항목: 서비스·사용자·결제수단·금액·주기·시작일 + 내용)
+function mRvCard(d){
+  var sub=[mUsersText(d.u), d.m||'', d.c||'', d.sd?('시작 '+d.sd):''].filter(Boolean).join(' · ');
+  return '<div class="m-item">'+
+    '<div class="m-item-top"><div class="m-item-name">'+d.s+hikeBadge(d)+'</div><div class="m-item-amt">'+amountCell(d)+'</div></div>'+
+    (sub?'<div class="m-item-sub">'+sub+'</div>':'')+
+    (d.d?'<div class="m-item-desc">'+String(d.d).replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>':'')+
+  '</div>';
+}
+
 </script>
 <script>
 /* 포털에서 모바일로 열렸을 때 상단 '포털로' 바 (정적 앱이라 직접 주입) */
@@ -4142,8 +4479,9 @@ function applyRvSearch() {
       sessionStorage.getItem('plabPortal') === '1' &&
       window.matchMedia('(pointer: coarse)').matches
     ) {
-      document.body.style.paddingTop = '46px';
+      document.body.classList.add('has-portal-bar');   // 여백은 CSS(휴대폰 760px 이하는 새 위쪽 바가 대신)
       var bar = document.createElement('div');
+      bar.id = 'portal-bar';
       bar.style.cssText =
         'position:fixed;top:0;left:0;right:0;height:46px;z-index:100000;background:#fff;border-bottom:1px solid #eef0f2;box-shadow:0 1px 3px rgba(0,0,0,.04);display:flex;align-items:center;padding:0 12px';
       var btn = document.createElement('button');
