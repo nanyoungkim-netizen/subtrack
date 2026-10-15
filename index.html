@@ -561,6 +561,27 @@ tr.ended td:first-child{text-decoration:line-through;color:var(--text3);}
 ::-webkit-scrollbar{width:4px;height:4px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+/* ── 휴대폰(2026-10-15) ─────────────────────
+   왼쪽 메뉴(220px)가 화면 절반을 차지해 본문이 찌그러졌다 →
+   760px 이하에선 메뉴를 위쪽 가로줄(옆으로 밀기)로, 본문은 전체 폭. PC는 그대로. */
+@media(max-width:760px){
+  #app{flex-direction:column;}
+  .sidebar{width:auto;height:auto;position:static;border-right:none;border-bottom:1px solid var(--border);}
+  .sidebar-logo{display:none;}
+  .sidebar-nav{flex:none;display:flex;gap:4px;overflow-x:auto;padding:8px;-webkit-overflow-scrolling:touch;}
+  .nav-btn{width:auto;flex-shrink:0;white-space:nowrap;margin-bottom:0;padding:8px 12px;}
+  .sidebar-foot{flex-direction:row;gap:6px;overflow-x:auto;padding:6px 8px 8px;border-top:none;}
+  .sidebar-foot button{width:auto;flex-shrink:0;white-space:nowrap;padding:7px 12px;}
+  .main{padding:16px 14px 60px;max-height:none;overflow:visible;}
+  .stat-grid{grid-template-columns:repeat(2,1fr);}
+  [id^="tab-"] > div:first-child{flex-wrap:wrap !important;gap:10px !important;}
+  th,td{word-break:keep-all;}
+}
+/* 아이폰: 16px 미만 입력칸을 누르면 화면이 자동 확대됨 → 아이폰에서만 16px */
+@supports (-webkit-touch-callout: none){
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),select,textarea{font-size:16px !important;}
+}
 </style>
 </head>
 <body>
